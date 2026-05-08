@@ -1,0 +1,48 @@
+/**
+ * App.tsx — Root component
+ * Wraps the app in AuthProvider, ThemeProvider, and MobileShell
+ */
+
+import React, { useState, useEffect } from 'react';
+import { AuthProvider } from '@/context/AuthContext';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { TTSProvider } from '@/context/TTSContext';
+import { HIVFileProvider } from '@/context/HIVFileContext';
+import { Router } from '@/router/Router';
+import { MobileShell } from '@/components/shell/MobileShell';
+import SplashScreen from '@/components/ui/SplashScreen';
+
+const App: React.FC = () => {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setShowSplash(false);
+    }
+  }, []);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} duration={2500} />;
+  }
+
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <HIVFileProvider>
+          <TTSProvider>
+            <MobileShell>
+              <Router />
+            </MobileShell>
+          </TTSProvider>
+        </HIVFileProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+};
+
+export default App;

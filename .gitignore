@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.local
+
+# Claude Code internals
+.claude/
+
+# Large binary model files — download separately (see README)
+public/models/**/*.onnx
+public/sherpa-onnx/*.wasm
+
+# Capture artefacts
+hiva-splash*.mp4
+hiva-splash*.gif
+
+# Debug utilities
+debug_zip.js
+debug_zip.mjs
+
+# Aider AI
+.aider*

@@ -1,0 +1,227 @@
+/* ─── AUTH ─── */
+
+export interface User {
+  id: string;
+  name: string;
+  facility: string;
+  state: string;
+  serverCode: string;
+  supervisor: string;
+  role: 'chew' | 'supervisor';
+}
+
+export interface AuthSession {
+  user: User;
+  loginTime: string;
+}
+
+/* ─── ARTIFACTS ─── */
+
+export interface Artifact {
+  id: string;
+  title: string;
+  publisher: string;
+  year: number;
+  icon: string;
+  colorTint: string;
+  topics: string[];
+  verified: boolean;
+  syncedAt: string;
+  description?: string;
+}
+
+/* ─── CHAT ─── */
+
+export type MessageType = 'text' | 'response_card' | 'danger_sign' | 'drug_table' | 'decision_tree' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  type: MessageType;
+  sender: 'user' | 'hiva';
+  content: string;
+  timestamp: Date;
+  metadata?: MessageMetadata;
+}
+
+export interface MessageMetadata {
+  artifactId?: string;
+  drugId?: string;
+  treeId?: string;
+  topic?: string;
+  source?: string;
+  related?: string;
+}
+
+/* ─── DECISION TREES ─── */
+
+export type NodeType = 'branch' | 'action' | 'refer';
+
+export interface TreeNode {
+  id: string;
+  type: NodeType;
+  question?: string;
+  hint?: string;
+  options?: TreeOption[];
+  title?: string;
+  instruction?: string;
+  linkedDrug?: string;
+  urgency?: 'immediate' | 'urgent' | 'routine';
+  holdingCare?: string;
+  handover?: string;
+}
+
+export interface TreeOption {
+  id: string;
+  label: string;
+  next: string;
+  icon?: 'check' | 'x';
+}
+
+export interface DecisionTree {
+  id: string;
+  name: string;
+  artifactId: string;
+  entryNode: string;
+  nodes: Record<string, TreeNode>;
+}
+
+/* ─── DRUG TABLES ─── */
+
+export interface DrugTable {
+  id: string;
+  name: string;
+  route: string;
+  form: string;
+  unitDose: string;
+  frequency: string;
+  duration: string;
+  weightRanges: WeightRange[];
+  warning?: string;
+  source: string;
+}
+
+export interface WeightRange {
+  minKg: number;
+  maxKg: number;
+  dose: string;
+  notes?: string;
+}
+
+/* ─── SETTINGS ─── */
+
+export type Language = 'en' | 'ha' | 'yo' | 'ig' | 'pcm';
+export type InteractionMode = 'quiet' | 'companion' | 'co-pilot';
+
+export interface AppSettings {
+  language: Language;
+  theme: 'light' | 'dark' | 'system';
+  interactionMode: InteractionMode;
+}
+
+/* ─── ROUTER ─── */
+
+export type RoutePath =
+  | '/'
+  | '/chat'
+  | '/knowledge'
+  | '/knowledge/:id'
+  | '/settings'
+  | '/decision-tree/:id'
+  | '/drug-table/:id';
+
+export interface RouteParams {
+  id?: string;
+}
+
+export interface AppRoute {
+  path: RoutePath;
+  screen: string;
+  requiresAuth: boolean;
+  tabBar?: boolean;
+}
+
+/* ─── SEARCH ─── */
+
+export interface MockResponseRule {
+  keywords: string[];
+  response: Omit<ChatMessage, 'id' | 'timestamp' | 'sender'>;
+}
+
+/* ─── .HIV FILE FORMAT ─── */
+
+export type HIVChunkType = 'faq' | 'drug_table' | 'decision_tree' | 'protocol' | 'danger_sign' | 'calculator';
+
+export interface HIVManifest {
+  version: string;
+  sha256: string;
+  size_kb: number;
+  languages: string[];
+  chunk_count: number;
+  created_at: string;
+  search_config: {
+    bm25_weight: number;
+    vector_weight: number;
+    fusion: 'RRF';
+    rrf_k: number;
+    type_boost: Record<HIVChunkType, number>;
+  };
+}
+
+export interface HIVChunk {
+  id: string;
+  type: HIVChunkType;
+  trigger_phrases: Record<string, string[]>;
+  content: Record<string, unknown>;
+  source: { document: string; span?: string };
+  checksum: string;
+}
+
+export interface HIVLexicalIndex {
+  [lang: string]: {
+    index: Record<string, Array<{ chunk_id: string; score: number }>>;
+  };
+}
+
+export interface HIVSources {
+  sources: Array<{ name: string; url?: string; year?: number }>;
+}
+
+export interface HIVRules {
+  [id: string]: unknown;
+}
+
+export interface HIVI18N {
+  [key: string]: string;
+}
+
+export interface HIVFile {
+  manifest: HIVManifest;
+  chunks: HIVChunk[];
+  embeddings: Int8Array[];
+  lexicalIndex: HIVLexicalIndex;
+  sources: HIVSources;
+  rules: HIVRules;
+  i18n: Record<string, HIVI18N>;
+}
+
+export interface SearchResult {
+  chunk_id: string;
+  score: number;
+}
+
+export interface RenderedResponse {
+  type: HIVChunkType;
+  content: string;
+  metadata?: MessageMetadata;
+  related?: Array<{ id: string; type: HIVChunkType; preview: string }>;
+  source?: { document: string; span?: string };
+}
+
+export interface UpdateMetadata {
+  version: string;
+  sha256: string;
+  size_kb: number;
+  languages: string[];
+  chunk_count: number;
+  created_at: string;
+}

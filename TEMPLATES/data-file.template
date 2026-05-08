@@ -1,0 +1,64 @@
+/**
+ * Copy this file, rename it, fill in the [PLACEHOLDERS]
+ * 
+ * This template is for mock data files.
+ * Data files contain static, read-only clinical content.
+ * 
+ * Rules from AGENTS.md:
+ * - Use `as const` assertion for all exported data
+ * - Never mutate data at runtime
+ * - Export lookup functions for O(1) access
+ * - All content must cite its source
+ */
+
+import type { [TYPE_NAME] } from '@/types/hiv';
+
+// ─── DATA ───
+
+export const MOCK_[ENTITY_NAME]S: readonly [TYPE_NAME][] = [
+  {
+    id: '[ENTITY]-[YEAR]',
+    name: '[Full Display Name]',
+    // Add all required fields per the TypeScript interface
+    source: 'FMOH [Topic] Guidelines [Year]',
+    verified: true,
+    syncedAt: 'today',
+  },
+  // Add more items...
+] as const;
+
+// ─── LOOKUP FUNCTIONS ───
+
+/**
+ * Find a [ENTITY_NAME] by its unique ID.
+ * Returns undefined if not found.
+ */
+export const get[ENTITY_NAME]ById = (id: string): [TYPE_NAME] | undefined => {
+  return MOCK_[ENTITY_NAME]S.find((item) => item.id === id);
+};
+
+/**
+ * Find [ENTITY_NAME]s by a related artifact ID.
+ * Returns empty array if none match.
+ */
+export const get[ENTITY_NAME]sByArtifactId = (artifactId: string): readonly [TYPE_NAME][] => {
+  return MOCK_[ENTITY_NAME]S.filter((item) => item.artifactId === artifactId);
+};
+
+// ─── DERIVED COMPUTATIONS ───
+
+/**
+ * Compute a value from the data.
+ * Pure function, no side effects.
+ */
+export const compute[VALUE_NAME] = (inputId: string, inputValue: number): { result: string; inRange: boolean } => {
+  const item = get[ENTITY_NAME]ById(inputId);
+  if (!item) {
+    return { result: 'Unknown [ENTITY_NAME]', inRange: false };
+  }
+
+  // Implement computation logic here
+  // Example: find matching range, interpolate, etc.
+
+  return { result: 'computed-value', inRange: true };
+};
