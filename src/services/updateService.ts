@@ -15,6 +15,12 @@ import { unzipSync } from 'fflate';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { parseHIVFile } from './hivLoader';
 import type { UpdateMetadata, HIVFile } from '@/types/hiv';
+import {
+  HIVA_TOKEN_KEY,
+  HIVA_SERVER_CODE_KEY,
+  HIVA_USER_NAME_KEY,
+  HIVA_KNOWN_VERSION_KEY,
+} from '@/utils/constants';
 
 interface HIVDB extends DBSchema {
   files: {
@@ -27,10 +33,6 @@ const UPDATE_ENDPOINT = 'https://compiler.hiva.chat/api/hiv';
 const DB_NAME = 'hivaline-hiv';
 const STORE_NAME = 'files';
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 min
-const TOKEN_KEY = 'hiva_token';
-const SERVER_CODE_KEY = 'hiva_server_code';
-const USER_NAME_KEY = 'hiva_user_name';
-const KNOWN_VERSION_KEY = 'hiva_known_version';
 
 let versionCache: { meta: UpdateMetadata; fetchedAt: number } | null = null;
 
@@ -72,7 +74,7 @@ export async function checkForUpdate(): Promise<UpdateMetadata | null> {
 }
 
 async function compareVersion(meta: UpdateMetadata): Promise<UpdateMetadata | null> {
-  const knownVersion = localStorage.getItem(KNOWN_VERSION_KEY);
+  const knownVersion = localStorage.getItem(HIVA_KNOWN_VERSION_KEY);
   if (knownVersion === meta.version) {
     // Version matches — also confirm file is actually in IndexedDB
     const db = await getDB();
@@ -92,7 +94,7 @@ export async function downloadHIV(meta: UpdateMetadata): Promise<Uint8Array | nu
     const partial = await db.get(STORE_NAME, 'partial');
     const resumeFrom = partial?.blob ? partial.blob.length : 0;
 
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(HIVA_TOKEN_KEY);
     const headers: Record<string, string> = {
       Accept: 'application/octet-stream',
     };
@@ -106,9 +108,9 @@ export async function downloadHIV(meta: UpdateMetadata): Promise<Uint8Array | nu
 
     if (response.status === 401 || response.status === 403) {
       // Token revoked — clear auth state and notify AuthContext
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(SERVER_CODE_KEY);
-      localStorage.removeItem(USER_NAME_KEY);
+      localStorage.removeItem(HIVA_TOKEN_KEY);
+      localStorage.removeItem(HIVA_SERVER_CODE_KEY);
+      localStorage.removeItem(HIVA_USER_NAME_KEY);
       window.dispatchEvent(new CustomEvent('hiva:session-revoked'));
       return null;
     }
@@ -148,7 +150,7 @@ export async function downloadHIV(meta: UpdateMetadata): Promise<Uint8Array | nu
     // Persist verified file and update known version
     await db.put(STORE_NAME, { blob: full, version: meta.version, downloadedAt: new Date().toISOString() }, 'current');
     await db.delete(STORE_NAME, 'partial');
-    localStorage.setItem(KNOWN_VERSION_KEY, meta.version);
+    localStorage.setItem(HIVA_KNOWN_VERSION_KEY, meta.version);
 
     return full;
   } catch {
@@ -187,8 +189,8 @@ async function verifySignature(hivBytes: Uint8Array): Promise<boolean> {
     const pubRaw = zip['signature/pubkey.bin'] ?? zip['/signature/pubkey.bin'];
 
     if (!sigRaw || !pubRaw) {
-      // If no signature files present, accept (development builds)
-      return true;
+      // Accept unsigned only in local dev — reject in production builds
+      return import.meta.env.DEV;
     }
 
     // Reconstruct signable payload: ZIP contents minus signature/ directory
@@ -207,8 +209,8 @@ function repackWithoutSignature(zip: Record<string, Uint8Array>): Uint8Array {
       filtered[key] = value;
     }
   }
-  // Simple concat of all file contents for signing payload
-  const parts = Object.values(filtered);
+  // Sort keys so signing payload is deterministic regardless of insertion order
+  const parts = Object.keys(filtered).sort().map((k) => filtered[k]);
   const totalLength = parts.reduce((sum, p) => sum + p.length, 0);
   const combined = new Uint8Array(totalLength);
   let offset = 0;

@@ -18,6 +18,8 @@ const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [failCount, setFailCount] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
 
   const serverCodeError = useMemo(() => {
     if (!serverCode) return null;
@@ -31,6 +33,14 @@ const LoginScreen: React.FC = () => {
 
   const handleSubmit = useCallback(async () => {
     setError(null);
+
+    // Cooldown guard — block after 3 consecutive failures
+    const now = Date.now();
+    if (cooldownUntil > now) {
+      const secs = Math.ceil((cooldownUntil - now) / 1000);
+      setError(`Too many attempts. Please wait ${secs} seconds.`);
+      return;
+    }
 
     // Client-side format guard — access key must match last 4 of server code
     if (!SERVER_CODE_RE.test(serverCode)) {
@@ -47,12 +57,22 @@ const LoginScreen: React.FC = () => {
     setIsLoading(false);
 
     if (result.success) {
+      setFailCount(0);
+      setCooldownUntil(0);
       setIsSuccess(true);
       setTimeout(() => navigate('/chat'), 800);
     } else {
-      setError(result.error ?? 'Connection failed. Please try again.');
+      const next = failCount + 1;
+      if (next >= 3) {
+        setFailCount(0);
+        setCooldownUntil(Date.now() + 30_000);
+        setError('Too many failed attempts. Please wait 30 seconds.');
+      } else {
+        setFailCount(next);
+        setError(result.error ?? 'Connection failed. Please try again.');
+      }
     }
-  }, [serverCode, accessKey, login, navigate]);
+  }, [serverCode, accessKey, login, navigate, failCount, cooldownUntil]);
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full px-4 noise-overlay bg-gradient-to-b from-accent-600 to-accent-800">

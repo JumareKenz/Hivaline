@@ -6,6 +6,7 @@ import React, { useCallback } from 'react';
 import { clsx } from 'clsx';
 
 interface InputProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -17,6 +18,7 @@ interface InputProps {
 }
 
 const Input: React.FC<InputProps> = ({
+  id,
   value,
   onChange,
   placeholder,
@@ -26,6 +28,8 @@ const Input: React.FC<InputProps> = ({
   autoCapitalize = false,
   disabled = false,
 }) => {
+  const inputId = id ?? (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
     if (autoCapitalize) {
@@ -39,11 +43,12 @@ const Input: React.FC<InputProps> = ({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-xs font-body font-medium text-n-500 dark:text-n-400 mb-1.5 uppercase tracking-wider">
+        <label htmlFor={inputId} className="block text-xs font-body font-medium text-n-500 dark:text-n-400 mb-1.5 uppercase tracking-wider">
           {label}
         </label>
       )}
       <input
+        id={inputId}
         type={type}
         value={value}
         onChange={handleChange}

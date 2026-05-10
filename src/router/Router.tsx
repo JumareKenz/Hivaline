@@ -51,7 +51,11 @@ export const Router: React.FC = () => {
     return ROUTES.find((r) => matchRoute(path, r.path));
   }, [path]);
 
-  // Auth guard
+  // Auth guard — evaluated synchronously before render to prevent flash
+  const needsRedirect =
+    (activeRoute?.requiresAuth && !authState.isAuthenticated) ||
+    (path === '/' && authState.isAuthenticated);
+
   React.useEffect(() => {
     if (activeRoute?.requiresAuth && !authState.isAuthenticated) {
       navigate('/');
@@ -61,9 +65,9 @@ export const Router: React.FC = () => {
     }
   }, [activeRoute, authState.isAuthenticated, path, navigate]);
 
-  const showTabBar = activeRoute?.tabBar ?? false;
+  const showTabBar = !needsRedirect && (activeRoute?.tabBar ?? false);
 
-  const Screen = activeRoute ? SCREEN_MAP[activeRoute.screen] : null;
+  const Screen = !needsRedirect && activeRoute ? SCREEN_MAP[activeRoute.screen] : null;
   const routeKey = activeRoute?.path ?? 'not-found';
 
   return (
