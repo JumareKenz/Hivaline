@@ -23,11 +23,11 @@ import type { ChatMessage } from '@/types/hiv';
 import { formatDate } from '@/utils/formatters';
 
 const SUGGESTIONS = [
-  'ACT dose for 12kg child',
-  'Signs of severe malaria',
-  'ANC first visit',
-  'Child has convulsions',
-  'Pneumonia assessment',
+  'What can you do?',
+  'How do you work offline?',
+  'How do I get updates?',
+  'What is my access code?',
+  'How do I search for answers?',
 ];
 
 const WELCOME_MESSAGES = [
