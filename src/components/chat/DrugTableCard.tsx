@@ -2,9 +2,10 @@
  * DrugTableCard — inline drug dose mini-card in chat
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { getDrugById } from '@/data/drugTables';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { getDrugById } from '@/services/hivDataExtractor';
 import { useRouter } from '@/router/useRouter';
 
 interface DrugTableCardProps {
@@ -12,7 +13,8 @@ interface DrugTableCardProps {
 }
 
 const DrugTableCard: React.FC<DrugTableCardProps> = ({ drugId }) => {
-  const drug = getDrugById(drugId);
+  const { file } = useHIVFile();
+  const drug = useMemo(() => getDrugById(file, drugId), [file, drugId]);
   const { navigate } = useRouter();
 
   const handleViewTable = useCallback(() => {

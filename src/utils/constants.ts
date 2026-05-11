@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 export const DEFAULT_TTS_SETTINGS = {
-  enabled: true,
+  enabled: false,
   voiceURI: null as string | null,
 };
 

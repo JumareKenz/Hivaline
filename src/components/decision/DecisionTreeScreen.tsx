@@ -5,7 +5,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
-import { getTreeById } from '@/data/decisionTrees';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { getTreeById } from '@/services/hivDataExtractor';
 import { useRouter } from '@/router/useRouter';
 import { TopBar } from '@/components/ui/TopBar';
 import { TreeNode } from './TreeNode';
@@ -28,7 +29,8 @@ const slideVariants = {
 
 const DecisionTreeScreen: React.FC = () => {
   const { params, goBack } = useRouter();
-  const tree = useMemo(() => getTreeById(params.id ?? ''), [params.id]);
+  const { file } = useHIVFile();
+  const tree = useMemo(() => getTreeById(file, params.id ?? ''), [file, params.id]);
 
   const [currentNodeId, setCurrentNodeId] = useState(tree?.entryNode ?? '');
   const [history, setHistory] = useState<string[]>([]);

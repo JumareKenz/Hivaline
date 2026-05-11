@@ -6,6 +6,7 @@ import {
   HIVA_USER_NAME_KEY,
   HIVA_KNOWN_VERSION_KEY,
 } from '@/utils/constants';
+import { checkForUpdate, downloadHIV } from '@/services/updateService';
 
 const API_BASE = 'https://compiler.hiva.chat';
 
@@ -83,6 +84,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: 'chew',
         };
         setState({ isAuthenticated: true, user });
+
+        // Auto-download .hiv file after successful login
+        console.log('[AuthContext] Login successful, checking for .hiv update...');
+        try {
+          // Force download on first login - clear the known version to ensure download
+          const existingVersion = localStorage.getItem(HIVA_KNOWN_VERSION_KEY);
+          if (!existingVersion) {
+            console.log('[AuthContext] No previous version, forcing download');
+            // Version check will return meta since no known version
+          }
+          
+          const meta = await checkForUpdate();
+          console.log('[AuthContext] checkForUpdate result:', meta);
+          
+          if (meta) {
+            console.log('[AuthContext] Calling downloadHIV for version:', meta.version);
+            const bytes = await downloadHIV(meta);
+            console.log('[AuthContext] downloadHIV result:', bytes ? 'success' : 'failed');
+            if (bytes) {
+              window.dispatchEvent(new CustomEvent('hiva:file-downloaded'));
+            } else {
+              console.error('[AuthContext] Download failed - check for network/auth errors');
+            }
+          } else {
+            console.log('[AuthContext] No update needed - file already present');
+          }
+        } catch (err) {
+          console.error('[AuthContext] Auto-update error:', err);
+        }
+
         return { success: true };
       }
 

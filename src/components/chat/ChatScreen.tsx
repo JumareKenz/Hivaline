@@ -5,8 +5,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { useSearch } from '@/hooks/useSearch';
+import { Volume2, VolumeX } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { useConversation } from '@/hooks/useConversation';
 import { TopBar } from '@/components/ui/TopBar';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { HivaLogo } from '@/components/ui/HivaLogo';
@@ -43,15 +45,19 @@ const getGreeting = (): string => {
 
 const ChatScreen: React.FC = () => {
   const { state: authState } = useAuth();
-  const { searchResponse } = useSearch();
+  const { file } = useHIVFile();
+  const { respond } = useConversation(file);
   const voice = useVoiceService();
-  const { isEnabled: ttsEnabled, isAvailable: ttsAvailable, speak: ttsSpeak, cancel: ttsCancel } = useTTS();
+  const { isEnabled: ttsEnabled, isAvailable: ttsAvailable, speak: ttsSpeak, cancel: ttsCancel, toggleEnabled: toggleTTS } = useTTS();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [typingText, setTypingText] = useState('');
+  const [suggestedChips, setSuggestedChips] = useState<string[]>([]);
   const [showVoiceToast, setShowVoiceToast] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userName = authState.user?.name ?? 'Health Worker';
 
@@ -73,6 +79,12 @@ const ChatScreen: React.FC = () => {
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
     ttsCancel();
+    setSuggestedChips([]);
+
+    // Clear any existing typing animation
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
 
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}-user`,
@@ -85,42 +97,52 @@ const ChatScreen: React.FC = () => {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
+    setTypingText('');
 
-    // Minimum 300ms delay for perceived confidence
-    const startTime = Date.now();
-    const result = await searchResponse(text);
-    const elapsed = Date.now() - startTime;
-    const delay = Math.max(300 - elapsed, 50);
+    // Get response from conversation engine
+    const result = await respond(text);
 
-    setTimeout(() => {
-      const hivaMsg: ChatMessage = {
-        id: `msg-${Date.now()}-hiva`,
-        type: result.response.type,
-        sender: 'hiva',
-        content: result.response.content,
-        timestamp: new Date(),
-        metadata: result.response.metadata,
-      };
-      setMessages((prev) => [...prev, hivaMsg]);
+    // Calculate typing delay based on response length
+    const typingDelay = Math.min(600, 400 + result.message.length * 8);
 
-      // Append related suggestions as a system chip message
-      if (result.related && result.related.length > 0) {
-        const relatedMsg: ChatMessage = {
-          id: `msg-${Date.now()}-related`,
-          type: 'system',
+    // Start typing animation
+    const chars = result.message.split('');
+    let currentIndex = 0;
+    const charsPerTick = 30;
+
+    const animateTyping = () => {
+      const endIndex = Math.min(currentIndex + charsPerTick, chars.length);
+      const visibleText = chars.slice(0, endIndex).join('');
+      setTypingText(visibleText);
+      currentIndex = endIndex;
+
+      if (currentIndex < chars.length) {
+        typingTimeoutRef.current = setTimeout(animateTyping, 30);
+      } else {
+        // Animation complete — show final message
+        setIsTyping(false);
+        setTypingText('');
+        const hivaMsg: ChatMessage = {
+          id: `msg-${Date.now()}-hiva`,
+          type: result.type === 'urgent' ? 'danger_sign' : 'text',
           sender: 'hiva',
-          content: '',
+          content: result.message,
           timestamp: new Date(),
-          metadata: {
-            related: result.related.map((r) => r.preview).join(' · '),
-          },
+          metadata: result.chunkId
+            ? {
+                artifactId: result.chunkId,
+                source: result.source?.document,
+              }
+            : undefined,
         };
-        setMessages((prev) => [...prev, relatedMsg]);
+        setMessages((prev) => [...prev, hivaMsg]);
+        setSuggestedChips(result.suggestedFollowUps);
       }
+    };
 
-      setIsTyping(false);
-    }, delay);
-  }, [searchResponse, ttsCancel]);
+    // Start after initial delay
+    typingTimeoutRef.current = setTimeout(animateTyping, typingDelay);
+  }, [respond, ttsCancel]);
 
   const handleSend = useCallback(() => {
     sendMessage(inputValue);
@@ -165,6 +187,15 @@ const ChatScreen: React.FC = () => {
     voice.reset();
   }, [voice]);
 
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full bg-bg-secondary relative">
       {/* Voice toast overlay */}
@@ -179,7 +210,32 @@ const ChatScreen: React.FC = () => {
       <TopBar
         title="HIVA"
         subtitle="Clinical AI · Always available"
-        rightElement={<StatusPill />}
+        rightElement={
+          <div className="flex items-center gap-2">
+            {ttsAvailable && (
+              <button
+                type="button"
+                onClick={toggleTTS}
+                aria-label={ttsEnabled ? 'Turn off voice' : 'Turn on voice'}
+                aria-pressed={ttsEnabled}
+                className={clsx(
+                  'flex items-center justify-center w-9 h-9 rounded-lg',
+                  'transition-colors duration-150',
+                  ttsEnabled
+                    ? 'bg-accent-600 text-white'
+                    : 'bg-n-100 text-n-500 hover:bg-n-200 dark:bg-n-800 dark:text-n-400 dark:hover:bg-n-700'
+                )}
+              >
+                {ttsEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
+              </button>
+            )}
+            <StatusPill />
+          </div>
+        }
       />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -197,7 +253,7 @@ const ChatScreen: React.FC = () => {
               </div>
 
               <h2 className="font-display font-semibold text-xl text-n-900 dark:text-n-100 mb-1">
-                {getGreeting()}, {userName.split(' ').pop()} 👋
+                {getGreeting()}, {userName} 👋
               </h2>
               <p className="font-body text-sm text-n-500 dark:text-n-400 max-w-xs mb-6">
                 I&apos;m HIVA, your offline clinical assistant. What&apos;s on your mind today?
@@ -229,7 +285,33 @@ const ChatScreen: React.FC = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <TypingIndicator />
+              {typingText ? (
+                <MessageBubble
+                  message={{
+                    id: 'typing-preview',
+                    type: 'text',
+                    sender: 'hiva',
+                    content: typingText,
+                    timestamp: new Date(),
+                  }}
+                />
+              ) : (
+                <TypingIndicator />
+              )}
+            </motion.div>
+          )}
+
+          {/* Follow-up suggestion chips */}
+          {suggestedChips.length > 0 && !isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="pl-2"
+            >
+              <SuggestionChips
+                suggestions={suggestedChips}
+                onSelect={handleSuggestion}
+              />
             </motion.div>
           )}
         </AnimatePresence>

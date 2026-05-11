@@ -5,7 +5,8 @@
 import React, { useMemo } from 'react';
 import { clsx } from 'clsx';
 import { AlertTriangle } from 'lucide-react';
-import { getDoseForWeight, getDrugById } from '@/data/drugTables';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { getDoseForWeight, getDrugById } from '@/services/hivDataExtractor';
 
 interface DoseResultCardProps {
   drugId: string;
@@ -13,8 +14,9 @@ interface DoseResultCardProps {
 }
 
 const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => {
-  const drug = useMemo(() => getDrugById(drugId), [drugId]);
-  const result = useMemo(() => getDoseForWeight(drugId, weightKg), [drugId, weightKg]);
+  const { file } = useHIVFile();
+  const drug = useMemo(() => getDrugById(file, drugId), [file, drugId]);
+  const dose = useMemo(() => getDoseForWeight(drug, weightKg), [drug, weightKg]);
 
   if (!drug) {
     return (
@@ -29,7 +31,7 @@ const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => 
       {/* Main dose display */}
       <div className={clsx(
         'p-5 rounded-xl border',
-        result.inRange
+        dose !== 'N/A'
           ? 'bg-surface border-accent-100 dark:border-accent-800'
           : 'bg-error/5 border-error/30'
       )}>
@@ -38,12 +40,12 @@ const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => 
         </p>
         <p className={clsx(
           'font-display font-bold text-3xl mb-1',
-          result.inRange ? 'text-accent-600' : 'text-error'
+          dose !== 'N/A' ? 'text-accent-600' : 'text-error'
         )}>
-          {result.dose}
+          {dose}
         </p>
 
-        {result.inRange && (
+        {dose !== 'N/A' && (
           <div className="space-y-1.5 mt-4 pt-4 border-t border-border-subtle">
             <div className="flex justify-between">
               <span className="text-xs font-body text-n-500">Frequency</span>
@@ -62,7 +64,7 @@ const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => 
       </div>
 
       {/* Warning */}
-      {drug.warning && result.inRange && (
+      {drug.warning && dose !== 'N/A' && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/5 border-l-3 border-l-warning">
           <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
           <p className="text-xs font-body text-warning-800 dark:text-warning leading-relaxed break-words">
@@ -72,15 +74,12 @@ const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => 
       )}
 
       {/* Out of range warning */}
-      {!result.inRange && (
+      {dose === 'N/A' && (
         <div className="flex items-start gap-2 p-4 rounded-xl bg-error/5 border border-error/30">
           <AlertTriangle className="w-5 h-5 text-error flex-shrink-0" />
           <div>
             <p className="font-display font-semibold text-sm text-error mb-1">
               Weight outside safe dosing range
-            </p>
-            <p className="text-xs font-body text-n-700 dark:text-n-300">
-              {result.notes}
             </p>
           </div>
         </div>

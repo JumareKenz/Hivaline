@@ -5,14 +5,16 @@
 import React, { useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { getArtifactById } from '@/data/artifacts';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { getArtifactById } from '@/services/hivDataExtractor';
 import { useRouter } from '@/router/useRouter';
 import { TopBar } from '@/components/ui/TopBar';
 import { VerificationBadge } from '@/components/ui/VerificationBadge';
 
 const KnowledgeDetailScreen: React.FC = () => {
   const { params, navigate } = useRouter();
-  const artifact = useMemo(() => getArtifactById(params.id ?? ''), [params.id]);
+  const { file } = useHIVFile();
+  const artifact = useMemo(() => getArtifactById(file, params.id ?? ''), [file, params.id]);
 
   const handleAskHiva = useCallback(() => {
     if (artifact) {

@@ -3,11 +3,13 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { clsx } from 'clsx';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight } from 'lucide-react';
+import { LogOut, ChevronRight, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from '@/router/useRouter';
-import { APP_VERSION, STT_LANG_STORAGE_KEY } from '@/utils/constants';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { APP_VERSION, STT_LANG_STORAGE_KEY, HIVA_KNOWN_VERSION_KEY } from '@/utils/constants';
 import { TopBar } from '@/components/ui/TopBar';
 import { HivaLogo } from '@/components/ui/HivaLogo';
 import { LanguageSelector } from './LanguageSelector';
@@ -16,11 +18,13 @@ import { ServerCodeDisplay } from './ServerCodeDisplay';
 import { TTSSettings } from './TTSSettings';
 import { STTLanguageSelector } from './STTLanguageSelector';
 import { sttService } from '@/services/sttService';
+import { checkForUpdate, downloadHIV } from '@/services/updateService';
 import type { Language, InteractionMode } from '@/types/hiv';
 
 const SettingsScreen: React.FC = () => {
   const { state: authState, logout } = useAuth();
   const { navigate } = useRouter();
+  const { file, isLoading, reload } = useHIVFile();
 
   const [language, setLanguage] = useState<Language>('en');
   const [interactionMode, setInteractionMode] = useState<InteractionMode>('companion');
@@ -33,7 +37,45 @@ const SettingsScreen: React.FC = () => {
     return sttService.getLang();
   });
 
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string>('');
+
   const user = authState.user;
+
+  const knownVersion = localStorage.getItem(HIVA_KNOWN_VERSION_KEY);
+
+  const handleManualUpdate = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatus('Checking for updates...');
+    
+    try {
+      const meta = await checkForUpdate();
+      if (!meta) {
+        setUpdateStatus('Already up to date');
+        setTimeout(() => setUpdateStatus(''), 3000);
+        setIsCheckingUpdate(false);
+        return;
+      }
+
+      setUpdateStatus(`Downloading v${meta.version}...`);
+      const bytes = await downloadHIV(meta);
+      
+      if (bytes) {
+        setUpdateStatus('Download complete!');
+        await reload();
+        setTimeout(() => setUpdateStatus(''), 3000);
+      } else {
+        setUpdateStatus('Download failed');
+        setTimeout(() => setUpdateStatus(''), 3000);
+      }
+    } catch (err) {
+      console.error('Update failed:', err);
+      setUpdateStatus('Update error');
+      setTimeout(() => setUpdateStatus(''), 3000);
+    }
+    
+    setIsCheckingUpdate(false);
+  }, [reload]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -117,6 +159,84 @@ const SettingsScreen: React.FC = () => {
           </div>
         </section>
 
+        {/* Data File Update */}
+        <section>
+          <h3 className="text-xs font-body font-medium text-n-500 uppercase tracking-widest mb-3 px-1">
+            Clinical Data
+          </h3>
+          <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-body text-n-600 dark:text-n-400">Loaded version</span>
+              <span className="text-sm font-mono text-n-800 dark:text-n-200">
+                {file?.manifest?.version ?? knownVersion ?? 'None'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-body text-n-600 dark:text-n-400">Chunks</span>
+              <span className="text-sm font-mono text-n-800 dark:text-n-200">
+                {file?.chunks?.length ?? 0}
+              </span>
+            </div>
+            {file?.manifest?.coverage_score !== undefined && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-body text-n-600 dark:text-n-400">Coverage</span>
+                <span className={clsx(
+                  'text-sm font-mono font-medium',
+                  file.manifest.coverage_score >= 0.95 ? 'text-success' :
+                  file.manifest.coverage_score >= 0.80 ? 'text-warning' : 'text-error'
+                )}>
+                  {Math.round(file.manifest.coverage_score * 100)}%
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-body text-n-600 dark:text-n-400">Status</span>
+              <span className="text-sm font-body text-n-800 dark:text-n-200">
+                {isLoading ? 'Loading...' : file ? 'Ready' : 'No data'}
+              </span>
+            </div>
+
+            {/* Document sources */}
+            {file?.manifest?.document_sources && file.manifest.document_sources.length > 0 && (
+              <div className="pt-2 border-t border-border-subtle">
+                <span className="text-xs font-body font-medium text-n-500 uppercase tracking-wider mb-2 block">
+                  Sources
+                </span>
+                <ul className="space-y-2">
+                  {file.manifest.document_sources.map((doc) => (
+                    <li key={doc.id} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent-500 mt-1.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-body text-n-700 dark:text-n-300">
+                          {doc.name}
+                        </p>
+                        <p className="text-[10px] font-body text-n-400">
+                          {doc.publisher}{doc.year ? ` · ${doc.year}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {updateStatus && (
+              <div className="text-xs font-body text-accent-600 animate-pulse">
+                {updateStatus}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleManualUpdate}
+              disabled={isCheckingUpdate}
+              className="w-full flex items-center justify-center gap-2 pt-3 border-t border-border-subtle text-sm font-body font-medium text-accent-600 hover:text-accent-500 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+              {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+            </button>
+          </div>
+        </section>
+
         {/* App Info */}
         <section>
           <h3 className="text-xs font-body font-medium text-n-500 uppercase tracking-widest mb-3 px-1">
@@ -124,16 +244,8 @@ const SettingsScreen: React.FC = () => {
           </h3>
           <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-body text-n-600 dark:text-n-400">Version</span>
-              <span className="text-sm font-mono text-n-800 dark:text-n-200">HIVALINE v{APP_VERSION}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-body text-n-600 dark:text-n-400">Data file</span>
-              <span className="text-sm font-mono text-n-800 dark:text-n-200">FMOH-NG-2024-v3.hiv</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-body text-n-600 dark:text-n-400">Last sync</span>
-              <span className="text-sm font-body text-n-800 dark:text-n-200">Today</span>
+              <span className="text-sm font-body text-n-600 dark:text-n-400">App version</span>
+              <span className="text-sm font-mono text-n-800 dark:text-n-200">v{APP_VERSION}</span>
             </div>
             <button
               type="button"

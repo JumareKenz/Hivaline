@@ -22,7 +22,8 @@
     "onnxruntime-web": "^1.25.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sherpa-onnx": "^1.12.37"
+    "sherpa-onnx": "^1.12.37",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -30,6 +31,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "jsdom": "^25.0.1",

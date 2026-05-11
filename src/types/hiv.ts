@@ -151,6 +151,14 @@ export interface MockResponseRule {
 
 export type HIVChunkType = 'faq' | 'drug_table' | 'decision_tree' | 'protocol' | 'danger_sign' | 'calculator';
 
+export interface DocumentSource {
+  id: string;
+  name: string;
+  publisher: string;
+  year: number;
+  url?: string;
+}
+
 export interface HIVManifest {
   version: string;
   sha256: string;
@@ -158,6 +166,9 @@ export interface HIVManifest {
   languages: string[];
   chunk_count: number;
   created_at: string;
+  coverage_score?: number;
+  document_sources?: DocumentSource[];
+  document_source?: DocumentSource; // legacy single-source format
   search_config: {
     bm25_weight: number;
     vector_weight: number;
@@ -171,6 +182,8 @@ export interface HIVChunk {
   id: string;
   type: HIVChunkType;
   trigger_phrases: Record<string, string[]>;
+  question_variants?: Record<string, string[]>;
+  fallback_response?: string;
   content: Record<string, unknown>;
   source: { document: string; span?: string };
   checksum: string;
@@ -202,6 +215,19 @@ export interface HIVFile {
   sources: HIVSources;
   rules: HIVRules;
   i18n: Record<string, HIVI18N>;
+  db?: SQLiteDatabase;
+}
+
+export interface SQLiteDatabase {
+  run: (sql: string, params?: unknown[]) => void;
+  exec: (sql: string) => QueryExecResult[];
+  getRowsModified: () => number;
+  close: () => void;
+}
+
+export interface QueryExecResult {
+  columns: string[];
+  values: unknown[][];
 }
 
 export interface SearchResult {
@@ -224,4 +250,36 @@ export interface UpdateMetadata {
   languages: string[];
   chunk_count: number;
   created_at: string;
+}
+
+/* ─── CONVERSATION ENGINE ─── */
+
+export interface ConversationTurn {
+  role: 'user' | 'hiva';
+  content: string;
+  timestamp: number;
+}
+
+export interface ConversationSlots {
+  patientAge: string | null;
+  patientWeight: string | null;
+  symptomDuration: string | null;
+  chiefComplaint: string | null;
+}
+
+export interface ConversationState {
+  turns: ConversationTurn[];
+  slots: ConversationSlots;
+  lastChunkId: string | null;
+  turnCount: number;
+}
+
+export type IntentType = 'greeting' | 'clinical' | 'follow_up' | 'clarification' | 'urgent' | 'fallback';
+
+export interface EngineResponse {
+  message: string;
+  type: IntentType;
+  chunkId: string | null;
+  source?: { document: string; span?: string };
+  suggestedFollowUps: string[];
 }

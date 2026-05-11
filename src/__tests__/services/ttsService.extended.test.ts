@@ -48,10 +48,10 @@ describe('ttsService — edge cases', () => {
     expect(utterance.text).not.toContain('**');
   });
 
-  it('sets speech rate to 0.9', () => {
+  it('sets speech rate to 1.0', () => {
     ttsService.speak('Hello');
     const utterance = getMockSynth().speak.mock.calls[0][0] as SpeechSynthesisUtterance;
-    expect(utterance.rate).toBeCloseTo(0.9);
+    expect(utterance.rate).toBeCloseTo(1.0);
   });
 
   it('setVoice updates selected voice URI', () => {

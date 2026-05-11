@@ -15,6 +15,9 @@ function makeValidManifest(version = '1.0.0') {
     languages: ['en'],
     chunk_count: 0,
     created_at: '2024-01-01',
+    document_sources: [
+      { id: 'test-doc', name: 'Test Guidelines', publisher: 'FMOH', year: 2024 },
+    ],
     search_config: {
       bm25_weight: 0.4,
       vector_weight: 0.6,

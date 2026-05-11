@@ -75,9 +75,15 @@ export const HIVFileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [state.file]
   );
 
-  // Auto-load on mount
+  // Auto-load on mount and listen for download events
   useEffect(() => {
     reload();
+
+    const handleDownloaded = () => {
+      reload();
+    };
+    window.addEventListener('hiva:file-downloaded', handleDownloaded);
+    return () => window.removeEventListener('hiva:file-downloaded', handleDownloaded);
   }, [reload]);
 
   return (

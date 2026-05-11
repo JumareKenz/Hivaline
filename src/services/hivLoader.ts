@@ -4,9 +4,11 @@
  * Parses a ZIP archive (fflate) containing:
  *   manifest.json, content/chunks.jsonl, index/embeddings.bin,
  *   index/lexical.json, content/sources.json, rules/*, i18n/*
+ *   data/data.db (SQLite - optional, for v2.1+ format)
  */
 
 import { unzipSync, strFromU8 } from 'fflate';
+import initSqlJs from 'sql.js';
 import type {
   HIVManifest,
   HIVChunk,
@@ -14,12 +16,16 @@ import type {
   HIVSources,
   HIVI18N,
   HIVFile,
+  SQLiteDatabase,
+  QueryExecResult,
 } from '@/types/hiv';
+
+let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null;
 
 /**
  * Unzip a .hiv ArrayBuffer and extract all known files.
  */
-export function parseHIVFile(arrayBuffer: ArrayBuffer): HIVFile {
+export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   const zipData = new Uint8Array(arrayBuffer);
   const files = unzipSync(zipData);
   const manifest = parseManifest(files);
@@ -29,6 +35,14 @@ export function parseHIVFile(arrayBuffer: ArrayBuffer): HIVFile {
   const sources = parseSources(files);
   const rules = parseRules(files);
   const i18n = parseI18n(files);
+  
+  // Try to load SQLite database if present
+  let db: SQLiteDatabase | undefined;
+  try {
+    db = await parseDatabase(files);
+  } catch (e) {
+    console.log('[hivLoader] No SQLite database found, using JSON fallback');
+  }
 
   return {
     manifest,
@@ -38,6 +52,7 @@ export function parseHIVFile(arrayBuffer: ArrayBuffer): HIVFile {
     sources,
     rules,
     i18n,
+    db,
   };
 }
 
@@ -56,7 +71,14 @@ function getFile(files: Record<string, Uint8Array>, path: string): Uint8Array | 
 function parseManifest(files: Record<string, Uint8Array>): HIVManifest {
   const raw = getFile(files, 'manifest.json');
   if (!raw) throw new Error('.hiv missing manifest.json');
-  return JSON.parse(strFromU8(raw)) as HIVManifest;
+  const manifest = JSON.parse(strFromU8(raw)) as HIVManifest;
+
+  // Backward compatible: normalize document_sources from legacy document_source
+  if (!manifest.document_sources && manifest.document_source) {
+    manifest.document_sources = [manifest.document_source];
+  }
+
+  return manifest;
 }
 
 function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
@@ -116,4 +138,106 @@ function parseI18n(files: Record<string, Uint8Array>): Record<string, HIVI18N> {
     }
   }
   return i18n;
+}
+
+async function parseDatabase(files: Record<string, Uint8Array>): Promise<SQLiteDatabase | undefined> {
+  const dbFile = getFile(files, 'data/data.db');
+  if (!dbFile) return undefined;
+  
+  console.log('[hivLoader] Found SQLite database, loading...');
+  
+  if (!SQL) {
+    SQL = await initSqlJs({ locateFile: (file: string) => `./${file}` });
+  }
+  
+  const dbBuffer = dbFile.buffer.slice(
+    dbFile.byteOffset, 
+    dbFile.byteOffset + dbFile.byteLength
+  ) as ArrayBuffer;
+  const database = new SQL.Database(new Uint8Array(dbBuffer));
+  
+  return {
+    run: (sql: string, params?: unknown[]) => {
+      database.run(sql, params as (string | number | null | Uint8Array)[]);
+    },
+    exec: (sql: string): QueryExecResult[] => {
+      const results = database.exec(sql);
+      return results.map((r: { columns: string[]; values: unknown[][] }) => ({
+        columns: r.columns,
+        values: r.values,
+      }));
+    },
+    getRowsModified: () => database.getRowsModified(),
+    close: () => database.close(),
+  };
+}
+
+/**
+ * Query SQLite database for chunks by ID - O(1) lookup
+ */
+export function getChunkFromDB(db: SQLiteDatabase | undefined, chunkId: string): HIVChunk | null {
+  if (!db) return null;
+  
+  try {
+    const results = db.exec(`SELECT content_json FROM chunks WHERE id = '${chunkId}'`);
+    if (results.length > 0 && results[0].values.length > 0) {
+      const contentJson = results[0].values[0][0];
+      if (typeof contentJson === 'string') {
+        return JSON.parse(contentJson) as HIVChunk;
+      }
+    }
+  } catch (e) {
+    console.error('[hivLoader] DB query error:', e);
+  }
+  return null;
+}
+
+/**
+ * Search SQLite using FTS or LIKE
+ */
+export function searchChunksDB(
+  db: SQLiteDatabase | undefined, 
+  query: string, 
+  limit = 10
+): HIVChunk[] {
+  if (!db) return [];
+  
+  try {
+    // Try FTS5 first, fallback to LIKE
+    let results: QueryExecResult[] = [];
+    
+    try {
+      results = db.exec(`
+        SELECT content_json FROM chunks_fts 
+        WHERE chunks_fts MATCH '${query.replace(/'/g, "''")}*' 
+        LIMIT ${limit}
+      `);
+    } catch {
+      // Fallback to LIKE search on all text fields
+      results = db.exec(`
+        SELECT content_json FROM chunks 
+        WHERE content_json LIKE '%${query.replace(/'/g, "''")}%'
+        LIMIT ${limit}
+      `);
+    }
+    
+    if (results.length > 0) {
+      return results[0].values
+        .map(row => {
+          if (typeof row[0] === 'string') {
+            try {
+              return JSON.parse(row[0]) as HIVChunk;
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        })
+        .filter(Boolean) as HIVChunk[];
+    }
+  } catch (e) {
+    console.error('[hivLoader] DB search error:', e);
+  }
+  
+  return [];
 }

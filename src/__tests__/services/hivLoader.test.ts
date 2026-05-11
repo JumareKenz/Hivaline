@@ -27,13 +27,13 @@ describe('parseHIVFile', () => {
     expect(true).toBe(true);
   });
 
-  it('throws on missing manifest.json', () => {
+  it('throws on missing manifest.json', async () => {
     // Create a ZIP with only content/chunks.jsonl, no manifest
     const files: Record<string, Uint8Array> = {
       'content/chunks.jsonl': strToU8('[]'),
     };
     const zip = zipSync(files);
-    expect(() => parseHIVFile(toArrayBuffer(zip))).toThrow();
+    await expect(parseHIVFile(toArrayBuffer(zip))).rejects.toThrow();
   });
 
   it('parses embeddings.bin when present', () => {

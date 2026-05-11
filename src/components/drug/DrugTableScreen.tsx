@@ -3,7 +3,8 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { getDrugById } from '@/data/drugTables';
+import { useHIVFile } from '@/hooks/useHIVFile';
+import { getDrugById } from '@/services/hivDataExtractor';
 import { useRouter } from '@/router/useRouter';
 import { TopBar } from '@/components/ui/TopBar';
 import { WeightSlider } from './WeightSlider';
@@ -11,7 +12,8 @@ import { DoseResultCard } from './DoseResultCard';
 
 const DrugTableScreen: React.FC = () => {
   const { params } = useRouter();
-  const drug = useMemo(() => getDrugById(params.id ?? ''), [params.id]);
+  const { file } = useHIVFile();
+  const drug = useMemo(() => getDrugById(file, params.id ?? ''), [file, params.id]);
 
   const [weightKg, setWeightKg] = useState(12);
 

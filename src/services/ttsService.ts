@@ -26,7 +26,7 @@ type StateListener = (state: TTSState) => void;
 class TTSService {
   private synth: SpeechSynthesis | null = null;
   private voices: SpeechSynthesisVoice[] = [];
-  private enabled = true;
+  private enabled = false;
   private selectedVoiceURI: string | null = null;
   private isSpeaking = false;
   private error: string | null = null;
@@ -74,15 +74,27 @@ class TTSService {
   private autoSelectVoice(): void {
     if (this.voices.length === 0) return;
 
-    const preferred =
-      this.voices.find(
-        (v) =>
-          v.lang.toLowerCase().startsWith('en') &&
-          (v.name.includes('Google') || v.name.includes('UK') || v.name.includes('US'))
-      ) ??
-      this.voices.find((v) => v.lang.toLowerCase().startsWith('en')) ??
-      this.voices[0];
+    const enVoices = this.voices.filter((v) => v.lang.toLowerCase().startsWith('en'));
+    if (enVoices.length === 0) {
+      this.selectedVoiceURI = this.voices[0].voiceURI;
+      return;
+    }
 
+    // Prefer high-quality voices: Natural, Neural, Premium, Enhanced
+    const qualityKeywords = ['Natural', 'Neural', 'Premium', 'Enhanced'];
+    const quality = enVoices.find((v) =>
+      qualityKeywords.some((kw) => v.name.includes(kw))
+    );
+
+    // Next: Google voices (usually best on Android Chrome)
+    const google = enVoices.find((v) => v.name.includes('Google'));
+
+    // Next: UK / US English
+    const ukUs = enVoices.find(
+      (v) => v.name.includes('UK') || v.name.includes('US')
+    );
+
+    const preferred = quality ?? google ?? ukUs ?? enVoices[0];
     this.selectedVoiceURI = preferred.voiceURI;
   }
 
@@ -156,8 +168,8 @@ class TTSService {
       this.voices[0];
 
     if (voice) utterance.voice = voice;
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.02;
     utterance.volume = 1.0;
 
     utterance.onstart = () => {
@@ -201,6 +213,13 @@ class TTSService {
 
   private cleanText(raw: string): string {
     return raw
+      .replace(/\bHIVA\b/g, 'Heeva')
+      .replace(/\bkg\b/gi, 'kilogram')
+      .replace(/\bmg\b/gi, 'milligram')
+      .replace(/\bml\b/gi, 'milliliter')
+      .replace(/\bFMOH\b/g, 'F M O H')
+      .replace(/\bANC\b/g, 'A N C')
+      .replace(/\bACT\b/g, 'A C T')
       .replace(/[*_#`]/g, ' ')
       .replace(/\n/g, ' ')
       .replace(/\s+/g, ' ')

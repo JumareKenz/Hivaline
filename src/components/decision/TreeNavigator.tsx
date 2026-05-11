@@ -3,10 +3,10 @@
  */
 
 import React from 'react';
-import type { DecisionTree } from '@/types/hiv';
+import type { DecisionTreeData } from '@/services/hivDataExtractor';
 
 interface TreeNavigatorProps {
-  tree: DecisionTree;
+  tree: DecisionTreeData;
   history: string[];
 }
 
