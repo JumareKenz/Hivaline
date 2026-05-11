@@ -31,6 +31,7 @@ function makeMockHIVFile(chunks: HIVChunk[]): HIVFile {
     },
     chunks,
     embeddings: [],
+    embeddingMeta: [],
     lexicalIndex: { en: { index: {} } },
     sources: { sources: [] },
     rules: {},

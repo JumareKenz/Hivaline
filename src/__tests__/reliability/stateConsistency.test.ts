@@ -44,6 +44,7 @@ function makeFile(n: number): HIVFile {
     manifest: makeManifest(),
     chunks,
     embeddings: chunks.map(() => new Int8Array([127, 0, 0])),
+    embeddingMeta: chunks.map((c) => ({ chunk_id: c.id, variant_type: 'primary', variant_index: 0, text: '' })),
     lexicalIndex: { en: { index } },
     sources: { sources: [] },
     rules: {},
@@ -186,6 +187,7 @@ describe('PHASE 7 — Error boundary recovery (services remain functional after 
       manifest: makeManifest(),
       chunks: [],
       embeddings: [],
+      embeddingMeta: [],
       lexicalIndex: { en: { index: null as unknown as Record<string, []> } },
       sources: { sources: [] },
       rules: {},
@@ -213,6 +215,7 @@ describe('PHASE 7 — Error boundary recovery (services remain functional after 
       manifest: makeManifest(),
       chunks,
       embeddings: [new Int8Array(0)], // zero-length embedding
+      embeddingMeta: [{ chunk_id: 'c0', variant_type: 'primary', variant_index: 0, text: '' }],
       lexicalIndex: { en: { index: {} } },
       sources: { sources: [] },
       rules: {},

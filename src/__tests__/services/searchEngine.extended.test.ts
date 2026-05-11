@@ -38,10 +38,17 @@ function makeChunk(id: string, type: HIVChunk['type'] = 'faq'): HIVChunk {
 }
 
 function makeFile(chunks: HIVChunk[], lexicalEn: Record<string, Array<{ chunk_id: string; score: number }>>, embeddings: Int8Array[] = []): HIVFile {
+  const embeddingMeta = embeddings.map((_, i) => ({
+    chunk_id: chunks[i % chunks.length]?.id ?? 'unknown',
+    variant_type: 'primary',
+    variant_index: 0,
+    text: '',
+  }));
   return {
     manifest: makeManifest(),
     chunks,
     embeddings,
+    embeddingMeta,
     lexicalIndex: { en: { index: lexicalEn } },
     sources: { sources: [] },
     rules: {},

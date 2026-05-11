@@ -30,10 +30,17 @@ function makeHIVFile(chunks: HIVChunk[], lexicalIndex: HIVFile['lexicalIndex'], 
     },
   };
 
+  const resolvedEmbeddings = embeddings ?? [];
   return {
     manifest,
     chunks,
-    embeddings: embeddings ?? [],
+    embeddings: resolvedEmbeddings,
+    embeddingMeta: resolvedEmbeddings.map((_, i) => ({
+      chunk_id: chunks[i % chunks.length]?.id ?? 'unknown',
+      variant_type: 'primary',
+      variant_index: 0,
+      text: '',
+    })),
     lexicalIndex,
     sources: { sources: [] },
     rules: {},

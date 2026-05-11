@@ -14,8 +14,27 @@ import type {
   IntentType,
   EngineResponse,
 } from '@/types/hiv';
-import { variantSearch, hybridSearch } from './searchEngine';
+import { variantSearch, bm25Search } from './searchEngine';
 import { composeResponse } from './responseComposer';
+
+const STOP_WORDS = new Set([
+  'what', 'how', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+  'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'the', 'a',
+  'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+  'by', 'from', 'as', 'about', 'into', 'through', 'during', 'before',
+  'after', 'above', 'below', 'between', 'under', 'again', 'further',
+  'then', 'once', 'here', 'there', 'when', 'where', 'why', 'all', 'any',
+  'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
+  'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just',
+  'tell', 'me', 'my', 'i', 'you', 'your', 'it', 'this', 'that', 'these',
+  'those', 'am', 'get', 'got', 'give', 'take', 'make', 'go', 'come',
+  'know', 'see', 'look', 'use', 'want', 'like', 'help', 'work', 'find',
+  'deal', 'dealing', 'key', 'thing', 'things', 'meaning',
+]);
+
+const MIN_VARIANT_SCORE = 15;
+const MIN_BM25_SCORE = 2.0;
 
 export type { ConversationState, ConversationTurn, ConversationSlots, IntentType, EngineResponse };
 
@@ -322,19 +341,55 @@ export class ConversationEngine {
     return parts.filter(Boolean).join(' ');
   }
 
-  private async findChunk(query: string, _intent: IntentType): Promise<HIVChunk | null> {
+  private getMeaningfulTerms(query: string): string[] {
+    return query
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.replace(/[^\w]/g, ''))
+      .filter((t) => t.length >= 3 && !STOP_WORDS.has(t));
+  }
+
+  private isChunkRelevant(chunk: HIVChunk, queryTerms: string[]): boolean {
+    if (queryTerms.length === 0) return true;
+
+    const searchable = [
+      ...(chunk.trigger_phrases?.en ?? []),
+      ...(chunk.question_variants?.en ?? []),
+      chunk.fallback_response ?? '',
+      JSON.stringify(chunk.content),
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    return queryTerms.some((term) => searchable.includes(term));
+  }
+
+  private async findChunk(query: string, intent: IntentType): Promise<HIVChunk | null> {
+    const meaningfulTerms = this.getMeaningfulTerms(query);
+    const chunkMap = new Map(this.hivFile.chunks.map((c) => [c.id, c]));
+    const isUrgent = intent === 'urgent';
+
+    // For urgent queries, be more permissive — safety over precision
+    const minVariantScore = isUrgent ? 5 : MIN_VARIANT_SCORE;
+    const minBm25Score = isUrgent ? 0.5 : MIN_BM25_SCORE;
+
     // Try variant search first
     const { matches: variantMatches } = variantSearch(query, this.hivFile, 5);
-
-    if (variantMatches.length > 0) {
-      const chunkMap = new Map(this.hivFile.chunks.map(c => [c.id, c]));
+    if (variantMatches.length > 0 && variantMatches[0].score >= minVariantScore) {
       const chunk = chunkMap.get(variantMatches[0].chunk_id);
-      if (chunk) return chunk;
+      if (chunk && (isUrgent || this.isChunkRelevant(chunk, meaningfulTerms))) {
+        return chunk;
+      }
     }
 
-    // Fall back to BM25
-    const bm25Results = hybridSearch(query, null, this.hivFile, 'en', 5);
-    if (bm25Results.length > 0) return bm25Results[0];
+    // Fall back to BM25 (with score access)
+    const bm25Results = bm25Search(query, this.hivFile, 'en', 5);
+    if (bm25Results.length > 0 && bm25Results[0].score >= minBm25Score) {
+      const chunk = chunkMap.get(bm25Results[0].chunk_id);
+      if (chunk && (isUrgent || this.isChunkRelevant(chunk, meaningfulTerms))) {
+        return chunk;
+      }
+    }
 
     return null;
   }

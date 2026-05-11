@@ -30,12 +30,12 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   const files = unzipSync(zipData);
   const manifest = parseManifest(files);
   const chunks = parseChunks(files);
-  const embeddings = parseEmbeddings(files);
+  const { embeddings, meta: embeddingMeta } = parseEmbeddings(files);
   const lexicalIndex = parseLexicalIndex(files);
   const sources = parseSources(files);
   const rules = parseRules(files);
   const i18n = parseI18n(files);
-  
+
   // Try to load SQLite database if present
   let db: SQLiteDatabase | undefined;
   try {
@@ -48,6 +48,7 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
     manifest,
     chunks,
     embeddings,
+    embeddingMeta,
     lexicalIndex,
     sources,
     rules,
@@ -90,20 +91,45 @@ function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
   return lines.map((line) => JSON.parse(line) as HIVChunk);
 }
 
-function parseEmbeddings(files: Record<string, Uint8Array>): Int8Array[] {
+function parseEmbeddings(
+  files: Record<string, Uint8Array>
+): { embeddings: Int8Array[]; meta: import('@/types/hiv').EmbeddingMetadata[] } {
   const raw = getFile(files, 'index/embeddings.bin');
-  if (!raw) return []; // Optional: BM25-only mode
+  if (!raw) return { embeddings: [], meta: [] }; // Optional: BM25-only mode
 
   const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-  const count = view.getUint32(0, true); // little-endian
-  const dims = view.getUint32(4, true);
-  const data = new Int8Array(raw.buffer, raw.byteOffset + 8);
+  const chunkCount = view.getUint32(0, true);      // number of chunks
+  const dim = view.getUint32(4, true);             // embedding dimension
+  const embeddingsCount = view.getUint32(8, true); // total embeddings
+  const metadataLen = view.getUint32(12, true);    // JSON metadata length
 
-  const embeddings: Int8Array[] = [];
-  for (let i = 0; i < count; i++) {
-    embeddings.push(data.slice(i * dims, (i + 1) * dims));
+  let offset = 16; // header is 16 bytes (4 uint32s)
+
+  // Parse metadata JSON
+  let meta: import('@/types/hiv').EmbeddingMetadata[] = [];
+  if (metadataLen > 0 && offset + metadataLen <= raw.byteLength) {
+    const metaBytes = raw.slice(offset, offset + metadataLen);
+    try {
+      const metaStr = strFromU8(metaBytes);
+      meta = JSON.parse(metaStr) as import('@/types/hiv').EmbeddingMetadata[];
+    } catch {
+      console.warn('[hivLoader] Failed to parse embeddings metadata JSON');
+    }
   }
-  return embeddings;
+  offset += metadataLen;
+
+  // Parse quantized embeddings: int8[embeddingsCount][dim]
+  const data = new Int8Array(raw.buffer, raw.byteOffset + offset);
+  const embeddings: Int8Array[] = [];
+  for (let i = 0; i < embeddingsCount; i++) {
+    embeddings.push(data.slice(i * dim, (i + 1) * dim));
+  }
+
+  console.log(
+    `[hivLoader] Embeddings: chunks=${chunkCount} dim=${dim} total=${embeddingsCount} meta=${meta.length}`
+  );
+
+  return { embeddings, meta };
 }
 
 function parseLexicalIndex(files: Record<string, Uint8Array>): HIVLexicalIndex {

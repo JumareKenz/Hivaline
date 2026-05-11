@@ -207,10 +207,18 @@ export interface HIVI18N {
   [key: string]: string;
 }
 
+export interface EmbeddingMetadata {
+  chunk_id: string;
+  variant_type: string;
+  variant_index: number;
+  text: string;
+}
+
 export interface HIVFile {
   manifest: HIVManifest;
   chunks: HIVChunk[];
   embeddings: Int8Array[];
+  embeddingMeta: EmbeddingMetadata[];
   lexicalIndex: HIVLexicalIndex;
   sources: HIVSources;
   rules: HIVRules;

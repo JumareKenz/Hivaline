@@ -328,26 +328,43 @@ export function bm25Search(
 /**
  * Vector semantic search using cosine similarity.
  * Embeddings are int8 quantized (float32 × 127).
+ * CRITICAL: embedding index does NOT map 1:1 to chunk index.
+ * Must go through embeddingMeta[embedding_idx].chunk_id.
  */
 export function vectorSearch(
   queryEmbedding: Float32Array,
   hivFile: HIVFile,
   topK = 20
 ): SearchResult[] {
-  const { embeddings, chunks } = hivFile;
+  const { embeddings, embeddingMeta, chunks } = hivFile;
   if (embeddings.length === 0 || chunks.length === 0) return [];
 
-  const scores: SearchResult[] = [];
-  for (let i = 0; i < chunks.length; i++) {
+  const chunkMap = new Map(chunks.map((c) => [c.id, c]));
+
+  // Build a chunk_id → best similarity score map
+  const bestScorePerChunk: Record<string, number> = {};
+
+  for (let i = 0; i < embeddings.length; i++) {
     const chunkVec = embeddings[i];
     if (!chunkVec || chunkVec.length === 0) continue;
 
+    const meta = embeddingMeta[i];
+    const chunkId = meta?.chunk_id;
+    if (!chunkId || !chunkMap.has(chunkId)) continue;
+
     const floatVec = dequantize(chunkVec);
     const similarity = cosineSimilarity(queryEmbedding, floatVec);
-    scores.push({ chunk_id: chunks[i].id, score: similarity });
+
+    const existing = bestScorePerChunk[chunkId] ?? -Infinity;
+    if (similarity > existing) {
+      bestScorePerChunk[chunkId] = similarity;
+    }
   }
 
-  return scores.sort((a, b) => b.score - a.score).slice(0, topK);
+  return Object.entries(bestScorePerChunk)
+    .map(([chunk_id, score]) => ({ chunk_id, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
 }
 
 /**
