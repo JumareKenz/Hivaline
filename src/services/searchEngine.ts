@@ -42,31 +42,29 @@ function buildVariantIndex(hivFile: HIVFile): VariantIndex {
   const cacheKey = getCacheKey(hivFile);
   const cached = variantIndexCache.get(cacheKey);
   if (cached) return cached;
-  
+
   const variants = new Map<string, Array<{ chunk_id: string; score: number }>>();
   const chunkFallbacks = new Map<string, string>();
   const chunkTopics = new Map<string, string[]>();
   const chunkAnswers = new Map<string, string>();
   const chunkToneAnswers = new Map<string, Record<string, string>>();
 
-  console.log('[searchEngine] Building variant index. Has DB:', !!hivFile.db, 'Chunks:', hivFile.chunks.length);
-
   // Try SQLite first if available
   if (hivFile.db) {
     try {
       buildVariantIndexFromDB(hivFile.db, variants, chunkFallbacks, chunkTopics, chunkAnswers, chunkToneAnswers);
-    } catch (e) {
-      console.error('[searchEngine] DB index failed, falling back to JSON:', e);
+    } catch {
+      /* DB index failed, falling back to JSON */
     }
   }
-  
+
   // Also index from JSON chunks as fallback/supplement
   for (const chunk of hivFile.chunks) {
     const langContent = chunk.content as Record<string, Record<string, unknown>>;
-    
+
     for (const [, content] of Object.entries(langContent)) {
       if (!content || typeof content !== 'object') continue;
-      
+
       if (content.fallback_response) {
         chunkFallbacks.set(chunk.id, String(content.fallback_response));
       }
@@ -90,15 +88,14 @@ function buildVariantIndex(hivFile: HIVFile): VariantIndex {
     }
   }
 
-  const result: VariantIndex = { 
-    variants, 
-    chunkFallbacks, 
+  const result: VariantIndex = {
+    variants,
+    chunkFallbacks,
     chunkTopics,
     chunkAnswers,
-    chunkToneAnswers 
+    chunkToneAnswers
   };
   variantIndexCache.set(cacheKey, result);
-  console.log('[searchEngine] Built variant index:', variants.size, 'terms,', chunkFallbacks.size, 'fallbacks,', chunkAnswers.size, 'answers');
   return result;
 }
 
@@ -113,8 +110,6 @@ function buildVariantIndexFromDB(
   chunkAnswers: Map<string, string>,
   _chunkToneAnswers: Map<string, Record<string, string>>
 ): void {
-  console.log('[searchEngine] Building index from SQLite DB');
-  
   try {
     // Query question_variants table — schema may vary
     let variantResults: QueryExecResult[] = [];
@@ -125,19 +120,18 @@ function buildVariantIndexFromDB(
       try {
         variantResults = db.exec('SELECT chunk_id, text FROM question_variants');
       } catch {
-        console.log('[searchEngine] No question_variants table');
+        /* No question_variants table */
       }
     }
-    
+
     if (variantResults.length > 0 && variantResults[0].values.length > 0) {
-      console.log('[searchEngine] Found', variantResults[0].values.length, 'variants in DB');
       for (const row of variantResults[0].values) {
         const chunkId = String(row[0]);
         const variantText = String(row[1]);
         indexVariant(variants, chunkId, variantText, 2);
       }
     }
-    
+
     // Query chunks for answers and fallbacks
     let chunkResults: QueryExecResult[] = [];
     try {
@@ -146,14 +140,14 @@ function buildVariantIndexFromDB(
       try {
         chunkResults = db.exec('SELECT id, content_json FROM chunks');
       } catch {
-        console.log('[searchEngine] No chunks table with expected columns');
+        /* No chunks table with expected columns */
       }
     }
-    
+
     if (chunkResults.length > 0 && chunkResults[0].values.length > 0) {
       for (const row of chunkResults[0].values) {
         const chunkId = String(row[0]);
-        
+
         if (row.length > 1 && typeof row[1] === 'string') {
           // Try to parse content_json if that's the column
           try {
@@ -172,7 +166,7 @@ function buildVariantIndexFromDB(
             const primaryQuestion = row[1] ? String(row[1]) : null;
             const fallback = row[2] ? String(row[2]) : null;
             const answer = row[3] ? String(row[3]) : null;
-            
+
             if (primaryQuestion) {
               indexVariant(variants, chunkId, primaryQuestion, 5);
             }
@@ -186,21 +180,21 @@ function buildVariantIndexFromDB(
         }
       }
     }
-  } catch (e) {
-    console.error('[searchEngine] Error querying DB:', e);
-    throw e;
+  } catch {
+    /* Error querying DB — propagate to caller for fallback */
+    throw new Error('SQLite DB indexing failed');
   }
 }
 
 function indexVariant(
-  variants: Map<string, Array<{ chunk_id: string; score: number }>>, 
-  chunkId: string, 
-  text: string, 
+  variants: Map<string, Array<{ chunk_id: string; score: number }>>,
+  chunkId: string,
+  text: string,
   baseScore: number
 ): void {
   const normalized = text.toLowerCase().trim();
   if (normalized.length < 2) return;
-  
+
   // Tokenize and index each token
   const tokens = normalized.split(/\s+/).filter(t => t.length >= 2);
   for (const token of tokens) {
@@ -208,7 +202,7 @@ function indexVariant(
     existing.push({ chunk_id: chunkId, score: baseScore });
     variants.set(token, existing);
   }
-  
+
   // Index full phrase (truncated for map key)
   const fullKey = normalized.slice(0, 50);
   const fullExisting = variants.get(fullKey) ?? [];
@@ -241,14 +235,14 @@ export function variantSearch(
   topK = 5
 ): { matches: VariantMatchResult[] } {
   const { variants, chunkFallbacks, chunkTopics, chunkAnswers, chunkToneAnswers } = buildVariantIndex(hivFile);
-  
+
   const searchTerms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
   if (searchTerms.length === 0) {
     return { matches: [] };
   }
 
   const scores: Record<string, number> = {};
-  
+
   // Match against indexed variants
   for (const term of searchTerms) {
     // Check for exact variant match first
@@ -256,7 +250,7 @@ export function variantSearch(
     for (const { chunk_id, score } of exactMatches) {
       scores[chunk_id] = (scores[chunk_id] ?? 0) + score * 2;
     }
-    
+
     // Check for prefix matches
     for (const [key, postings] of variants) {
       if (key.startsWith(term) || term.startsWith(key)) {
@@ -298,13 +292,9 @@ export function bm25Search(
     .split(/\s+/)
     .filter((t) => t.length >= 2);
 
-  console.log('[searchEngine] BM25 search, terms:', terms);
-  console.log('[searchEngine] Index has keys:', Object.keys(idx).length);
-  
   const hasIndex = Object.keys(idx).length > 0;
-  
+
   if (!hasIndex) {
-    console.log('[searchEngine] No index, using variant search');
     const { matches } = variantSearch(query, hivFile, topK);
     return matches;
   }
@@ -312,13 +302,11 @@ export function bm25Search(
   const scores: Record<string, number> = {};
   for (const term of terms) {
     const postings = idx[term] ?? [];
-    console.log('[searchEngine] Term:', term, 'postings:', postings.length);
     for (const { chunk_id, score } of postings) {
       scores[chunk_id] = (scores[chunk_id] ?? 0) + score;
     }
   }
 
-  console.log('[searchEngine] BM25 results:', Object.keys(scores).length);
   return Object.entries(scores)
     .sort(([, a], [, b]) => b - a)
     .slice(0, topK)

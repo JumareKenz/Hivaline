@@ -26,13 +26,10 @@ export const useSearch = () => {
 
   const searchResponse = useCallback(
     async (input: string): Promise<SearchResult> => {
-      console.log('[useSearch] hasHIVFile:', hasHIVFile, 'file:', !!file, 'input:', input);
-      
       if (hasHIVFile && file) {
         return searchWithVariants(input, file);
       }
 
-      console.log('[useSearch] No file, showing fallback message');
       return {
         response: {
           type: 'text',
@@ -56,22 +53,22 @@ type ToneType = 'direct' | 'formal' | 'reassuring' | 'urgent';
  */
 function detectQueryTone(query: string): ToneType {
   const lower = query.toLowerCase();
-  
+
   // Urgent indicators
   if (/\b(emergency|urgent|immediately|critical|danger|seizure|unconscious|bleeding|cant breathe)\b/.test(lower)) {
     return 'urgent';
   }
-  
+
   // Reassuring/soft indicators
   if (/\b(worried|scared|afraid|concern|nervous|hope|please|maybe|perhaps)\b/.test(lower)) {
     return 'reassuring';
   }
-  
+
   // Direct/short query indicators
   if (/\b(what is|how to|when|where|which|who|give me|tell me)\b/.test(lower) && lower.length < 50) {
     return 'direct';
   }
-  
+
   // Default to formal
   return 'formal';
 }
@@ -80,16 +77,11 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
   const lang = 'en';
   const queryTone = detectQueryTone(query);
 
-  console.log('[useSearch] Starting variant search for:', query, 'tone:', queryTone);
-  console.log('[useSearch] File has chunks:', file.chunks.length);
-
   // First try question_variants search
   const { matches: variantMatches } = variantSearch(query, file, 5);
-  console.log('[useSearch] Variant matches:', variantMatches.length);
 
   // Handle multiple matches - show disambiguation
   if (variantMatches.length > 1) {
-    console.log('[useSearch] Multiple matches, showing disambiguation');
     const chunkMap = new Map(file.chunks.map(c => [c.id, c]));
     return {
       response: {
@@ -116,10 +108,9 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
     const chunkMap = new Map(file.chunks.map(c => [c.id, c]));
     const chunk = chunkMap.get(match.chunk_id);
     if (chunk) results = [chunk];
-    
+
     // Use variant match answer with tone selection
     if (match.toneAnswers && match.toneAnswers[queryTone]) {
-      console.log('[useSearch] Using tone-matched answer:', queryTone);
       return {
         response: {
           type: 'text' as const,
@@ -137,10 +128,9 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
         })) || [],
       };
     }
-    
+
     // Use direct answer if available
     if (match.answer) {
-      console.log('[useSearch] Using direct answer from variant');
       return {
         response: {
           type: 'text' as const,
@@ -158,10 +148,9 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
         })) || [],
       };
     }
-    
+
     // Use fallback if no answer
     if (match.fallback) {
-      console.log('[useSearch] Using fallback from variant');
       return {
         response: {
           type: 'text' as const,
@@ -172,13 +161,11 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
     }
   } else {
     // Fall back to BM25 search
-    console.log('[useSearch] No variant match, trying BM25 fallback');
     const bm25Results = hybridSearch(query, null, file, lang, 5);
     results = bm25Results;
   }
 
   if (results.length === 0) {
-    console.log('[useSearch] No results found');
     return {
       response: {
         type: 'text',
@@ -189,12 +176,11 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
   }
 
   const primary = results[0];
-  console.log('[useSearch] Found result:', primary.id, primary.type);
-  
+
   // Check if chunk has actual content
   const chunkContent = primary.content as Record<string, unknown>;
   const langContent = chunkContent[lang] as Record<string, unknown> | undefined;
-  
+
   // Check for fallback in content
   const contentFallback = langContent?.fallback_response as string | undefined;
   if (contentFallback && !langContent?.answer) {
@@ -206,14 +192,13 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
       },
     };
   }
-  
+
   const hasContent = Object.keys(chunkContent).some(k => {
     const val = chunkContent[k];
     return val && (typeof val === 'string' ? val.length > 0 : Object.keys(val as object).length > 0);
   });
-  
+
   if (!hasContent) {
-    console.log('[useSearch] Chunk has empty content, showing placeholder');
     return {
       response: {
         type: 'text' as const,
@@ -226,7 +211,7 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
       },
     };
   }
-  
+
   const rendered = renderChunk(primary, lang);
 
   const related = results.slice(1).map((c) => ({

@@ -179,7 +179,7 @@ describe('updateService — downloadHIV', () => {
     window.removeEventListener('hiva:session-revoked', handler);
     expect(result).toBeNull();
     expect(sessionRevokedFired).toBe(true);
-    expect(localStorage.getItem('hiva_token')).toBeNull();
+    expect(sessionStorage.getItem('hiva_token')).toBeNull();
   });
 
   it('dispatches hiva:session-revoked and returns null on 403 (forbidden)', async () => {

@@ -30,9 +30,9 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 
 function loadStoredAuth(): AuthState {
   try {
-    const token = localStorage.getItem(HIVA_TOKEN_KEY);
-    const serverCode = localStorage.getItem(HIVA_SERVER_CODE_KEY);
-    const userName = localStorage.getItem(HIVA_USER_NAME_KEY);
+    const token = sessionStorage.getItem(HIVA_TOKEN_KEY);
+    const serverCode = sessionStorage.getItem(HIVA_SERVER_CODE_KEY);
+    const userName = sessionStorage.getItem(HIVA_USER_NAME_KEY);
     if (!token || !serverCode) return { isAuthenticated: false, user: null };
     const user: User = {
       id: serverCode,
@@ -67,9 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           version_info?: { version: string; sha256: string };
         };
 
-        localStorage.setItem(HIVA_TOKEN_KEY, data.token);
-        localStorage.setItem(HIVA_SERVER_CODE_KEY, data.user_profile.server_code);
-        localStorage.setItem(HIVA_USER_NAME_KEY, data.user_profile.name);
+        sessionStorage.setItem(HIVA_TOKEN_KEY, data.token);
+        sessionStorage.setItem(HIVA_SERVER_CODE_KEY, data.user_profile.server_code);
+        sessionStorage.setItem(HIVA_USER_NAME_KEY, data.user_profile.name);
         if (data.version_info) {
           localStorage.setItem(HIVA_KNOWN_VERSION_KEY, data.version_info.version);
         }
@@ -86,32 +86,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setState({ isAuthenticated: true, user });
 
         // Auto-download .hiv file after successful login
-        console.log('[AuthContext] Login successful, checking for .hiv update...');
         try {
-          // Force download on first login - clear the known version to ensure download
-          const existingVersion = localStorage.getItem(HIVA_KNOWN_VERSION_KEY);
-          if (!existingVersion) {
-            console.log('[AuthContext] No previous version, forcing download');
-            // Version check will return meta since no known version
-          }
-          
           const meta = await checkForUpdate();
-          console.log('[AuthContext] checkForUpdate result:', meta);
-          
           if (meta) {
-            console.log('[AuthContext] Calling downloadHIV for version:', meta.version);
             const bytes = await downloadHIV(meta);
-            console.log('[AuthContext] downloadHIV result:', bytes ? 'success' : 'failed');
             if (bytes) {
               window.dispatchEvent(new CustomEvent('hiva:file-downloaded'));
-            } else {
-              console.error('[AuthContext] Download failed - check for network/auth errors');
             }
-          } else {
-            console.log('[AuthContext] No update needed - file already present');
           }
-        } catch (err) {
-          console.error('[AuthContext] Auto-update error:', err);
+        } catch {
+          /* Auto-update error — silent, user can manually check later */
         }
 
         return { success: true };
@@ -141,9 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(HIVA_TOKEN_KEY);
-    localStorage.removeItem(HIVA_SERVER_CODE_KEY);
-    localStorage.removeItem(HIVA_USER_NAME_KEY);
+    sessionStorage.removeItem(HIVA_TOKEN_KEY);
+    sessionStorage.removeItem(HIVA_SERVER_CODE_KEY);
+    sessionStorage.removeItem(HIVA_USER_NAME_KEY);
     setState({ isAuthenticated: false, user: null });
   }, []);
 
@@ -153,7 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     // Same-tab revocation (from updateService when token is rejected by server)
     window.addEventListener('hiva:session-revoked', handleRevoked);
-    // Cross-tab: browser fires 'storage' when another tab modifies localStorage
+    // Cross-tab: browser fires 'storage' when another tab modifies sessionStorage
+    // Note: sessionStorage is NOT shared across tabs, so this only catches localStorage changes
     const handleStorage = (e: StorageEvent) => {
       if (e.key === HIVA_TOKEN_KEY && e.newValue === null) {
         setState({ isAuthenticated: false, user: null });

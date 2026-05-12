@@ -105,35 +105,35 @@ describe('SEC-02 Access key / server code relationship vulnerability', () => {
   });
 });
 
-describe('SEC-03 localStorage token exposure', () => {
+describe('SEC-03 sessionStorage token exposure', () => {
   beforeEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it('localStorage token is readable by any JS on the page (XSS risk — documented)', () => {
-    localStorage.setItem(TOKEN_KEY, 'fake-bearer-token');
-    // Any script can read this:
-    const exposed = localStorage.getItem(TOKEN_KEY);
+  it('sessionStorage token is cleared when browser/app closes (XSS mitigation)', () => {
+    sessionStorage.setItem(TOKEN_KEY, 'fake-bearer-token');
+    // Any script can read this during the session:
+    const exposed = sessionStorage.getItem(TOKEN_KEY);
     expect(exposed).toBe('fake-bearer-token');
-    // FINDING: Bearer token stored in plain localStorage is accessible to
-    // any XSS payload. Should be moved to httpOnly cookies.
+    // FINDING: Token is in sessionStorage — cleared on app close, limiting XSS window.
+    // For true XSS resilience, httpOnly cookies would be needed.
   });
 
-  it('clearing token via localStorage.removeItem logs user out on next load', () => {
-    localStorage.setItem(TOKEN_KEY, 'some-token');
-    localStorage.setItem(SERVER_CODE_KEY, 'HIVA-K7H4');
-    localStorage.removeItem(TOKEN_KEY);
-    const token = localStorage.getItem(TOKEN_KEY);
+  it('clearing token via sessionStorage.removeItem logs user out on next load', () => {
+    sessionStorage.setItem(TOKEN_KEY, 'some-token');
+    sessionStorage.setItem(SERVER_CODE_KEY, 'HIVA-K7H4');
+    sessionStorage.removeItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
     expect(token).toBeNull();
   });
 
   it('manually setting a fake token would bypass auth on next load', () => {
     // An attacker with console access can set:
-    localStorage.setItem(TOKEN_KEY, 'attacker-injected-token');
-    localStorage.setItem(SERVER_CODE_KEY, 'HIVA-FAKE');
+    sessionStorage.setItem(TOKEN_KEY, 'attacker-injected-token');
+    sessionStorage.setItem(SERVER_CODE_KEY, 'HIVA-FAKE');
     // loadStoredAuth() in AuthContext would consider this authenticated
-    const hasToken = localStorage.getItem(TOKEN_KEY);
-    const hasCode = localStorage.getItem(SERVER_CODE_KEY);
+    const hasToken = sessionStorage.getItem(TOKEN_KEY);
+    const hasCode = sessionStorage.getItem(SERVER_CODE_KEY);
     expect(hasToken).not.toBeNull();
     expect(hasCode).not.toBeNull();
     // FINDING: No cryptographic validation of stored token on startup

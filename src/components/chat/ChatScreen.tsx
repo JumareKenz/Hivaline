@@ -207,6 +207,14 @@ const ChatScreen: React.FC = () => {
         />
       )}
 
+      {!file && (
+        <div className="mx-4 mt-3 p-3 rounded-xl bg-warning/10 border border-warning/20 flex items-start gap-2">
+          <span className="text-warning text-xs leading-relaxed">
+            No clinical data loaded. Log in and check Settings to download the latest guidelines.
+          </span>
+        </div>
+      )}
+
       <TopBar
         title="HIVA"
         subtitle="Clinical AI · Always available"

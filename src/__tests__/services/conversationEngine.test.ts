@@ -81,7 +81,6 @@ describe('variant_search_direct', () => {
     const chunk = makeMockChunk();
     const file = makeMockHIVFile([chunk]);
     const { matches } = variantSearch('malaria treatment', file, 5);
-    console.log('Variant matches:', matches.length, matches);
     expect(matches.length).toBeGreaterThan(0);
   });
 
@@ -89,7 +88,6 @@ describe('variant_search_direct', () => {
     const chunk = makeMockChunk();
     const file = makeMockHIVFile([chunk]);
     const { matches } = variantSearch('malaria', file, 5);
-    console.log('Malaria matches:', matches.length, matches);
     expect(matches.length).toBeGreaterThan(0);
   });
 });
@@ -273,6 +271,8 @@ describe('test_response_composer_uses_opener', () => {
       },
       lastChunkId: 'test-chunk-1',
       turnCount: 3,
+      lastOpener: null,
+      lastChiefComplaint: 'malaria',
     };
 
     const result = composeResponse(chunk, state, 'follow_up');
@@ -286,7 +286,7 @@ describe('test_response_composer_uses_opener', () => {
     expect(result).toContain(enContent.answer_direct);
   });
 
-  it('uses contextual opener with chiefComplaint placeholder filled', () => {
+  it('uses generic opener on turn 1', () => {
     const chunk = makeMockChunk();
     const state = {
       turns: [],
@@ -298,15 +298,70 @@ describe('test_response_composer_uses_opener', () => {
       },
       lastChunkId: null,
       turnCount: 1,
+      lastOpener: null,
+      lastChiefComplaint: null,
     };
 
     const result = composeResponse(chunk, state, 'clinical');
 
-    // Placeholder should be filled
+    // Turn 1 should use generic opener (index 1), not contextual
+    expect(result).toContain('Let me guide you');
+    expect(result).not.toContain('{chief_complaint}');
+    // Should still contain the answer
+    expect(result).toContain('Malaria is treated with ACT');
+  });
+
+  it('uses contextual opener with placeholder filled on turn 2 with new topic', () => {
+    const chunk = makeMockChunk();
+    const state = {
+      turns: [
+        { role: 'user' as const, content: 'first', timestamp: 1 },
+        { role: 'hiva' as const, content: 'reply', timestamp: 2 },
+      ],
+      slots: {
+        patientAge: null,
+        patientWeight: null,
+        symptomDuration: null,
+        chiefComplaint: 'malaria',
+      },
+      lastChunkId: 'test-chunk-1',
+      turnCount: 2,
+      lastOpener: 'Let me guide you:',
+      lastChiefComplaint: 'fever', // different from current — new topic
+    };
+
+    const result = composeResponse(chunk, state, 'clinical');
+
+    // New topic on turn 2+ should use contextual opener (index 0)
     expect(result).toContain('malaria');
     expect(result).not.toContain('{chief_complaint}');
-    // Should contain opener
     expect(result).toContain('Here\'s what to know');
+  });
+
+  it('uses follow-up opener on turn 2 with same topic', () => {
+    const chunk = makeMockChunk();
+    const state = {
+      turns: [
+        { role: 'user' as const, content: 'first', timestamp: 1 },
+        { role: 'hiva' as const, content: 'reply', timestamp: 2 },
+      ],
+      slots: {
+        patientAge: null,
+        patientWeight: null,
+        symptomDuration: null,
+        chiefComplaint: 'malaria',
+      },
+      lastChunkId: 'test-chunk-1',
+      turnCount: 2,
+      lastOpener: 'Let me guide you:',
+      lastChiefComplaint: 'malaria', // same as current — follow-up
+    };
+
+    const result = composeResponse(chunk, state, 'follow_up');
+
+    // Same topic should use follow-up opener (index 2)
+    expect(result).toContain('Following up');
+    expect(result).toContain('malaria');
   });
 });
 
@@ -330,6 +385,8 @@ describe('test_response_composer_fallback_on_missing_openers', () => {
       slots: { patientAge: null, patientWeight: null, symptomDuration: null, chiefComplaint: null },
       lastChunkId: null,
       turnCount: 1,
+      lastOpener: null,
+      lastChiefComplaint: null,
     };
 
     const result = composeResponse(chunk, state, 'clinical');
@@ -353,6 +410,8 @@ describe('test_response_composer_fallback_on_missing_openers', () => {
       slots: { patientAge: null, patientWeight: null, symptomDuration: null, chiefComplaint: null },
       lastChunkId: null,
       turnCount: 1,
+      lastOpener: null,
+      lastChiefComplaint: null,
     };
 
     const result = composeResponse(chunk, state, 'clinical');

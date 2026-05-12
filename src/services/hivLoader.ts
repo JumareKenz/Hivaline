@@ -30,6 +30,12 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   const files = unzipSync(zipData);
   const manifest = parseManifest(files);
   const chunks = parseChunks(files);
+
+  // If manifest claims chunks exist but none passed validation, the file is effectively empty
+  if (manifest.chunk_count > 0 && chunks.length === 0) {
+    throw new Error('.hiv file contains no valid chunks — all entries have empty content');
+  }
+
   const { embeddings, meta: embeddingMeta } = parseEmbeddings(files);
   const lexicalIndex = parseLexicalIndex(files);
   const sources = parseSources(files);
@@ -40,8 +46,8 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   let db: SQLiteDatabase | undefined;
   try {
     db = await parseDatabase(files);
-  } catch (e) {
-    console.log('[hivLoader] No SQLite database found, using JSON fallback');
+  } catch {
+    /* No SQLite database found, using JSON fallback */
   }
 
   return {
@@ -88,7 +94,32 @@ function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
 
   const text = strFromU8(raw);
   const lines = text.split('\n').filter((l) => l.trim());
-  return lines.map((line) => JSON.parse(line) as HIVChunk);
+  const chunks: HIVChunk[] = [];
+
+  for (const line of lines) {
+    try {
+      const chunk = JSON.parse(line) as HIVChunk;
+      if (isValidChunk(chunk)) {
+        chunks.push(chunk);
+      }
+    } catch {
+      /* Skip malformed JSONL lines */
+    }
+  }
+
+  return chunks;
+}
+
+function isValidChunk(chunk: HIVChunk): boolean {
+  if (!chunk.id || !chunk.type) return false;
+  if (!chunk.content || typeof chunk.content !== 'object') return false;
+
+  const hasMeaningfulContent = Object.entries(chunk.content).some(([, langContent]) => {
+    if (!langContent || typeof langContent !== 'object') return false;
+    return Object.keys(langContent).length > 0;
+  });
+
+  return hasMeaningfulContent;
 }
 
 function parseEmbeddings(
@@ -98,7 +129,7 @@ function parseEmbeddings(
   if (!raw) return { embeddings: [], meta: [] }; // Optional: BM25-only mode
 
   const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-  const chunkCount = view.getUint32(0, true);      // number of chunks
+  const chunkCount = view.getUint32(0, true);      // number of chunks (informational)
   const dim = view.getUint32(4, true);             // embedding dimension
   const embeddingsCount = view.getUint32(8, true); // total embeddings
   const metadataLen = view.getUint32(12, true);    // JSON metadata length
@@ -113,10 +144,27 @@ function parseEmbeddings(
       const metaStr = strFromU8(metaBytes);
       meta = JSON.parse(metaStr) as import('@/types/hiv').EmbeddingMetadata[];
     } catch {
-      console.warn('[hivLoader] Failed to parse embeddings metadata JSON');
+      /* Failed to parse embeddings metadata JSON — continue without metadata */
     }
   }
   offset += metadataLen;
+
+  // CRITICAL VALIDATION: metadata count must match embeddings count
+  // If they mismatch, the binary is corrupt — fall back to BM25-only
+  if (meta.length > 0 && meta.length !== embeddingsCount) {
+    return { embeddings: [], meta: [] };
+  }
+
+  // CRITICAL VALIDATION: ensure we don't read past the buffer
+  const expectedDataBytes = embeddingsCount * dim;
+  if (offset + expectedDataBytes > raw.byteLength) {
+    return { embeddings: [], meta: [] };
+  }
+
+  // Sanity check: chunk count should be positive if there are embeddings
+  if (chunkCount === 0 && embeddingsCount > 0) {
+    return { embeddings: [], meta: [] };
+  }
 
   // Parse quantized embeddings: int8[embeddingsCount][dim]
   const data = new Int8Array(raw.buffer, raw.byteOffset + offset);
@@ -124,10 +172,6 @@ function parseEmbeddings(
   for (let i = 0; i < embeddingsCount; i++) {
     embeddings.push(data.slice(i * dim, (i + 1) * dim));
   }
-
-  console.log(
-    `[hivLoader] Embeddings: chunks=${chunkCount} dim=${dim} total=${embeddingsCount} meta=${meta.length}`
-  );
 
   return { embeddings, meta };
 }
@@ -169,29 +213,42 @@ function parseI18n(files: Record<string, Uint8Array>): Record<string, HIVI18N> {
 async function parseDatabase(files: Record<string, Uint8Array>): Promise<SQLiteDatabase | undefined> {
   const dbFile = getFile(files, 'data/data.db');
   if (!dbFile) return undefined;
-  
-  console.log('[hivLoader] Found SQLite database, loading...');
-  
+
   if (!SQL) {
     SQL = await initSqlJs({ locateFile: (file: string) => `./${file}` });
   }
-  
+
   const dbBuffer = dbFile.buffer.slice(
-    dbFile.byteOffset, 
+    dbFile.byteOffset,
     dbFile.byteOffset + dbFile.byteLength
   ) as ArrayBuffer;
   const database = new SQL.Database(new Uint8Array(dbBuffer));
-  
+
   return {
     run: (sql: string, params?: unknown[]) => {
       database.run(sql, params as (string | number | null | Uint8Array)[]);
     },
-    exec: (sql: string): QueryExecResult[] => {
-      const results = database.exec(sql);
-      return results.map((r: { columns: string[]; values: unknown[][] }) => ({
-        columns: r.columns,
-        values: r.values,
-      }));
+    exec: (sql: string, params?: unknown[]): QueryExecResult[] => {
+      if (!params || params.length === 0) {
+        const results = database.exec(sql);
+        return results.map((r: { columns: string[]; values: unknown[][] }) => ({
+          columns: r.columns,
+          values: r.values,
+        }));
+      }
+
+      const stmt = database.prepare(sql);
+      try {
+        stmt.bind(params as (string | number | null | Uint8Array)[]);
+        const columns = stmt.getColumnNames();
+        const values: unknown[][] = [];
+        while (stmt.step()) {
+          values.push(stmt.get());
+        }
+        return [{ columns, values }];
+      } finally {
+        stmt.free();
+      }
     },
     getRowsModified: () => database.getRowsModified(),
     close: () => database.close(),
@@ -203,17 +260,17 @@ async function parseDatabase(files: Record<string, Uint8Array>): Promise<SQLiteD
  */
 export function getChunkFromDB(db: SQLiteDatabase | undefined, chunkId: string): HIVChunk | null {
   if (!db) return null;
-  
+
   try {
-    const results = db.exec(`SELECT content_json FROM chunks WHERE id = '${chunkId}'`);
+    const results = db.exec('SELECT content_json FROM chunks WHERE id = ?', [chunkId]);
     if (results.length > 0 && results[0].values.length > 0) {
       const contentJson = results[0].values[0][0];
       if (typeof contentJson === 'string') {
         return JSON.parse(contentJson) as HIVChunk;
       }
     }
-  } catch (e) {
-    console.error('[hivLoader] DB query error:', e);
+  } catch {
+    /* DB query error — silently fall back to JSON chunks */
   }
   return null;
 }
@@ -222,31 +279,23 @@ export function getChunkFromDB(db: SQLiteDatabase | undefined, chunkId: string):
  * Search SQLite using FTS or LIKE
  */
 export function searchChunksDB(
-  db: SQLiteDatabase | undefined, 
-  query: string, 
+  db: SQLiteDatabase | undefined,
+  query: string,
   limit = 10
 ): HIVChunk[] {
   if (!db) return [];
-  
+
   try {
     // Try FTS5 first, fallback to LIKE
     let results: QueryExecResult[] = [];
-    
+
     try {
-      results = db.exec(`
-        SELECT content_json FROM chunks_fts 
-        WHERE chunks_fts MATCH '${query.replace(/'/g, "''")}*' 
-        LIMIT ${limit}
-      `);
+      results = db.exec('SELECT content_json FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT ?', [`${query}*`, limit]);
     } catch {
       // Fallback to LIKE search on all text fields
-      results = db.exec(`
-        SELECT content_json FROM chunks 
-        WHERE content_json LIKE '%${query.replace(/'/g, "''")}%'
-        LIMIT ${limit}
-      `);
+      results = db.exec('SELECT content_json FROM chunks WHERE content_json LIKE ? LIMIT ?', [`%${query}%`, limit]);
     }
-    
+
     if (results.length > 0) {
       return results[0].values
         .map(row => {
@@ -261,9 +310,9 @@ export function searchChunksDB(
         })
         .filter(Boolean) as HIVChunk[];
     }
-  } catch (e) {
-    console.error('[hivLoader] DB search error:', e);
+  } catch {
+    /* DB search error — silently fall back to JSON chunks */
   }
-  
+
   return [];
 }

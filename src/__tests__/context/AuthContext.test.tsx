@@ -26,22 +26,22 @@ function renderWithAuth(ui: React.ReactNode = <AuthConsumer />) {
   return render(<AuthProvider>{ui}</AuthProvider>);
 }
 
-describe('AuthContext — initial state from localStorage', () => {
+describe('AuthContext — initial state from sessionStorage', () => {
   beforeEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
   });
 
-  it('starts unauthenticated when localStorage is empty', () => {
+  it('starts unauthenticated when sessionStorage is empty', () => {
     renderWithAuth();
     expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
     expect(screen.getByTestId('user-name').textContent).toBe('none');
   });
 
-  it('restores authenticated state when token + server code are in localStorage', () => {
-    localStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    localStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
-    localStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
+  it('restores authenticated state when token + server code are in sessionStorage', () => {
+    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
+    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
+    sessionStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
 
     renderWithAuth();
 
@@ -50,13 +50,13 @@ describe('AuthContext — initial state from localStorage', () => {
   });
 
   it('starts unauthenticated when token is missing but server code is present', () => {
-    localStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
+    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
     renderWithAuth();
     expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
   });
 
   it('starts unauthenticated when server code is missing but token is present', () => {
-    localStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
+    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
     renderWithAuth();
     expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
   });
@@ -64,13 +64,13 @@ describe('AuthContext — initial state from localStorage', () => {
 
 describe('AuthContext — logout', () => {
   beforeEach(() => {
-    localStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    localStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
-    localStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
+    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
+    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
+    sessionStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
   });
 
   afterEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('clears auth state on logout', async () => {
@@ -85,16 +85,16 @@ describe('AuthContext — logout', () => {
     expect(screen.getByTestId('user-name').textContent).toBe('none');
   });
 
-  it('removes all auth keys from localStorage on logout', async () => {
+  it('removes all auth keys from sessionStorage on logout', async () => {
     renderWithAuth();
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('logout-btn'));
     });
 
-    expect(localStorage.getItem(HIVA_TOKEN_KEY)).toBeNull();
-    expect(localStorage.getItem(HIVA_SERVER_CODE_KEY)).toBeNull();
-    expect(localStorage.getItem(HIVA_USER_NAME_KEY)).toBeNull();
+    expect(sessionStorage.getItem(HIVA_TOKEN_KEY)).toBeNull();
+    expect(sessionStorage.getItem(HIVA_SERVER_CODE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(HIVA_USER_NAME_KEY)).toBeNull();
   });
 });
 
@@ -103,13 +103,13 @@ describe('AuthContext — login', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('sets authenticated state on successful login', async () => {
@@ -147,9 +147,9 @@ describe('AuthContext — login', () => {
       expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
     });
 
-    expect(localStorage.getItem(HIVA_TOKEN_KEY)).toBe('new-token');
-    expect(localStorage.getItem(HIVA_SERVER_CODE_KEY)).toBe('HIVA-K7H4');
-    expect(localStorage.getItem(HIVA_USER_NAME_KEY)).toBe('Kano CHEW');
+    expect(sessionStorage.getItem(HIVA_TOKEN_KEY)).toBe('new-token');
+    expect(sessionStorage.getItem(HIVA_SERVER_CODE_KEY)).toBe('HIVA-K7H4');
+    expect(sessionStorage.getItem(HIVA_USER_NAME_KEY)).toBe('Kano CHEW');
   });
 
   it('returns error on 401 (wrong credentials)', async () => {
@@ -317,12 +317,12 @@ describe('AuthContext — login', () => {
 
 describe('AuthContext — session revocation events', () => {
   beforeEach(() => {
-    localStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    localStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
+    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
+    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
   });
 
   afterEach(() => {
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('logs out when hiva:session-revoked event fires', async () => {

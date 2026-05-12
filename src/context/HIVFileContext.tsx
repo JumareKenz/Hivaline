@@ -57,7 +57,7 @@ export const HIVFileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Background version check — runs silently, never blocks the UI
     checkForUpdate().then(async (meta) => {
       if (!meta) return; // already up to date
-      const token = localStorage.getItem(HIVA_TOKEN_KEY);
+      const token = sessionStorage.getItem(HIVA_TOKEN_KEY);
       if (!token) return; // needs login before downloading
       const bytes = await downloadHIV(meta);
       if (!bytes) return;

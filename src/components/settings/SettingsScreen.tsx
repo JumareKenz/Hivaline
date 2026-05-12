@@ -68,8 +68,7 @@ const SettingsScreen: React.FC = () => {
         setUpdateStatus('Download failed');
         setTimeout(() => setUpdateStatus(''), 3000);
       }
-    } catch (err) {
-      console.error('Update failed:', err);
+    } catch {
       setUpdateStatus('Update error');
       setTimeout(() => setUpdateStatus(''), 3000);
     }

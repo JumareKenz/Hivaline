@@ -187,6 +187,7 @@ export interface HIVChunk {
   content: Record<string, unknown>;
   source: { document: string; span?: string };
   checksum: string;
+  aspects?: string[];
 }
 
 export interface HIVLexicalIndex {
@@ -228,7 +229,7 @@ export interface HIVFile {
 
 export interface SQLiteDatabase {
   run: (sql: string, params?: unknown[]) => void;
-  exec: (sql: string) => QueryExecResult[];
+  exec: (sql: string, params?: unknown[]) => QueryExecResult[];
   getRowsModified: () => number;
   close: () => void;
 }
@@ -280,6 +281,8 @@ export interface ConversationState {
   slots: ConversationSlots;
   lastChunkId: string | null;
   turnCount: number;
+  lastOpener: string | null;
+  lastChiefComplaint: string | null;
 }
 
 export type IntentType = 'greeting' | 'clinical' | 'follow_up' | 'clarification' | 'urgent' | 'fallback';

@@ -38,7 +38,6 @@ export async function initEmbedder(): Promise<void> {
   loadError = null;
 
   // Skip ONNX entirely - use BM25-only mode to avoid WASM MIME type errors
-  console.log('[onnxEmbedder] Using BM25 search only (ONNX disabled)');
   loadError = 'BM25-only mode (ONNX disabled)';
   isLoading = false;
 }
