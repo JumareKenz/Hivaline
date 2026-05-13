@@ -3,11 +3,13 @@
  *
  * - Slot-aware dose computation
  * - Opener selection from matrix
- * - Gap-aware closing line
+ * - Gap-aware closing line with patient-context gating
  * - Follow-up chip generation
  */
 
 import type SessionState from './sessionState';
+import type { SlotMemory } from './sessionState';
+import { cleanTopic } from './driftDetector';
 
 export interface DoseRule {
   basis: string;
@@ -24,6 +26,7 @@ export interface ChunkContent {
   referral?: string;
   fallback_response?: string;
   primary_question?: string;
+  companion_note?: string;
   [key: string]: unknown;
 }
 
@@ -34,44 +37,95 @@ export interface Chunk {
 }
 
 /**
+ * Patterns that indicate a compiler error message was written as chunk content.
+ * These must never be rendered to health workers as clinical answers.
+ */
+const COMPILER_ERROR_PATTERNS = [
+  'does not contain any meaningful information',
+  'no meaningful information to process',
+  'provided text does not contain',
+];
+
+/**
+ * Check if a text string is a compiler error message.
+ * Treats it as null-equivalent so the runtime falls through to the next field.
+ */
+export function isCompilerError(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return COMPILER_ERROR_PATTERNS.some((p) => lower.includes(p));
+}
+
+/**
+ * Check whether any patient-specific slot is populated in slot memory.
+ * Used to gate patient-context closing lines ("Anything else about this patient?").
+ */
+export function hasAnyPatientSlot(slotMemory: SlotMemory): boolean {
+  return (
+    slotMemory.patientAge !== null ||
+    slotMemory.patientWeight !== null ||
+    slotMemory.chiefComplaint !== null ||
+    slotMemory.currentDrug !== null
+  );
+}
+
+/**
  * Select answer content based on progressive disclosure rules.
  * Does not repeat aspects already covered this session.
+ * Skips fields that contain compiler error messages.
  */
 export function selectAnswerContent(chunk: Chunk, sessionState: SessionState, intent: string): string | null {
   const langContent = (chunk.content?.en || chunk.content || {}) as ChunkContent;
   const aspects = chunk.aspects || [];
 
-  if (intent === 'DEFINE') {
-    if (!sessionState.coveredAspects.has('definition') && langContent.definition) {
-      return String(langContent.definition);
+  /** Return field value only if it exists and is not a compiler error */
+  const safeField = (val: unknown): string | null => {
+    if (!val) return null;
+    const s = String(val);
+    return isCompilerError(s) ? null : s;
+  };
+
+  if (intent === 'DEFINE' || intent === 'HEADING_LOOKUP') {
+    if (!sessionState.coveredAspects.has('definition')) {
+      const def = safeField(langContent.definition);
+      if (def) return def;
     }
     const nextAspect = aspects.find((a) => a !== 'definition' && !sessionState.coveredAspects.has(a));
-    if (nextAspect && langContent[nextAspect]) {
-      return String(langContent[nextAspect]);
+    if (nextAspect) {
+      const val = safeField(langContent[nextAspect]);
+      if (val) return val;
     }
   }
 
-  if (intent === 'SCOPE' && langContent.coverage) {
-    return String(langContent.coverage);
+  if (intent === 'SCOPE') {
+    const val = safeField(langContent.coverage);
+    if (val) return val;
   }
 
-  if (intent === 'DETAIL' && langContent.dosage_rules) {
-    return String(langContent.dosage_rules);
+  if (intent === 'DETAIL') {
+    const val = safeField(langContent.dosage_rules);
+    if (val) return val;
   }
 
-  if (intent === 'PROCEDURE' && langContent.procedure) {
-    return String(langContent.procedure);
+  if (intent === 'PROCEDURE') {
+    const val = safeField(langContent.procedure);
+    if (val) return val;
   }
 
-  if (intent === 'REFERRAL' && langContent.referral) {
-    return String(langContent.referral);
+  if (intent === 'REFERRAL') {
+    const val = safeField(langContent.referral);
+    if (val) return val;
   }
 
-  // Default priority
-  if (langContent.answer) return String(langContent.answer);
-  if (langContent.definition) return String(langContent.definition);
-  if (langContent.fallback_response) return String(langContent.fallback_response);
-  if (langContent.primary_question) return String(langContent.primary_question);
+  // Default priority — skip compiler error strings
+  const answer = safeField(langContent.answer);
+  if (answer) return answer;
+  const definition = safeField(langContent.definition);
+  if (definition) return definition;
+  const fallback = safeField(langContent.fallback_response);
+  if (fallback) return fallback;
+  const primary = safeField(langContent.primary_question);
+  if (primary) return primary;
 
   return null;
 }
@@ -127,60 +181,181 @@ export function computePatientDose(dosageRules: DoseRule[] | unknown, slotMemory
  */
 export function buildOpener(intent: string, topic: string | null, aspect: string | null, openerMatrix: Record<string, string> | undefined): string {
   if (intent === 'URGENT') return '';
-  const template = openerMatrix?.[intent] ?? '';
+  let template = openerMatrix?.[intent] ?? '';
+  if (!template && intent === 'HEADING_LOOKUP') {
+    template = "Here's an overview of {topic}:";
+  }
   if (!template) return '';
+  const cleanedTopic = cleanTopic(topic || '');
+  const cleanedAspect = cleanTopic(aspect || '');
   return template
-    .replace('{topic}', topic || '')
-    .replace('{aspect}', aspect || '');
+    .replace('{topic}', cleanedTopic)
+    .replace('{aspect}', cleanedAspect);
 }
 
 /**
- * Build context-sensitive closing line based on pending gaps and intent.
+ * Get an alternate closing line for the given intent when anti-repetition fires.
+ * At least 2 variants per intent class to prevent getting stuck.
  */
-export function buildClosing(pendingGaps: string[], intent: string, _turnCount: number): string {
-  if (intent === 'URGENT') return 'Is the patient stable right now?';
-  if (pendingGaps.length === 0) return 'Anything else about this patient?';
-
-  const gap = pendingGaps[0];
-  const closings: Record<string, string> = {
-    dosage: 'Should I give you the specific dose?',
-    referral: 'Do you need to know when to refer?',
-    danger_signs: 'Want the danger signs to watch for?',
-    procedure: 'Shall I walk you through the steps?',
+export function getAlternateClosing(intent: string, pendingGaps: string[]): string {
+  const patientAlternates = [
+    'What else can I help you with for this patient?',
+    'Need anything else for this case?',
+  ];
+  const knowledgeAlternates: Record<string, string[]> = {
+    DEFINE: ['Would you like more detail on this?', 'Anything else you want to know?'],
+    SCOPE: ['Need the step-by-step details?', 'Want more specifics?'],
+    PROCEDURE: ['Need clarification on any step?', 'Want more detail on any part?'],
+    REFERRAL: ['Anything else about when to refer?', 'Need more on the referral criteria?'],
   };
+  const genericAlternates = [
+    'What else can I help you with?',
+    'Is there something specific you would like to know?',
+    'Need more details?',
+    'What would you like to explore next?',
+  ];
+  const gapAlternates = [
+    'Need more details?',
+    'Want to explore another aspect?',
+  ];
 
-  return closings[gap] ?? 'Anything else on this?';
+  if (pendingGaps.length > 0) {
+    return gapAlternates[Math.floor(Math.random() * gapAlternates.length)];
+  }
+
+  const intentAlts = knowledgeAlternates[intent];
+  if (intentAlts) {
+    return intentAlts[Math.floor(Math.random() * intentAlts.length)];
+  }
+
+  // Patient or generic
+  const pool = [...patientAlternates, ...genericAlternates];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * Build context-sensitive closing line based on pending gaps, intent, and session state.
+ * Never repeats the same closing line two turns in a row.
+ * Gates "patient" language behind hasAnyPatientSlot().
+ */
+export function buildClosing(pendingGaps: string[], intent: string, sessionState: SessionState): string {
+  if (intent === 'GREETING') return '';
+  if (intent === 'URGENT') return 'Is the patient stable right now?';
+
+  let closing = '';
+
+  if (intent === 'AFFIRM' && pendingGaps.length === 0) {
+    closing = 'Happy to help with anything else.';
+  } else if (pendingGaps.length === 0) {
+    // No gaps — check if patient slots are set using the extracted function
+    if (hasAnyPatientSlot(sessionState.slotMemory)) {
+      closing = 'Anything else about this patient?';
+    } else {
+      // Pure knowledge query — intent-specific variants
+      const topic = sessionState.currentTopic || 'this';
+      const variants: Record<string, string> = {
+        DEFINE: `Should I explain what ${topic} involves?`,
+        SCOPE: 'Want the specific protocols or dosages?',
+        PROCEDURE: 'Should I go through any of these steps in detail?',
+        REFERRAL: 'Need the danger signs that trigger referral?',
+      };
+      closing = variants[intent] ?? 'Want to know more about this?';
+    }
+  } else {
+    const gap = pendingGaps[0];
+    const closings: Record<string, string> = {
+      dosage: 'Should I give you the specific dose?',
+      referral: 'Do you need to know when to refer?',
+      danger_signs: 'Want the danger signs to watch for?',
+      procedure: 'Shall I walk you through the steps?',
+    };
+    closing = closings[gap] ?? 'Anything else on this?';
+  }
+
+  // Anti-repetition: if same as last turn, rotate to an alternate
+  if (closing && sessionState.lastClosing === closing) {
+    closing = getAlternateClosing(intent, pendingGaps);
+    // Safety: if alternate also matches (unlikely), use a hardcoded fallback
+    if (closing === sessionState.lastClosing) {
+      closing = 'What else can I help you with?';
+    }
+  }
+
+  sessionState.lastClosing = closing;
+  return closing;
 }
 
 /**
  * Build follow-up chips from pending gaps and gap graph edges.
+ * Always emits at least 2 chips.
  */
 export function buildFollowUpChips(
   pendingGaps: string[],
   gapGraph: Record<string, Array<{ to: string; score: number; label?: string }>> | undefined,
   chunkId: string,
+  chunkMap: Map<string, Chunk>,
   topK = 3
 ): string[] {
-  const fromGaps = pendingGaps.slice(0, 2).map(gapToChipLabel);
-  const fromGraph = (gapGraph?.[chunkId] ?? [])
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
-    .slice(0, 1)
-    .map((e) => e.label || null)
-    .filter((label): label is string => Boolean(label));
+  const chips: string[] = [];
 
-  return [...fromGaps, ...fromGraph].slice(0, topK);
+  // From pending gaps — natural language phrases
+  for (const gap of pendingGaps.slice(0, topK)) {
+    chips.push(gapToChipLabel(gap));
+  }
+
+  // From gap graph — use target chunk primary_question
+  const graphEdges = (gapGraph?.[chunkId] ?? [])
+    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .slice(0, topK);
+
+  for (const edge of graphEdges) {
+    if (edge.label) {
+      chips.push(truncateToQuestion(edge.label));
+      continue;
+    }
+    const targetChunk = chunkMap.get(edge.to);
+    const targetContent = targetChunk?.content?.en as ChunkContent | undefined;
+    if (targetContent?.primary_question) {
+      chips.push(truncateToQuestion(String(targetContent.primary_question)));
+    }
+  }
+
+  // Pad to minimum 2 chips with safe fallbacks
+  const fallbacks = ['Tell me more', 'When to refer?'];
+  while (chips.length < 2) {
+    const fb = fallbacks[chips.length % fallbacks.length];
+    if (!chips.includes(fb)) {
+      chips.push(fb);
+    } else {
+      break;
+    }
+  }
+
+  return chips.slice(0, topK);
+}
+
+function truncateToQuestion(text: string): string {
+  let t = text.trim();
+  if (t.length > 40) {
+    t = t.slice(0, 37).trim() + '...';
+  }
+  if (!t.endsWith('?')) {
+    t += '?';
+  }
+  return t;
 }
 
 function gapToChipLabel(gap: string): string {
   const labels: Record<string, string> = {
-    dosage: 'Get dosage',
-    referral: 'When to refer',
-    danger_signs: 'Danger signs',
-    procedure: 'Step-by-step',
-    side_effects: 'Side effects',
-    contraindications: 'Contraindications',
-    coverage: 'What it covers',
-    prognosis: 'Prognosis',
+    dosage: "What's the dose?",
+    referral: 'When to refer?',
+    danger_signs: 'What are the danger signs?',
+    procedure: 'How to do it step by step?',
+    side_effects: 'Any side effects?',
+    contraindications: 'Who should not receive this?',
+    coverage: 'What does this cover?',
+    definition: 'What exactly is this?',
+    prognosis: 'What is the prognosis?',
   };
-  return labels[gap] || gap.replace(/_/g, ' ');
+  return labels[gap] || gap.replace(/_/g, ' ') + '?';
 }

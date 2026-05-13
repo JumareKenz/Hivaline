@@ -32,7 +32,7 @@ import {
   buildFollowUpChips,
   type DoseRule,
 } from './answerAssembler';
-import { detectDrift } from './driftDetector';
+import { detectDrift, extractPrimaryTopic } from './driftDetector';
 import { buildFallback } from './fallbackHandler';
 import type { HIVChunk } from '@/types/hiv';
 
@@ -152,16 +152,11 @@ export function processMessage(
   // 4. Rewrite query
   const rewritten = rewriteQuery(userMessage, intent, sessionState);
 
-  // 5. Handle topic shift from rewriter
-  if (rewritten.isTopicShift && rewritten.detectedTopic) {
-    // Avoid false shifts when detectedTopic is just a keyword substring of currentTopic
-    const current = sessionState.currentTopic ?? '';
-    const detected = rewritten.detectedTopic;
-    const isSubtopic = current.includes(detected) || detected.includes(current);
-    if (!isSubtopic) {
-      sessionState.onTopicShift(detected);
-    }
-  }
+  // Note: topic shift from rewriter is intentionally NOT applied here.
+  // The rewriter's extractTopic() uses a crude keyword list that doesn't
+  // understand abbreviations (e.g., 'anc' ≠ 'antenatal care' as a substring).
+  // Instead, extractPrimaryTopic() handles topic transitions after search,
+  // using the 3-priority cascade with coverage manifest awareness.
 
   // 6. Search
   const searchResult = search(rewritten.rewritten, sessionState, language, hivAssets);
@@ -189,17 +184,37 @@ export function processMessage(
 
   const chunkTopics = getChunkTopics(chunk);
 
+  // Determine the fused score for topic confidence threshold
+  const fusedScore = searchResult?.score ?? 0;
+
   // 5b. Drift detection (after search, before assembly)
   const drift = detectDrift(rewritten.rewritten, chunkTopics, sessionState);
   if (drift.isDrift && drift.newTopic) {
     sessionState.onTopicShift(drift.newTopic);
   }
 
-    // Determine current topic — prefer chunk metadata over extracted keywords
-    const topic = sessionState.currentTopic || chunkTopics[0] || rewritten.detectedTopic || '';
-    if (!sessionState.currentTopic && topic) {
+  // Determine primary topic using 3-priority cascade (avoids incidental-mention pollution)
+  const topic = extractPrimaryTopic(
+    userMessage,
+    chunkTopics,
+    sessionState,
+    coverageManifest,
+    fusedScore
+  );
+
+  // Only update sessionState.currentTopic if extractPrimaryTopic found a confident signal
+  if (topic && topic !== sessionState.currentTopic) {
+    // Check confidence: user named the topic, OR strong chunk match
+    const queryLower = userMessage.toLowerCase();
+    const topicTokens = topic.toLowerCase().split(/\s+/).filter((t: string) => t.length >= 2);
+    const queryTokens = queryLower.split(/\s+/).filter((t: string) => t.length >= 2);
+    const userNamedIt = topicTokens.some((t: string) => queryTokens.includes(t));
+
+    if (userNamedIt || fusedScore > 0.6 || !sessionState.currentTopic) {
       sessionState.currentTopic = topic;
     }
+    // Otherwise keep sessionState.currentTopic unchanged (weak match, no user signal)
+  }
 
   // 7. Detect gaps
   const gaps = detectGaps(topic, { topics: coverageManifest }, sessionState);
@@ -233,7 +248,7 @@ export function processMessage(
   const opener = buildOpener(intent, topic, aspect, openerMatrix);
 
   // 12. Build closing
-  const closing = buildClosing(gaps, intent, sessionState.turnCount);
+  const closing = buildClosing(gaps, intent, sessionState);
 
   // 11. Assemble answer text
   let answer = answerText;
@@ -241,8 +256,14 @@ export function processMessage(
     answer = `${opener}\n\n${answer}`;
   }
 
-  // 13. Build follow-up chips
-  const chips = buildFollowUpChips(gaps, hivAssets.gapGraph, chunk.id);
+  // Append companion_note if present (colleague aside)
+  const companionNote = (langContent as Record<string, unknown> | undefined)?.companion_note;
+  if (typeof companionNote === 'string' && companionNote.trim().length > 0) {
+    answer = `${answer}\n\n\u2014 ${companionNote.trim()}`;
+  }
+
+  // 13. Build follow-up chips (reuse chunkMap from search step)
+  const chips = buildFollowUpChips(gaps, hivAssets.gapGraph, chunk.id, chunkMap);
 
   // 14. Record turn
   const chunkAspects = chunk.aspects || [];
@@ -251,8 +272,10 @@ export function processMessage(
   // 15. Mark aspects covered
   sessionState.markAspectsCovered(chunkAspects);
 
-  // Ensure topic is set
-  sessionState.currentTopic = topic;
+  // Ensure topic is set (only if still null — confidence gating above handles updates)
+  if (!sessionState.currentTopic && topic) {
+    sessionState.currentTopic = topic;
+  }
 
   return {
     answer,

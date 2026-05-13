@@ -27,7 +27,7 @@ import {
   buildFollowUpChips,
   type DoseRule,
 } from '@/engine/answerAssembler';
-import { detectDrift } from '@/engine/driftDetector';
+import { detectDrift, extractPrimaryTopic } from '@/engine/driftDetector';
 import { buildFallback } from '@/engine/fallbackHandler';
 import { variantSearch, bm25Search } from './searchEngine';
 import { composeResponse } from './responseComposer';
@@ -89,10 +89,8 @@ const PRONOUNS = new Set(['it', 'this', 'that', 'they', 'them', 'their', 'its', 
 
 const SOCIAL_TRIGGERS = [
   'thanks', 'thank you', 'thank', 'thx',
-  'ok', 'okay', 'got it', 'understood', 'noted',
+  'got it', 'understood', 'noted',
   'great', 'good', 'perfect', 'awesome', 'nice',
-  'alright', 'all right', 'cool', 'sure',
-  'yes', 'no', 'yeah', 'nope',
   'bye', 'goodbye', 'see you', 'later',
 ];
 
@@ -244,10 +242,8 @@ export class ConversationEngine {
     // Rewrite query using new engine
     const rewritten = rewriteQuery(userMessage, newIntent, this.sessionState);
 
-    // Topic shift handling
-    if (rewritten.isTopicShift && rewritten.detectedTopic) {
-      this.sessionState.onTopicShift(rewritten.detectedTopic);
-    }
+    // Note: topic shift from rewriter is NOT applied here — extractPrimaryTopic()
+    // handles topic transitions after search with proper confidence gating.
 
     // Hybrid search (new engine)
     initSearch(this.hivAssets);
@@ -284,10 +280,26 @@ export class ConversationEngine {
       this.sessionState.onTopicShift(drift.newTopic);
     }
 
-    // Determine topic
-    const topic = this.sessionState.currentTopic || rewritten.detectedTopic || chunkTopics[0] || '';
-    if (!this.sessionState.currentTopic && topic) {
-      this.sessionState.currentTopic = topic;
+    // Determine primary topic using 3-priority cascade
+    const fusedScore = searchResult?.score ?? 0;
+    const topic = extractPrimaryTopic(
+      userMessage,
+      chunkTopics,
+      this.sessionState,
+      this.coverageManifest,
+      fusedScore
+    );
+
+    // Only update sessionState.currentTopic if confident signal exists
+    if (topic && topic !== this.sessionState.currentTopic) {
+      const queryLower = userMessage.toLowerCase();
+      const topicTokens = topic.toLowerCase().split(/\s+/).filter((t: string) => t.length >= 2);
+      const queryTokens = queryLower.split(/\s+/).filter((t: string) => t.length >= 2);
+      const userNamedIt = topicTokens.some((t: string) => queryTokens.includes(t));
+
+      if (userNamedIt || fusedScore > 0.6 || !this.sessionState.currentTopic) {
+        this.sessionState.currentTopic = topic;
+      }
     }
 
     // Gap detection
@@ -326,8 +338,15 @@ export class ConversationEngine {
     // Build opener, closing, and chips using new engine
     const aspect = chunk.aspects?.[0] || topic;
     const opener = buildOpener(newIntent, topic, aspect, this.openerMatrix);
-    const closing = buildClosing(gaps, newIntent, this.sessionState.turnCount);
-    const chips = buildFollowUpChips(gaps, this.hivAssets.gapGraph, chunk.id);
+    const closing = buildClosing(gaps, newIntent, this.sessionState);
+    const chunkMap = new Map(this.hivFile.chunks.map((c) => [c.id, c]));
+    const chips = buildFollowUpChips(gaps, this.hivAssets.gapGraph, chunk.id, chunkMap);
+
+    // Warn if chips are dropped (UI layer should display them)
+    if (chips.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[HIVA Engine] buildFollowUpChips returned empty array for chunk', chunk.id);
+    }
 
     // Assemble final message
     let message = answerText;
@@ -338,11 +357,19 @@ export class ConversationEngine {
       message = `${message}\n\n${closing}`;
     }
 
+    // Append companion_note if present (colleague aside, not clinical answer)
+    const companionNote = (langContent as Record<string, unknown> | undefined)?.companion_note;
+    if (typeof companionNote === 'string' && companionNote.trim().length > 0) {
+      message = `${message}\n\n\u2014 ${companionNote.trim()}`;
+    }
+
     // Update states
     const chunkAspects = chunk.aspects || [];
     this.sessionState.addTurn(userMessage, chunk.id, chunkAspects, newIntent);
     this.sessionState.markAspectsCovered(chunkAspects);
-    this.sessionState.currentTopic = topic;
+    if (!this.sessionState.currentTopic && topic) {
+      this.sessionState.currentTopic = topic;
+    }
     this.state.lastChiefComplaint = this.state.slots.chiefComplaint;
     this.recordHivaTurn(message);
 
@@ -420,13 +447,36 @@ export class ConversationEngine {
 
   private isSocialTrigger(message: string): boolean {
     const lower = message.toLowerCase().trim();
-    for (const trigger of SOCIAL_TRIGGERS) {
-      if (lower === trigger || lower.startsWith(trigger + ' ')) {
-        const hasClinical = CLINICAL_KEYWORDS.some((k) => lower.includes(k));
-        if (!hasClinical) return true;
-      }
+    const isTrigger = SOCIAL_TRIGGERS.some(
+      (t) => lower === t || lower.startsWith(t + ' ')
+    );
+    if (!isTrigger) return false;
+
+    // Check for clinical keywords — never intercept clinical messages
+    const hasClinical = CLINICAL_KEYWORDS.some((k) => lower.includes(k));
+    if (hasClinical) return false;
+
+    // If a clinical topic is active in session, affirmations like
+    // "yes", "ok", "sure" are continuation signals, not social.
+    // Only treat as social when there is no ongoing clinical context.
+    const hasActiveTopic =
+      this.sessionState.currentTopic !== null &&
+      this.sessionState.currentTopic !== undefined &&
+      this.sessionState.currentTopic !== '';
+
+    if (hasActiveTopic) {
+      // Still allow pure social-only words with no clinical value
+      // even in context: 'thanks', 'bye', 'goodbye'
+      const ALWAYS_SOCIAL = [
+        'thanks', 'thank you', 'thank', 'thx',
+        'bye', 'goodbye', 'see you', 'later',
+      ];
+      return ALWAYS_SOCIAL.some(
+        (t) => lower === t || lower.startsWith(t + ' ')
+      );
     }
-    return false;
+
+    return true;
   }
 
   private mapIntentToOld(intent: string): IntentType {
@@ -441,7 +491,8 @@ export class ConversationEngine {
       case 'SCOPE':
       case 'DETAIL':
       case 'PROCEDURE':
-      case 'REFERRAL': {
+      case 'REFERRAL':
+      case 'HEADING_LOOKUP': {
         // In the old system, follow-up is detected by trigger words or turn count
         if (this.state.turnCount > 1 && this.state.slots.chiefComplaint) {
           return 'follow_up';

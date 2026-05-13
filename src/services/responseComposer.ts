@@ -7,6 +7,7 @@
  */
 
 import type { HIVChunk, ConversationState, IntentType } from '@/types/hiv';
+import { isCompilerError } from '@/engine/answerAssembler';
 
 export function composeResponse(
   chunk: HIVChunk,
@@ -55,46 +56,60 @@ export function composeResponse(
     response += `\n\n${closing}`;
   }
 
+  // Step 7: Append companion_note if present (colleague aside)
+  const companionNote = content.companion_note;
+  if (typeof companionNote === 'string' && companionNote.trim().length > 0) {
+    response += `\n\n\u2014 ${companionNote.trim()}`;
+  }
+
   return response;
 }
 
 /**
- * Select the most appropriate answer variant based on intent and state
+ * Select the most appropriate answer variant based on intent and state.
+ * Skips fields that contain compiler error messages.
  */
 function selectToneAnswer(
   content: Record<string, unknown>,
   state: ConversationState,
   intent: IntentType
 ): string | null {
+  /** Return string only if valid and not a compiler error */
+  const safe = (val: unknown): string | null => {
+    if (typeof val !== 'string' || val.length === 0) return null;
+    return isCompilerError(val) ? null : val;
+  };
+
   // Urgent → always use urgent answer
   if (intent === 'urgent') {
-    const urgent = content.answer_urgent;
-    if (typeof urgent === 'string' && urgent.length > 0) return urgent;
+    const urgent = safe(content.answer_urgent);
+    if (urgent) return urgent;
   }
 
   // Turn count > 2 → use direct (they know the context)
   if (state.turnCount > 2) {
-    const direct = content.answer_direct;
-    if (typeof direct === 'string' && direct.length > 0) return direct;
+    const direct = safe(content.answer_direct);
+    if (direct) return direct;
   }
 
   // Default priority: answer > answer_formal > answer_direct > answer_reassuring
-  const answer = content.answer;
-  if (typeof answer === 'string' && answer.length > 0) return answer;
+  const answer = safe(content.answer);
+  if (answer) return answer;
 
-  const formal = content.answer_formal;
-  if (typeof formal === 'string' && formal.length > 0) return formal;
+  const formal = safe(content.answer_formal);
+  if (formal) return formal;
 
-  const direct = content.answer_direct;
-  if (typeof direct === 'string' && direct.length > 0) return direct;
+  const direct = safe(content.answer_direct);
+  if (direct) return direct;
 
-  const reassuring = content.answer_reassuring;
-  if (typeof reassuring === 'string' && reassuring.length > 0) return reassuring;
+  const reassuring = safe(content.answer_reassuring);
+  if (reassuring) return reassuring;
 
   // Fallback: any string field that looks like an answer
   for (const [key, value] of Object.entries(content)) {
     if (key.startsWith('answer') && typeof value === 'string' && value.length > 50) {
-      return value;
+      const safeVal = safe(value);
+      if (safeVal) return safeVal;
     }
   }
 

@@ -230,15 +230,13 @@ export function search(rewrittenQuery: string, sessionState: SessionState, langu
   // Stage 2: Vector search (new)
   const vector = vectorSearch(rewrittenQuery, language, 10);
 
-  // Stage 3: Gap graph boost on merged candidates
+  // Stage 3: Gap graph boost — applied after RRF fusion
   const lastChunkId = sessionState.turnBuffer.length > 0
     ? sessionState.turnBuffer[sessionState.turnBuffer.length - 1].chunkId
     : null;
-  const merged = [...bm25, ...vector];
-  gapGraphBoost(merged, lastChunkId, assets.gapGraph);
 
   // Stage 4: RRF fusion on the separate ranked lists
-  const fused = rrfFuse(bm25, vector);
+  const fused = gapGraphBoost(rrfFuse(bm25, vector), lastChunkId, assets.gapGraph);
 
   // Stage 5: Dead-end escape
   return deadEndEscape(fused, sessionState, assets.gapGraph);
