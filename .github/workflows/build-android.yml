@@ -86,7 +86,7 @@ jobs:
 
     - name: Upload Unsigned APK (No keystore)
       if: steps.keystore-check.outputs.has-keystore == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hiva-medichat-unsigned-apk
         path: android/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -94,7 +94,7 @@ jobs:
 
     - name: Upload Signed APK (With keystore)
       if: steps.keystore-check.outputs.has-keystore == 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hiva-medichat-signed-apk
         path: android/app/build/outputs/apk/release/app-release.apk
@@ -102,57 +102,54 @@ jobs:
 
     - name: Create Release
       if: github.ref == 'refs/heads/master'
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: apk-v${{ github.run_number }}
-        release_name: APK Build v${{ github.run_number }}
-        body: |
-          ## Hiva Medichat Android APK
+      run: |
+        gh release create "apk-v${{ github.run_number }}" \
+          --title "APK Build v${{ github.run_number }}" \
+          --notes "## Hiva Medichat Android APK
 
-          **Build:** ${{ github.run_number }}
-          **Commit:** ${{ github.sha }}
+**Build:** \${{ github.run_number }}
+**Commit:** \${{ github.sha }}
 
-          ### Features Included
-          - Phase 26b: Drug-Class Boost for ARV query specificity
-          - Frontend rebranding to "Hiva Medichat"
-          - Clinical query accuracy improved by 7%
-          - Zero regressions
+### Features Included
+- Phase 26b: Drug-Class Boost for ARV query specificity
+- Frontend rebranding to \"Hiva Medichat\"
+- Clinical query accuracy improved by 7%
+- Zero regressions
 
-          ### APK Details
-          - **Size:** ~123 MB
-          - **Target SDK:** 36 (Android 15)
-          - **Min SDK:** 24 (Android 7)
+### APK Details
+- **Size:** ~123 MB
+- **Target SDK:** 36 (Android 15)
+- **Min SDK:** 24 (Android 7)
 
-          ### Installation Options
+### Installation Options
 
-          #### ✅ Signed APK (Play Store Ready)
-          Available if keystore secrets are configured.
-          - Ready to upload to Google Play Console
-          - Download: `hiva-medichat-signed-apk`
+#### ✅ Signed APK (Play Store Ready)
+Available if keystore secrets are configured.
+- Ready to upload to Google Play Console
+- Download: \`hiva-medichat-signed-apk\`
 
-          #### 🧪 Unsigned APK (Testing/Sideload)
-          Always available.
-          - For testing on your own device
-          - Download: `hiva-medichat-unsigned-apk`
+#### 🧪 Unsigned APK (Testing/Sideload)
+Always available.
+- For testing on your own device
+- Download: \`hiva-medichat-unsigned-apk\`
 
-          **Sideload command:**
-          ```bash
-          adb install app-release-unsigned.apk
-          ```
+**Sideload command:**
+\`\`\`bash
+adb install app-release-unsigned.apk
+\`\`\`
 
-          ### For Signing Your Own
-          If keystore is not yet configured:
-          ```bash
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore keystore.jks \
-            app-release-unsigned.apk your-key-alias
-          ```
+### For Signing Your Own
+If keystore is not yet configured:
+\`\`\`bash
+jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \\
+  -keystore keystore.jks \\
+  app-release-unsigned.apk your-key-alias
+\`\`\`
 
-          See `KEYSTORE_SETUP.md` for full setup instructions.
-        draft: false
-        prerelease: false
+See \`KEYSTORE_SETUP.md\` for full setup instructions." \
+          --target master 2>/dev/null || echo "Release already exists"
 
     - name: Comment on commit
       if: always()
