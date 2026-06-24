@@ -115,11 +115,11 @@ function getChunkTopics(chunk: HIVChunk): string[] {
 /**
  * Process a single user message through the full intelligence pipeline.
  */
-export function processMessage(
+export async function processMessage(
   userMessage: string,
   sessionState: SessionState,
   options: ProcessMessageOptions
-): ProcessMessageResult {
+): Promise<ProcessMessageResult> {
   const { language = 'en', hivAssets, coverageManifest = {}, openerMatrix = {}, chunks } = options;
 
   // Ensure search assets are initialized
@@ -158,8 +158,25 @@ export function processMessage(
   // Instead, extractPrimaryTopic() handles topic transitions after search,
   // using the 3-priority cascade with coverage manifest awareness.
 
-  // 6. Search
-  const searchResult = search(rewritten.rewritten, sessionState, language, hivAssets);
+  // 6. Search (async — dense variant vector search embeds query on-device).
+  // Guarded: a search failure (e.g. offline embedding error) must degrade to a
+  // coverage-aware fallback, never reject and freeze the caller.
+  let searchResult: Awaited<ReturnType<typeof search>> = null;
+  try {
+    searchResult = await search(rewritten.rewritten, sessionState, language, hivAssets);
+  } catch {
+    const fallbackText = buildFallback(rewritten.rewritten, sessionState, { topics: coverageManifest });
+    sessionState.addTurn(userMessage, null, [], intent);
+    return {
+      answer: fallbackText,
+      closing: '',
+      chips: ['Tell me more', "What's the dose?", 'When should I refer?'],
+      tone: sessionState.getDominantSentiment(),
+      chunkId: null,
+      intent,
+      fallback: true,
+    };
+  }
 
   const chunkMap = new Map(chunks.map((c) => [c.id, c]));
   let chunk: HIVChunk | null = null;
@@ -245,7 +262,12 @@ export function processMessage(
 
   // 10. Build opener
   const aspect = chunk.aspects?.[0] || topic;
-  const opener = buildOpener(intent, topic, aspect, openerMatrix);
+  const opener = buildOpener(
+    intent,
+    chunk?.display_title || topic,
+    aspect,
+    openerMatrix
+  );
 
   // 12. Build closing
   const closing = buildClosing(gaps, intent, sessionState);

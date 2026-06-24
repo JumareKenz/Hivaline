@@ -18,7 +18,7 @@ import type {
 import SessionState from '@/engine/sessionState';
 import { classifyIntent, probeSentiment, detectGaps } from '@/engine/intentEngine';
 import { rewriteQuery } from '@/engine/queryRewriter';
-import { search, initSearch, type HIVAssets } from '@/engine/hybridSearch';
+import { search, initSearch, setEmbedQueryFn, type HIVAssets } from '@/engine/hybridSearch';
 import {
   selectAnswerContent,
   computePatientDose,
@@ -29,108 +29,24 @@ import {
 } from '@/engine/answerAssembler';
 import { detectDrift, extractPrimaryTopic } from '@/engine/driftDetector';
 import { buildFallback } from '@/engine/fallbackHandler';
-import { variantSearch, bm25Search } from './searchEngine';
-import { composeResponse } from './responseComposer';
-
-const STOP_WORDS = new Set([
-  'what', 'how', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-  'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'the', 'a',
-  'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-  'by', 'from', 'as', 'about', 'into', 'through', 'during', 'before',
-  'after', 'above', 'below', 'between', 'under', 'again', 'further',
-  'then', 'once', 'here', 'there', 'when', 'where', 'why', 'all', 'any',
-  'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
-  'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just',
-  'tell', 'me', 'my', 'i', 'you', 'your', 'it', 'this', 'that', 'these',
-  'those', 'am', 'get', 'got', 'give', 'take', 'make', 'go', 'come',
-  'know', 'see', 'look', 'use', 'want', 'like', 'help', 'work', 'find',
-  'deal', 'dealing', 'key', 'thing', 'things', 'meaning',
-]);
-
-const MIN_VARIANT_SCORE = 15;
-const MIN_BM25_SCORE = 2.0;
+import { getAppFaqResponse } from '@/engine/appFaqDetector';
+import { isOutOfScope } from '@/engine/queryPatternRouter';
+import {
+  isShortGreeting,
+  isSocialTrigger,
+  hasClinicalKeywords,
+  getGreetingResponse,
+  getSocialResponse,
+  CLINICAL_KEYWORDS,
+} from '@/engine/greetingHandler';
+import { generateHivReport } from '@/engine/debugReport';
+import { reportError } from '@/services/telemetry';
+import { isEmbeddingModelReady } from '@/services/modelManager';
+import { embedQuery } from '@/services/embeddingModel';
 
 export type { ConversationState, ConversationTurn, ConversationSlots, IntentType, EngineResponse };
 
-const GREETING_RESPONSES = [
-  "Hello! I'm HIVA, your clinical companion. How can I help you today?",
-  'Hi there — ready to help. How can I help you today?',
-  'Good to have you here. How can I help you today?',
-  'Hello! How can I help you today?',
-];
-
-const DANGER_KEYWORDS = [
-  'convulsing', 'convulsion', 'fitting', 'seizure',
-  'not breathing', 'cant breathe', 'difficulty breathing',
-  'unconscious', 'unresponsive', 'collapsed',
-  'bleeding heavily', 'severe bleeding', 'hemorrhage',
-  'cyanosis', 'blue lips', 'blue skin',
-  'shock', 'cold extremities',
-];
-
-const CLINICAL_KEYWORDS = [
-  'fever', 'malaria', 'diarrhea', 'vomiting', 'convulsion',
-  'rash', 'cough', 'bleeding', 'jaundice', 'anaemia',
-  'pneumonia', 'dehydration', 'malnutrition',
-  'delivery', 'labour', 'pregnancy', 'anc',
-  'pph', 'postpartum', 'hemorrhage', 'haemorrhage',
-  'pre-eclampsia', 'preeclampsia', 'hypertension', 'eclampsia',
-  'sepsis', 'obstructed labour', 'prolonged labour',
-  'retained placenta', 'perineal tear', 'episiotomy',
-  'newborn', 'neonatal', 'asphyxia', 'resuscitation',
-  'immunization', 'vaccination', 'family planning', 'contraception',
-  'sti', 'hiv', 'tb', 'nutrition', 'anemia',
-  'blood pressure', 'sugar', 'diabetes',
-  'injury', 'burn', 'fracture', 'wound', 'infection',
-];
-
-const PRONOUNS = new Set(['it', 'this', 'that', 'they', 'them', 'their', 'its', 'those']);
-
-const SOCIAL_TRIGGERS = [
-  'thanks', 'thank you', 'thank', 'thx',
-  'got it', 'understood', 'noted',
-  'great', 'good', 'perfect', 'awesome', 'nice',
-  'bye', 'goodbye', 'see you', 'later',
-];
-
-const SOCIAL_RESPONSES = [
-  "You're welcome! Let me know if anything else comes up.",
-  'Glad to help. Stay confident — you\'ve got this.',
-  'Anytime. Your patients are lucky to have you.',
-  'Happy to help. Reach out whenever you need guidance.',
-];
-
-const APP_FAQ: Array<{ patterns: string[]; response: string; followUps: string[] }> = [
-  {
-    patterns: ['what can you do', 'what do you do', 'who are you', 'what is hiva', 'what are you', 'your features', 'your capabilities'],
-    response: "I'm HIVA — your offline clinical companion. I can help you with:\n\n• FMOH-approved clinical guidelines (malaria, ANC, child health, essential medicines, emergency referral)\n• Drug dosing calculations by patient weight\n• Step-by-step decision trees for common conditions\n• Danger sign recognition and urgent referral guidance\n• All of this works completely offline — no internet needed after your first login.",
-    followUps: ['How do you work offline?', 'How do I get updates?', 'How do I search?'],
-  },
-  {
-    patterns: ['offline', 'no internet', 'without network', 'work offline', 'how do you work offline', 'offline mode'],
-    response: "HIVA is built to work entirely offline. Here's how:\n\n• After your first login, the app downloads all clinical guidelines as a single .hiv file\n• This file is stored securely on your device — no internet needed to use it\n• Everything runs locally: search, drug tables, decision trees, and responses\n• You only need internet briefly to check for guideline updates (we'll prompt you)\n• Perfect for rural health facilities with unreliable connectivity.",
-    followUps: ['How do I get updates?', 'What can you do?', 'What is my access code?'],
-  },
-  {
-    patterns: ['update', 'get updates', 'how do i get updates', 'check for updates', 'new version', 'download update'],
-    response: "Getting updates is simple:\n\n• Go to Settings → tap 'Check for Updates'\n• If a newer version of clinical data is available, HIVA will download it automatically\n• Updates happen in the background — you can keep using the app\n• The app also checks for updates automatically after each login\n• Your current version, chunk count, and coverage score are shown in Settings → Clinical Data.",
-    followUps: ['How do you work offline?', 'What can you do?', 'How do I search?'],
-  },
-  {
-    patterns: ['access code', 'server code', 'my code', 'what is my access code', 'login code', 'facility code', 'credentials'],
-    response: "Your access credentials are provided by your facility supervisor or state coordinator:\n\n• Server Code: looks like HIVA-XXXX (your facility identifier)\n• Access Key: a 4-character key (e.g., A7B2) given to you personally\n• Both are required to log in\n• If you forget them, contact your supervisor — they can reissue your Access Key\n• Never share your Access Key with others.",
-    followUps: ['How do I get updates?', 'How do you work offline?', 'What can you do?'],
-  },
-  {
-    patterns: ['how do i search', 'how do i query', 'how to search', 'how to query', 'how does search work', 'ask questions', 'type questions'],
-    response: "Just type your question naturally in the chat box and hit send — that's it!\n\n• I understand plain English: 'child with fever for 3 days', 'ACT dose for 15kg', 'signs of severe malaria'\n• I also have a Knowledge Base tab where you can browse all approved guidelines\n• For drug dosing, use the Drug Tables tab with the weight slider\n• For step-by-step protocols, check the Decision Trees tab\n• Voice input is available too — tap the microphone icon.",
-    followUps: ['What can you do?', 'How do you work offline?', 'How do I get updates?'],
-  },
-];
-
 export class ConversationEngine {
-  private state: ConversationState;
   private hivFile: HIVFile;
   private sessionState: SessionState;
   private chunkMap: Map<string, HIVChunk>;
@@ -155,33 +71,29 @@ export class ConversationEngine {
       (hivFile.rules?.opener_matrix as Record<string, string>) ||
       {};
 
-    this.state = {
-      turns: [],
-      slots: {
-        patientAge: null,
-        patientWeight: null,
-        symptomDuration: null,
-        chiefComplaint: null,
-      },
-      lastChunkId: null,
-      turnCount: 0,
-      lastOpener: null,
-      lastChiefComplaint: null,
-    };
+    // Wire up on-device embedding model for semantic vector search
+    if (isEmbeddingModelReady()) {
+      setEmbedQueryFn(embedQuery);
+    }
+
+    // Warn if critical engine features are missing
+    if (!this.hivAssets.gapGraph || Object.keys(this.hivAssets.gapGraph).length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[HIVA] gap_graph loaded but has no edges — chips will be generic');
+    }
+    if (!this.hivAssets.coverageManifest?.topics ||
+        Object.keys(this.hivAssets.coverageManifest.topics).length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[HIVA] coverage_manifest loaded but has no topics — gap detection disabled');
+    }
+
   }
 
   async respond(userMessage: string): Promise<EngineResponse> {
-    const now = Date.now();
-    this.state.turnCount += 1;
+    // Increment turn count immediately for greeting/intent logic
+    this.sessionState.turnCount += 1;
 
-    // Record user turn (old state)
-    this.state.turns.push({
-      role: 'user',
-      content: userMessage,
-      timestamp: now,
-    });
-
-    // Extract slots into both old and new state
+    // Extract slots
     this.extractSlots(userMessage);
 
     // New intent classification
@@ -191,10 +103,9 @@ export class ConversationEngine {
     const sentiment = probeSentiment(userMessage);
     this.sessionState.pushSentiment(sentiment as import('@/engine/sessionState').Sentiment);
 
-    // App FAQ (unchanged behavior)
-    const appFaqMatch = this.matchAppFaq(userMessage);
+    // App FAQ
+    const appFaqMatch = getAppFaqResponse(userMessage);
     if (appFaqMatch) {
-      this.recordHivaTurn(appFaqMatch.response);
       return {
         message: appFaqMatch.response,
         type: 'greeting',
@@ -203,36 +114,43 @@ export class ConversationEngine {
       };
     }
 
-    // Handle greeting or social acknowledgment
-    // Also catch short turn-1 messages with no clinical keywords (old greeting heuristic)
-    const lowerMsg = userMessage.toLowerCase();
-    const isUrgentMsg = DANGER_KEYWORDS.some((k) => lowerMsg.includes(k));
-    const isShortGreeting =
-      this.state.turnCount === 1 &&
-      userMessage.trim().split(/\s+/).length < 6 &&
-      !CLINICAL_KEYWORDS.some((k) => lowerMsg.includes(k)) &&
-      !isUrgentMsg;
-
-    if (newIntent === 'GREETING' || this.isSocialTrigger(userMessage) || isShortGreeting) {
-      const lower = userMessage.toLowerCase().trim();
-      const isSocial = SOCIAL_TRIGGERS.some((t) => lower === t || lower.startsWith(t + ' '));
-
-      if (isSocial) {
-        const socialIndex = (this.state.turnCount - 1) % SOCIAL_RESPONSES.length;
-        return {
-          message: SOCIAL_RESPONSES[socialIndex],
-          type: 'greeting',
-          chunkId: null,
-          suggestedFollowUps: [],
-        };
-      }
-
-      const greetingIndex = (this.state.turnCount - 1) % GREETING_RESPONSES.length;
+    // Out-of-scope detection (BEFORE search)
+    if (isOutOfScope(userMessage)) {
       return {
-        message: GREETING_RESPONSES[greetingIndex],
+        message: 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?',
+        type: 'fallback',
+        chunkId: null,
+        suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+      };
+    }
+
+    // Clinical FAQ (pattern-matched Q&A pairs) - DISABLED for now to prevent false matches
+    // const clinicalFaqMatch = getClinicalFaqResponse(userMessage);
+    // if (clinicalFaqMatch) {
+    //   return {
+    //     message: clinicalFaqMatch.response,
+    //     type: 'clinical',
+    //     chunkId: null,
+    //     suggestedFollowUps: clinicalFaqMatch.followUps,
+    //   };
+    // }
+
+    // Handle greeting or social acknowledgment
+    const hasActiveTopic = !!this.sessionState.currentTopic;
+    const hasClinical = hasClinicalKeywords(userMessage);
+    const shortGreeting = isShortGreeting(userMessage, this.sessionState.turnCount);
+    const socialTrigger = isSocialTrigger(userMessage, hasActiveTopic, hasClinical);
+
+    if (newIntent === 'GREETING' || socialTrigger || shortGreeting) {
+      const message = socialTrigger
+        ? getSocialResponse(this.sessionState.turnCount)
+        : getGreetingResponse(this.sessionState.turnCount);
+
+      return {
+        message,
         type: 'greeting',
         chunkId: null,
-        suggestedFollowUps: ['What can you do?', 'How do you work offline?', 'How do I search?'],
+        suggestedFollowUps: socialTrigger ? [] : ['What can you do?', 'How do you work offline?', 'How do I search?'],
       };
     }
 
@@ -245,24 +163,29 @@ export class ConversationEngine {
     // Note: topic shift from rewriter is NOT applied here — extractPrimaryTopic()
     // handles topic transitions after search with proper confidence gating.
 
-    // Hybrid search (new engine)
+    // Hybrid search (new engine — async for dense variant embedding).
+    // Guard the whole search: any failure (e.g. embedding error while offline)
+    // must produce a graceful clinical fallback, never reject and freeze the UI.
     initSearch(this.hivAssets);
-    const searchResult = search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets);
 
-    let chunk: HIVChunk | null = null;
-    if (searchResult) {
-      chunk = this.chunkMap.get(searchResult.chunkId) ?? null;
+    // Lazily wire the embedding model if it became ready after construction
+    if (isEmbeddingModelReady()) {
+      setEmbedQueryFn(embedQuery);
     }
 
-    // Fallback to legacy search if new engine finds nothing (backward compatibility)
-    if (!chunk) {
-      const legacyQuery = this.buildSearchQuery(userMessage, mappedIntent);
-      chunk = await this.findChunk(legacyQuery, mappedIntent);
-    }
-
-    if (!chunk) {
+    let searchResult: Awaited<ReturnType<typeof search>> = null;
+    try {
+      searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.warn('[HIVA][telemetry]', JSON.stringify({
+        event: 'engine_search_failed',
+        message,
+        ts: Date.now(),
+      }));
+      void reportError('engine_search_failed', message);
       const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
-      this.recordHivaTurn(fallback);
       return {
         message: fallback,
         type: 'fallback',
@@ -271,7 +194,30 @@ export class ConversationEngine {
       };
     }
 
-    this.state.lastChunkId = chunk.id;
+    // null means the embedding model is still loading — show a temporary message
+    if (searchResult === null) {
+      return {
+        message: 'I\'m still preparing the clinical guidelines — please ask again in a few seconds.',
+        type: 'fallback',
+        chunkId: null,
+        suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+      };
+    }
+
+    let chunk: HIVChunk | null = null;
+    chunk = this.chunkMap.get(searchResult.chunkId) ?? null;
+
+    if (!chunk) {
+      const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+      return {
+        message: fallback,
+        type: 'fallback',
+        chunkId: null,
+        suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+      };
+    }
+
+    this.sessionState.lastChunkId = chunk.id;
 
     // Drift detection
     const chunkTopics = this.getChunkTopics(chunk);
@@ -318,26 +264,27 @@ export class ConversationEngine {
       }
     }
 
-    // If new assembly produced nothing, fall back to legacy composer
+    // If no answer content, return fallback
     if (!answerText) {
-      const composed = composeResponse(chunk, this.state, mappedIntent);
-      const chunkAspects = chunk.aspects || [];
-      this.sessionState.addTurn(userMessage, chunk.id, chunkAspects, newIntent);
-      this.sessionState.markAspectsCovered(chunkAspects);
-      this.state.lastChiefComplaint = this.state.slots.chiefComplaint;
-      this.recordHivaTurn(composed);
+      const fallback = 'I found relevant information, but the content is not available in this release.';
+      // recordHivaTurn removed(fallback);
       return {
-        message: composed,
-        type: mappedIntent,
+        message: fallback,
+        type: 'fallback',
         chunkId: chunk.id,
         source: chunk.source,
-        suggestedFollowUps: this.getFollowUpQuestions(chunk),
+        suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
       };
     }
 
     // Build opener, closing, and chips using new engine
     const aspect = chunk.aspects?.[0] || topic;
-    const opener = buildOpener(newIntent, topic, aspect, this.openerMatrix);
+    const opener = buildOpener(
+      newIntent,
+      chunk?.display_title || topic,
+      aspect,
+      this.openerMatrix
+    );
     const closing = buildClosing(gaps, newIntent, this.sessionState);
     const chunkMap = new Map(this.hivFile.chunks.map((c) => [c.id, c]));
     const chips = buildFollowUpChips(gaps, this.hivAssets.gapGraph, chunk.id, chunkMap);
@@ -363,15 +310,29 @@ export class ConversationEngine {
       message = `${message}\n\n\u2014 ${companionNote.trim()}`;
     }
 
-    // Update states
+    // Update states (don't double-increment turnCount since we already did it at the start)
     const chunkAspects = chunk.aspects || [];
-    this.sessionState.addTurn(userMessage, chunk.id, chunkAspects, newIntent);
-    this.sessionState.markAspectsCovered(chunkAspects);
+    this.sessionState.turnBuffer.push({
+      query: userMessage,
+      chunkId: chunk.id,
+      aspects: chunkAspects,
+      intent: newIntent,
+    });
+    if (this.sessionState.turnBuffer.length > 8) {
+      this.sessionState.turnBuffer.shift();
+    }
+    // Only mark aspects covered if the response is not a deflection
+    if (!this.isDeflectionResponse(answerText)) {
+      this.sessionState.markAspectsCovered(chunkAspects);
+    }
+    if (chunk.id) {
+      this.sessionState.coveredChunks.add(chunk.id);
+    }
     if (!this.sessionState.currentTopic && topic) {
       this.sessionState.currentTopic = topic;
     }
-    this.state.lastChiefComplaint = this.state.slots.chiefComplaint;
-    this.recordHivaTurn(message);
+    this.sessionState.lastChiefComplaint = this.sessionState.slotMemory.chiefComplaint;
+    // recordHivaTurn removed(message);
 
     return {
       message,
@@ -383,31 +344,77 @@ export class ConversationEngine {
   }
 
   reset(): void {
-    this.state = {
-      turns: [],
-      slots: {
-        patientAge: null,
-        patientWeight: null,
-        symptomDuration: null,
-        chiefComplaint: null,
-      },
-      lastChunkId: null,
-      turnCount: 0,
-      lastOpener: null,
-      lastChiefComplaint: null,
-    };
     this.sessionState = new SessionState();
   }
 
   getState(): ConversationState {
-    return { ...this.state };
+    // For backward compatibility, return old state format from sessionState
+    return {
+      turns: this.sessionState.turnBuffer.map(t => ({
+        role: t.chunkId ? ('hiva' as const) : ('user' as const),
+        content: t.query,
+        timestamp: Date.now(),
+      })),
+      slots: {
+        patientAge: this.sessionState.slotMemory.patientAge,
+        patientWeight: this.sessionState.slotMemory.patientWeight,
+        symptomDuration: null, // deprecated
+        chiefComplaint: this.sessionState.slotMemory.chiefComplaint,
+      },
+      lastChunkId: this.sessionState.lastChunkId,
+      turnCount: this.sessionState.turnCount,
+      lastOpener: this.sessionState.lastOpener,
+      lastChiefComplaint: this.sessionState.lastChiefComplaint,
+    };
   }
 
   getSlots(): ConversationSlots {
-    return { ...this.state.slots };
+    return {
+      patientAge: this.sessionState.slotMemory.patientAge,
+      patientWeight: this.sessionState.slotMemory.patientWeight,
+      symptomDuration: null, // deprecated
+      chiefComplaint: this.sessionState.slotMemory.chiefComplaint,
+    };
+  }
+
+  debugHivReport(): string {
+    return generateHivReport(this.hivAssets);
   }
 
   /* ─── Helpers ─── */
+
+  private isDeflectionResponse(answer: string): boolean {
+    const text = answer.trim();
+
+    // Pattern 1: "I can help with X. Tell me [more/what/which]"
+    if (/^I can help with .+\.\s*Tell me/i.test(text)) return true;
+
+    // Pattern 2: Ends with an open question after minimal content
+    // Short responses (under 60 words) that end with "Tell me..."
+    const wordCount = text.split(/\s+/).length;
+    if (wordCount < 60 && /Tell me (more|what|which|about)/i.test(text)) {
+      return true;
+    }
+
+    // Pattern 3: Explicit deflection phrases
+    const deflectionPhrases = [
+      /Tell me more about your (patient|role|situation|query)/i,
+      /Tell me what (type|kind|aspect|specific)/i,
+      /What specific (aspect|type|area|information)/i,
+      /Can you (tell me|provide) more (about|details)/i,
+      /Please (tell me|provide|share) more/i,
+    ];
+    if (deflectionPhrases.some(p => p.test(text))) return true;
+
+    // Pattern 4: Last sentence is a redirect question
+    // ("Should I explain...", "Want me to...", "Would you like me to...")
+    const lastSentence = text.split(/[.!]\s*/).filter(s => s.trim()).pop() ?? '';
+    if (/\b(should I|want me to|would you like me to)\b.{0,60}\?$/i.test(lastSentence.trim())) {
+      return true;
+    }
+
+    return false;
+  }
 
   private buildHivAssets(hivFile: HIVFile): HIVAssets {
     // Convert Int8Array quantized embeddings to a single Float32Array buffer
@@ -426,11 +433,15 @@ export class ConversationEngine {
       embeddingsBuffer = buffer;
     }
 
-    // Build chunk_id list aligned with embedding index
-    const chunkIds: string[] = [];
-    for (let i = 0; i < hivFile.embeddingMeta.length; i++) {
-      chunkIds.push(hivFile.embeddingMeta[i]?.chunk_id ?? String(i));
-    }
+    // Use chunk IDs from embeddings_index.json
+    const chunkIds = hivFile.embeddingChunkIds || [];
+
+    // Get coverage manifest from rules (already has { topics: {...} } structure)
+    const manifestExt = hivFile.manifest as unknown as Record<string, unknown>;
+    const coverageManifestFromFile =
+      (manifestExt.coverage_manifest as HIVAssets['coverageManifest']) ||
+      (hivFile.rules?.coverage_manifest as HIVAssets['coverageManifest']) ||
+      ({} as HIVAssets['coverageManifest']);
 
     return {
       embeddingsBuffer,
@@ -439,45 +450,40 @@ export class ConversationEngine {
         total_chunks: hivFile.embeddings.length,
         chunk_ids: chunkIds,
       },
+      queryProxies: hivFile.queryProxies,
       bm25Index: hivFile.lexicalIndex,
       chunks: hivFile.chunks,
-      // queryProxies and gapGraph come from newer .hiv files; missing = graceful fallback
+      gapGraph: hivFile.gapGraph,
+      coverageManifest: coverageManifestFromFile,
+      variantEmbeddings: hivFile.variantEmbeddings ?? null,
+      variantEmbeddingsIndex: hivFile.variantEmbeddingsIndex ?? null,
+      variantCount: hivFile.variantCount ?? 0,
+      embeddingDims: hivFile.embeddingDims ?? 384,
+      chunkTitleMap: new Map(hivFile.chunks.map(c => [c.id, c.display_title || ''])),
+      chunkContentMap: new Map(hivFile.chunks.map(c => {
+        // Build searchable text from title + content
+        const title = c.display_title || '';
+        const contentObj = (c.content as Record<string, any>)?.en;
+        let contentText = '';
+
+        if (contentObj) {
+          // Extract text from various content fields
+          const extractText = (obj: any): string => {
+            if (typeof obj === 'string') return obj;
+            if (Array.isArray(obj)) return obj.map(extractText).join(' ');
+            if (obj && typeof obj === 'object') {
+              return Object.values(obj).map(extractText).join(' ');
+            }
+            return '';
+          };
+          contentText = extractText(contentObj);
+        }
+
+        return [c.id, (title + ' ' + contentText).toLowerCase()];
+      })),
     };
   }
 
-  private isSocialTrigger(message: string): boolean {
-    const lower = message.toLowerCase().trim();
-    const isTrigger = SOCIAL_TRIGGERS.some(
-      (t) => lower === t || lower.startsWith(t + ' ')
-    );
-    if (!isTrigger) return false;
-
-    // Check for clinical keywords — never intercept clinical messages
-    const hasClinical = CLINICAL_KEYWORDS.some((k) => lower.includes(k));
-    if (hasClinical) return false;
-
-    // If a clinical topic is active in session, affirmations like
-    // "yes", "ok", "sure" are continuation signals, not social.
-    // Only treat as social when there is no ongoing clinical context.
-    const hasActiveTopic =
-      this.sessionState.currentTopic !== null &&
-      this.sessionState.currentTopic !== undefined &&
-      this.sessionState.currentTopic !== '';
-
-    if (hasActiveTopic) {
-      // Still allow pure social-only words with no clinical value
-      // even in context: 'thanks', 'bye', 'goodbye'
-      const ALWAYS_SOCIAL = [
-        'thanks', 'thank you', 'thank', 'thx',
-        'bye', 'goodbye', 'see you', 'later',
-      ];
-      return ALWAYS_SOCIAL.some(
-        (t) => lower === t || lower.startsWith(t + ' ')
-      );
-    }
-
-    return true;
-  }
 
   private mapIntentToOld(intent: string): IntentType {
     switch (intent) {
@@ -494,7 +500,7 @@ export class ConversationEngine {
       case 'REFERRAL':
       case 'HEADING_LOOKUP': {
         // In the old system, follow-up is detected by trigger words or turn count
-        if (this.state.turnCount > 1 && this.state.slots.chiefComplaint) {
+        if (this.sessionState.turnCount > 1 && this.sessionState.slotMemory.chiefComplaint) {
           return 'follow_up';
         }
         return 'clinical';
@@ -504,22 +510,29 @@ export class ConversationEngine {
     }
   }
 
-  private recordHivaTurn(content: string): void {
-    this.state.turns.push({
-      role: 'hiva',
-      content,
-      timestamp: Date.now(),
-    });
+
+  private hasPatientReference(query: string): boolean {
+    const signals = [
+      /\bpatient\b/i, /\bmy patient\b/i, /\bthe baby\b/i, /\bbaby\b/i,
+      /\bthe child\b/i, /\bchild\b/i, /\bthe mother\b/i, /\bmother\b/i,
+      /\bpikin\b/i, /\byears? old\b/i, /\bmonths? old\b/i, /\bweeks? old\b/i,
+      /\bdays? old\b/i, /\bkg\b/i, /\bpregnant\b/i, /\bshe\b/i, /\bhe\b/i,
+      /\bthe woman\b/i, /\bthe man\b/i, /\bher\b/i, /\bhim\b/i,
+      /\binfant\b/i, /\btoddler\b/i, /\bboy\b/i, /\bgirl\b/i,
+    ];
+    return signals.some(p => p.test(query));
   }
 
-  private matchAppFaq(message: string): { response: string; followUps: string[] } | null {
-    const lower = message.toLowerCase().trim();
-    for (const faq of APP_FAQ) {
-      if (faq.patterns.some((p) => lower.includes(p))) {
-        return { response: faq.response, followUps: faq.followUps };
-      }
-    }
-    return null;
+  private isInformationalQuery(query: string): boolean {
+    // Queries that are clearly asking ABOUT a topic, not treating a patient
+    const informationalPatterns = [
+      /\bwhat is\b/i, /\bwhat are\b/i, /\bwhat does\b/i,
+      /\bdefine\b/i, /\bexplain\b/i, /\btell me about\b/i,
+      /\bcoverage\b/i, /\binsurance\b/i, /\bnhis\b/i, /\bscheme\b/i,
+      /\beligibility\b/i, /\baccreditation\b/i, /\bregistration\b/i,
+      /\brequirements\b/i, /\bhow to register\b/i, /\bhow to enroll\b/i,
+    ];
+    return informationalPatterns.some(p => p.test(query));
   }
 
   private extractSlots(message: string): void {
@@ -527,105 +540,30 @@ export class ConversationEngine {
 
     const ageMatch = lower.match(/(\d+)\s*(year|month|week|day|yr|mo|wk|dy)s?\s*old/);
     if (ageMatch) {
-      this.state.slots.patientAge = `${ageMatch[1]} ${ageMatch[2]}`;
-      this.sessionState.slotMemory.patientAge = this.state.slots.patientAge;
-      this.sessionState.slotMemory.patientAgeMonths = this.sessionState.normalizeAge(this.state.slots.patientAge);
+      const ageStr = `${ageMatch[1]} ${ageMatch[2]}`;
+      this.sessionState.slotMemory.patientAge = ageStr;
+      this.sessionState.slotMemory.patientAgeMonths = this.sessionState.normalizeAge(ageStr);
     }
 
     const weightMatch = lower.match(/(\d+(?:\.\d+)?)\s*(kg|kilos?|kgs)/);
     if (weightMatch) {
-      this.state.slots.patientWeight = `${weightMatch[1]} kg`;
-      this.sessionState.slotMemory.patientWeight = this.state.slots.patientWeight;
-      this.sessionState.slotMemory.patientWeightKg = this.sessionState.normalizeWeight(this.state.slots.patientWeight);
+      const weightStr = `${weightMatch[1]} kg`;
+      this.sessionState.slotMemory.patientWeight = weightStr;
+      this.sessionState.slotMemory.patientWeightKg = this.sessionState.normalizeWeight(weightStr);
     }
 
-    const durationMatch =
-      lower.match(/(\d+)\s*(day|hour|week|month)s?/) ||
-      lower.match(/since\s+(yesterday|today|last\s+night|this\s+morning)/);
-    if (durationMatch) {
-      this.state.slots.symptomDuration = durationMatch[0];
-    }
+    // Note: symptomDuration not used in new engine; could be removed
 
-    for (const keyword of CLINICAL_KEYWORDS) {
-      if (lower.includes(keyword)) {
-        this.state.slots.chiefComplaint = keyword;
-        this.sessionState.slotMemory.chiefComplaint = keyword;
-        break;
-      }
-    }
-  }
-
-  /**
-   * Replace anaphoric pronouns with the chiefComplaint slot value.
-   */
-  private resolvePronouns(message: string): string {
-    const complaint = this.state.slots.chiefComplaint;
-    if (!complaint) return message;
-
-    const pronounPattern = new RegExp(
-      '\\b(' + Array.from(PRONOUNS).join('|') + ')\\b',
-      'gi'
-    );
-    return message.replace(pronounPattern, complaint);
-  }
-
-  private deduplicateQuery(query: string): string {
-    const seen = new Set<string>();
-    const parts: string[] = [];
-    for (const part of query.split(/\s+/)) {
-      const normalized = part.toLowerCase().replace(/[^\w]/g, '');
-      if (!normalized || seen.has(normalized)) continue;
-      seen.add(normalized);
-      parts.push(part);
-    }
-    return parts.join(' ');
-  }
-
-  private buildSearchQuery(message: string, intent: IntentType): string {
-    let cleaned = this.resolvePronouns(message);
-
-    const parts: string[] = [cleaned];
-    const lower = cleaned.toLowerCase();
-
-    if (intent === 'follow_up' || intent === 'clinical') {
-      if (this.state.slots.chiefComplaint) {
-        parts.push(this.state.slots.chiefComplaint);
-      }
-      if (this.state.slots.patientAge) {
-        parts.push(this.state.slots.patientAge);
-      }
-    }
-
-    if (this.state.lastChunkId && this.hasUnresolvedPronouns(cleaned)) {
-      const lastChunk = this.chunkMap.get(this.state.lastChunkId);
-      if (lastChunk) {
-        const topicTerms = this.getChunkTopicTerms(lastChunk);
-        for (const term of topicTerms.slice(0, 3)) {
-          if (term && !lower.includes(term.toLowerCase())) {
-            parts.push(term);
-          }
+    // Only set chiefComplaint if NOT a purely informational query
+    // OR if there's an explicit patient reference
+    if (!this.isInformationalQuery(message) || this.hasPatientReference(message)) {
+      for (const keyword of CLINICAL_KEYWORDS) {
+        if (lower.includes(keyword)) {
+          this.sessionState.slotMemory.chiefComplaint = keyword;
+          break;
         }
       }
     }
-
-    if (intent === 'follow_up' && this.state.lastChunkId) {
-      const lastChunk = this.chunkMap.get(this.state.lastChunkId);
-      if (lastChunk) {
-        const topicTerms = this.getChunkTopicTerms(lastChunk);
-        for (const term of topicTerms.slice(0, 2)) {
-          if (term && !lower.includes(term.toLowerCase())) {
-            parts.push(term);
-          }
-        }
-      }
-    }
-
-    return this.deduplicateQuery(parts.filter(Boolean).join(' '));
-  }
-
-  private hasUnresolvedPronouns(message: string): boolean {
-    const words = message.toLowerCase().split(/\s+/);
-    return words.some((w) => PRONOUNS.has(w.replace(/[^\w]/g, '')));
   }
 
   private getChunkTopics(chunk: HIVChunk): string[] {
@@ -638,79 +576,6 @@ export class ConversationEngine {
       topics.push(...chunk.trigger_phrases.en.slice(0, 3));
     }
     return topics;
-  }
-
-  private getChunkTopicTerms(chunk: HIVChunk): string[] {
-    const terms: string[] = [];
-    terms.push(chunk.type.replace(/_/g, ' '));
-
-    const enTriggers = chunk.trigger_phrases?.en ?? [];
-    for (const phrase of enTriggers.slice(0, 3)) {
-      terms.push(phrase);
-    }
-
-    const enVariants = chunk.question_variants?.en ?? [];
-    for (const variant of enVariants.slice(0, 2)) {
-      terms.push(variant);
-    }
-
-    const enContent = chunk.content['en'] as Record<string, unknown> | undefined;
-    if (enContent) {
-      if (typeof enContent.title === 'string') terms.push(enContent.title);
-      if (typeof enContent.topic === 'string') terms.push(enContent.topic);
-      if (typeof enContent.primary_question === 'string') terms.push(enContent.primary_question);
-    }
-
-    return terms;
-  }
-
-  private getMeaningfulTerms(query: string): string[] {
-    return query
-      .toLowerCase()
-      .split(/\s+/)
-      .map((t) => t.replace(/[^\w]/g, ''))
-      .filter((t) => t.length >= 3 && !STOP_WORDS.has(t));
-  }
-
-  private isChunkRelevant(chunk: HIVChunk, queryTerms: string[]): boolean {
-    if (queryTerms.length === 0) return false;
-
-    const searchable = [
-      ...(chunk.trigger_phrases?.en ?? []),
-      ...(chunk.question_variants?.en ?? []),
-      chunk.fallback_response ?? '',
-      JSON.stringify(chunk.content),
-    ]
-      .join(' ')
-      .toLowerCase();
-
-    return queryTerms.some((term) => searchable.includes(term));
-  }
-
-  private async findChunk(query: string, intent: IntentType): Promise<HIVChunk | null> {
-    const meaningfulTerms = this.getMeaningfulTerms(query);
-    const isUrgent = intent === 'urgent';
-
-    const minVariantScore = isUrgent ? 5 : MIN_VARIANT_SCORE;
-    const minBm25Score = isUrgent ? 0.5 : MIN_BM25_SCORE;
-
-    const { matches: variantMatches } = variantSearch(query, this.hivFile, 5);
-    if (variantMatches.length > 0 && variantMatches[0].score >= minVariantScore) {
-      const chunk = this.chunkMap.get(variantMatches[0].chunk_id);
-      if (chunk && (isUrgent || this.isChunkRelevant(chunk, meaningfulTerms))) {
-        return chunk;
-      }
-    }
-
-    const bm25Results = bm25Search(query, this.hivFile, 'en', 5);
-    if (bm25Results.length > 0 && bm25Results[0].score >= minBm25Score) {
-      const chunk = this.chunkMap.get(bm25Results[0].chunk_id);
-      if (chunk && (isUrgent || this.isChunkRelevant(chunk, meaningfulTerms))) {
-        return chunk;
-      }
-    }
-
-    return null;
   }
 
   private getFollowUpQuestions(chunk: HIVChunk): string[] {

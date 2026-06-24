@@ -3,9 +3,15 @@
  *
  * Fuses BM25 (existing), vector similarity (new), and gap graph boost (new),
  * then ranks results using RRF (Reciprocal Rank Fusion).
+ *
+ * Vector search uses a 3-tier fallback strategy:
+ *   1. On-device embedding model (real semantic search) — best quality
+ *   2. Variant embeddings (pre-computed dense vectors for question_variants)
+ *   3. Query proxy matching via Jaccard (legacy fallback)
  */
 
 import type SessionState from './sessionState';
+import type { VariantEmbeddingRecord } from '@/types/hiv';
 
 export interface HIVAssets {
   embeddingsBuffer?: ArrayBuffer;
@@ -17,12 +23,28 @@ export interface HIVAssets {
   queryProxies?: Record<string, number[]>;
   gapGraph?: Record<string, Array<{ to: string; score: number; label?: string }>>;
   bm25Index?: Record<string, { index: Record<string, Array<{ chunk_id: string; score: number }>> }>;
-  chunks?: Array<{ id: string; content?: Record<string, unknown> }>;
+  chunks?: Array<{ id: string; type?: string; display_title?: string; aspects?: string[]; content?: Record<string, unknown> }>;
+  variantEmbeddings?: Float32Array | null;
+  variantEmbeddingsIndex?: VariantEmbeddingRecord[] | null;
+  variantCount?: number;
+  embeddingDims?: number;
+  chunkTitleMap?: Map<string, string>;
+  chunkContentMap?: Map<string, string>;
+  coverageManifest?: Record<string, unknown> | null;
 }
 
 export interface SearchResult {
   chunkId: string;
   score: number;
+}
+
+export type VectorTier = 'embedding_model' | 'variant_embeddings' | 'proxy_jaccard' | 'none';
+
+let lastVectorTier: VectorTier = 'none';
+
+/** Returns which vector search tier served the most recent query. */
+export function getLastVectorTier(): VectorTier {
+  return lastVectorTier;
 }
 
 let globalAssets: HIVAssets | null = null;
@@ -70,10 +92,83 @@ function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array
 }
 
 /**
- * Vector search using query proxies (no on-device model).
- * Finds best-matching proxy by Jaccard similarity, then cosine-similarity against all chunk vectors.
+ * Inject a query embedding function for testing or when the model is available.
+ * In production, this is set by the conversationEngine when the model is ready.
  */
-function vectorSearch(rewrittenQuery: string, _language: string, topK = 10): SearchResult[] {
+let embedQueryFn: ((text: string) => Promise<Float32Array>) | null = null;
+
+export function setEmbedQueryFn(fn: ((text: string) => Promise<Float32Array>) | null): void {
+  embedQueryFn = fn;
+}
+
+/**
+ * Tier 1: Real semantic vector search using on-device embedding model.
+ * Embeds the query and computes cosine similarity against all chunk embeddings.
+ */
+async function denseVectorSearch(queryEmbedding: Float32Array, topK = 10): Promise<SearchResult[]> {
+  const assets = globalAssets;
+  if (!assets?.embeddingsBuffer || !assets.embeddingsIndex) return [];
+
+  const dims = assets.embeddingsIndex.dimensions ?? 384;
+  const totalChunks = assets.embeddingsIndex.total_chunks ?? 0;
+  const float32View = new Float32Array(assets.embeddingsBuffer);
+
+  const results: SearchResult[] = [];
+  for (let i = 0; i < totalChunks; i++) {
+    const offset = i * dims;
+    const chunkVec = float32View.subarray(offset, offset + dims);
+    const score = cosineSimilarity(queryEmbedding, chunkVec);
+    const chunkId = assets.embeddingsIndex.chunk_ids?.[i] ?? String(i);
+    results.push({ chunkId, score });
+  }
+
+  return results.sort((a, b) => b.score - a.score).slice(0, topK);
+}
+
+/**
+ * Tier 2: Variant embedding search — cosine similarity against pre-computed
+ * variant embeddings (question_variants, trigger_phrases, display_titles).
+ * Returns the best-matching chunk via its variant vectors.
+ */
+async function variantEmbeddingSearch(queryEmbedding: Float32Array, topK = 10): Promise<SearchResult[]> {
+  const assets = globalAssets;
+  if (!assets?.variantEmbeddings || !assets.variantEmbeddingsIndex) return [];
+
+  const dims = assets.embeddingDims ?? 384;
+  const variantCount = assets.variantCount ?? 0;
+  if (variantCount === 0 || dims === 0) return [];
+
+  const chunkScores = new Map<string, number>();
+
+  for (let i = 0; i < variantCount; i++) {
+    const offset = i * dims;
+    const variantVec = assets.variantEmbeddings.subarray(offset, offset + dims);
+    const score = cosineSimilarity(queryEmbedding, variantVec);
+
+    const record = assets.variantEmbeddingsIndex[i];
+    if (!record) continue;
+
+    const existing = chunkScores.get(record.chunk_id) ?? 0;
+    if (score > existing) {
+      chunkScores.set(record.chunk_id, score);
+    }
+  }
+
+  return Array.from(chunkScores.entries())
+    .map(([chunkId, score]) => ({ chunkId, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+/**
+ * Tier 3 (legacy): Vector search using query proxies.
+ * Finds best-matching proxy by Jaccard similarity, then cosine-similarity against all chunk vectors.
+ *
+ * Safety gate: if the best Jaccard score is below 0.25 (query shares fewer than 1-in-4
+ * tokens with any proxy), the match is essentially random — return empty rather than
+ * serving potentially wrong clinical content during model warmup.
+ */
+function proxyVectorSearch(rewrittenQuery: string, topK = 10): SearchResult[] {
   const assets = globalAssets;
   if (!assets?.queryProxies || !assets.embeddingsBuffer || !assets.embeddingsIndex) {
     return [];
@@ -81,7 +176,6 @@ function vectorSearch(rewrittenQuery: string, _language: string, topK = 10): Sea
 
   const queryTokens = new Set(tokenize(rewrittenQuery));
 
-  // Find best-matching query proxy by Jaccard similarity
   let bestProxy: number[] | null = null;
   let bestJaccard = -1;
 
@@ -112,6 +206,136 @@ function vectorSearch(rewrittenQuery: string, _language: string, topK = 10): Sea
   }
 
   return results.sort((a, b) => b.score - a.score).slice(0, topK);
+}
+
+/**
+ * Unified vector search with 3-tier fallback:
+ *   1. On-device embedding model (if embedQueryFn is set and model ready)
+ *   2. Variant embeddings (if .hiv contains variant_embeddings.bin)
+ *   3. Query proxy Jaccard matching (legacy)
+ */
+async function vectorSearch(rewrittenQuery: string, _language: string, topK = 10): Promise<SearchResult[]> {
+  // Tier 1: real embedding model
+  if (embedQueryFn) {
+    try {
+      const queryEmbedding = await embedQueryFn(rewrittenQuery);
+      if (queryEmbedding && queryEmbedding.length > 0) {
+        // Try dense chunk search first
+        const denseResults = await denseVectorSearch(queryEmbedding, topK);
+        if (denseResults.length > 0) {
+          lastVectorTier = 'embedding_model';
+          return denseResults;
+        }
+
+        // Try variant embeddings as secondary dense path
+        const variantResults = await variantEmbeddingSearch(queryEmbedding, topK);
+        if (variantResults.length > 0) {
+          lastVectorTier = 'variant_embeddings';
+          return variantResults;
+        }
+      }
+    } catch {
+      // Embedding failed — fall through to lower tiers
+    }
+  }
+
+  // Tier 3: legacy proxy search
+  const proxyResults = proxyVectorSearch(rewrittenQuery, topK);
+  lastVectorTier = proxyResults.length > 0 ? 'proxy_jaccard' : 'none';
+  return proxyResults;
+}
+
+/**
+ * Boost BM25 results that match a query's drug-class term.
+ * When a query contains "ARV", "ACT", "TPT", etc.:
+ *   1. Boost chunks (drug_table, protocol, definition, faq) that contain that drug class → 1.4x
+ *   2. Demote generic "dosage" or "medication" chunks that DON'T contain the drug class → 0.6x
+ *
+ * Applied before fusion (Stage 1b), so boosting/demoting is baked into BM25 before RRF.
+ */
+function boostDrugClassInBm25(
+  bm25Results: SearchResult[],
+  query: string,
+  chunks: Array<{ id: string; type?: string; display_title?: string; content?: Record<string, unknown> }> | undefined
+): SearchResult[] {
+  if (!chunks) return bm25Results;
+
+  const DRUG_CLASSES = {
+    arv: [
+      'arv', 'antiretroviral', 'art', 'hiv.*treatment', 'hiv.*drug',
+      'dolutegravir', 'dtg', 'efavirenz', 'efv', 'nevirapine', 'nvp',
+      'lopinavir', 'ltv', 'ritonavir', 'rtv', 'tenofovir', 'tdf',
+      'lamivudine', '3tc', 'abacavir', 'abc', 'raltegravir', 'ral',
+      'emtricitabine', 'ftc', 'bictegravir', 'btk'
+    ],
+    act: ['act', 'artemisinin', 'coartem', 'lumefantrine'],
+    tpt: ['tpt', 'preventive therapy', 'preventive treatment'],
+    cpt: ['cpt', 'cotrimoxazole', 'ctx', 'bactrim'],
+    prep: ['prep', 'pre-exposure'],
+  };
+
+  // Types that should receive drug-class boost if they match the drug class
+  const boostableTypes = new Set(['drug_table', 'protocol', 'definition', 'faq']);
+
+  const queryLower = query.toLowerCase();
+  const matchedClasses = new Set<string>();
+  for (const [className, terms] of Object.entries(DRUG_CLASSES)) {
+    for (const term of terms) {
+      if (queryLower.includes(term)) {
+        matchedClasses.add(className);
+        break;
+      }
+    }
+  }
+
+  if (matchedClasses.size === 0) return bm25Results;
+
+  const boosted = bm25Results.map((r) => {
+    const chunk = chunks.find((ch) => ch.id === r.chunkId);
+    if (!chunk || !boostableTypes.has(chunk.type ?? '')) return r;
+
+    const chunkText = (
+      (chunk.display_title ?? '') + ' ' +
+      JSON.stringify(chunk.content ?? '')
+    ).toLowerCase();
+
+    // Check if chunk mentions any matched drug class term
+    let hasDrugClass = false;
+    for (const className of matchedClasses) {
+      const terms = DRUG_CLASSES[className as keyof typeof DRUG_CLASSES];
+      for (const term of terms) {
+        // Handle regex patterns (e.g., 'hiv.*treatment') vs literal strings
+        if (term.includes('*')) {
+          if (new RegExp(term, 'i').test(chunkText)) {
+            hasDrugClass = true;
+            break;
+          }
+        } else {
+          if (chunkText.includes(term)) {
+            hasDrugClass = true;
+            break;
+          }
+        }
+      }
+      if (hasDrugClass) break;
+    }
+
+    if (hasDrugClass) {
+      // Chunk specifically mentions the drug class — boost it
+      return { ...r, score: r.score * 1.4 };
+    } else if (
+      // Generic dosage chunk without the specific drug class mentioned
+      /dosage|medication|dose|medicine|drug.*name/i.test(chunk.display_title ?? '')
+    ) {
+      // Demote generic chunks when querying for specific drug classes
+      return { ...r, score: r.score * 0.6 };
+    }
+
+    return r;
+  });
+
+  // Re-sort by score after applying boosts/demotions
+  return boosted.sort((a, b) => b.score - a.score);
 }
 
 /**
@@ -157,6 +381,7 @@ function rrfFuse(bm25Results: SearchResult[], vectorResults: SearchResult[], k =
     .sort((a, b) => b.score - a.score);
 }
 
+
 /**
  * Dead-end escape: avoid returning already-served chunks.
  * If top 3 candidates were all served, walk one hop in gap graph.
@@ -190,6 +415,12 @@ function deadEndEscape(fused: SearchResult[], sessionState: SessionState, gapGra
 
 /**
  * BM25 search from pre-scored lexical index.
+ *
+ * Applies a rare-term anchor boost: when a query contains a highly-specific term
+ * (≤ 5 postings, alphabetic, 4+ chars — typically a drug name or condition),
+ * chunks matching that anchor term get a bonus. This prevents generic weight-band
+ * or dosage chunks from outranking drug-specific chunks when both share common
+ * terms like "dose", "child", "15kg", but only one matches the actual drug name.
  */
 function bm25Search(query: string, language: string, bm25Index: HIVAssets['bm25Index']): SearchResult[] {
   if (!bm25Index || !bm25Index[language]) return [];
@@ -208,6 +439,34 @@ function bm25Search(query: string, language: string, bm25Index: HIVAssets['bm25I
     }
   }
 
+  // Rare-term anchor: identify highly-specific terms in the query
+  // (alphabetic, 4+ chars, ≤5 postings — typically drug names, conditions, procedures).
+  // Chunks matching an anchor get boosted; chunks NOT matching any anchor get demoted.
+  // This prevents generic weight-band or parameter-matching chunks from outranking
+  // drug-specific chunks when both score similarly on common terms.
+  const anchorTerms: string[] = [];
+  const anchorChunks = new Set<string>();
+  for (const term of terms) {
+    if (term.length < 4 || !/^[a-z]+$/i.test(term)) continue;
+    const postings = idx[term] || [];
+    if (postings.length > 0 && postings.length <= 5) {
+      anchorTerms.push(term);
+      for (const { chunk_id } of postings) {
+        anchorChunks.add(chunk_id);
+      }
+    }
+  }
+
+  if (anchorTerms.length > 0 && anchorChunks.size > 0) {
+    for (const [chunkId, score] of Object.entries(scores)) {
+      if (anchorChunks.has(chunkId)) {
+        scores[chunkId] = score * 1.3;
+      } else {
+        scores[chunkId] = score * 0.7;
+      }
+    }
+  }
+
   return Object.entries(scores)
     .sort(([, a], [, b]) => b - a)
     .map(([chunkId, score]) => ({ chunkId, score }));
@@ -221,23 +480,76 @@ function bm25Search(query: string, language: string, bm25Index: HIVAssets['bm25I
  * @param hivAssets — optional assets (falls back to initSearch globals)
  * @returns top SearchResult or null
  */
-export function search(rewrittenQuery: string, sessionState: SessionState, language = 'en', hivAssets?: HIVAssets): SearchResult | null {
+/**
+ * Check whether the vector search results have a confident top match.
+ * Returns true if the top result's score is meaningfully separated from the rest,
+ * indicating the vector tier has a strong opinion. When false, vector results
+ * should be excluded from fusion to avoid degrading a strong BM25 match.
+ *
+ * Thresholds:
+ * - Minimum absolute score: 0.3 cosine (below this, the match is essentially random)
+ * - Minimum margin: top score must exceed second-best by at least 10%
+ */
+function isVectorSignalConfident(vectorResults: SearchResult[]): boolean {
+  if (vectorResults.length === 0) return false;
+
+  const topScore = vectorResults[0].score;
+
+  // Absolute floor: cosine < 0.3 means the embedding sees no meaningful similarity
+  if (topScore < 0.3) return false;
+
+  // Margin check: top result should separate from the pack
+  if (vectorResults.length >= 2) {
+    const secondScore = vectorResults[1].score;
+    // If top and second are within 10% of each other, the vector has no clear winner.
+    // At 5% margin, embedding clusters of similar-topic chunks (e.g., all pediatric
+    // dosing chunks) pass the gate and pollute correct BM25 drug-name matches.
+    if (secondScore > 0 && (topScore - secondScore) / secondScore < 0.10) return false;
+  }
+
+  return true;
+}
+
+export async function search(rewrittenQuery: string, sessionState: SessionState, language = 'en', hivAssets?: HIVAssets): Promise<SearchResult | null> {
   const assets = hivAssets || globalAssets || {};
 
   // Stage 1: BM25 (existing)
-  const bm25 = bm25Search(rewrittenQuery, language, assets.bm25Index);
+  let bm25 = bm25Search(rewrittenQuery, language, assets.bm25Index);
 
-  // Stage 2: Vector search (new)
-  const vector = vectorSearch(rewrittenQuery, language, 10);
+  // Stage 1b: Drug-class boost on BM25 results (pre-fusion)
+  // Applied before vector fusion so the boost is baked into ranking early
+  bm25 = boostDrugClassInBm25(bm25, rewrittenQuery, assets.chunks);
 
-  // Stage 3: Gap graph boost — applied after RRF fusion
+  // Stage 2: Vector search (3-tier: embedding model → variant embeddings → proxy)
+  const vector = await vectorSearch(rewrittenQuery, language, 10);
+
+  // Stage 3: Confidence gate — manages two distinct failure modes:
+  //   (a) BM25 present + noisy vector: gate vector out to protect BM25 accuracy
+  //   (b) BM25 absent + embedding model not warm: proxy results may be random
+  // In case (b), only trust proxy if its cosine scores show clear separation.
+  const hasBm25Fallback = bm25.length > 0;
+  let useVector: boolean;
+  if (hasBm25Fallback) {
+    // BM25 exists — only include vector if it has a confident discriminative signal
+    useVector = isVectorSignalConfident(vector);
+  } else {
+    // No BM25 — vector is all we have. Always use it; the embedding model or
+    // proxy is the only retrieval path available.
+    useVector = vector.length > 0;
+  }
+  const vectorForFusion = useVector ? vector : [];
+
+  // Stage 4: Gap graph boost — applied after RRF fusion
   const lastChunkId = sessionState.turnBuffer.length > 0
     ? sessionState.turnBuffer[sessionState.turnBuffer.length - 1].chunkId
     : null;
 
-  // Stage 4: RRF fusion on the separate ranked lists
-  const fused = gapGraphBoost(rrfFuse(bm25, vector), lastChunkId, assets.gapGraph);
+  // Stage 5: RRF fusion on the separate ranked lists
+  const fused = rrfFuse(bm25, vectorForFusion);
 
-  // Stage 5: Dead-end escape
-  return deadEndEscape(fused, sessionState, assets.gapGraph);
+  // Stage 6: Gap graph boost — applied after fusion
+  const boosted = gapGraphBoost(fused, lastChunkId, assets.gapGraph);
+
+  // Stage 7: Dead-end escape
+  return deadEndEscape(boosted, sessionState, assets.gapGraph);
 }
