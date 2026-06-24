@@ -36,17 +36,59 @@ jobs:
     - name: Sync to Android
       run: npx cap sync android
 
+    - name: Decode keystore (if secrets exist)
+      if: secrets.KEYSTORE_BASE64 != null
+      run: |
+        mkdir -p ~/.android
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ~/.android/hiva-release-key.keystore
+
+    - name: Update gradle signing config
+      if: secrets.KEYSTORE_BASE64 != null
+      run: |
+        cat >> android/app/build.gradle << 'EOF'
+
+        android {
+          signingConfigs {
+            release {
+              storeFile file(System.getenv("KEYSTORE_FILE") ?: "~/.android/hiva-release-key.keystore")
+              storePassword System.getenv("KEYSTORE_PASSWORD")
+              keyAlias System.getenv("KEY_ALIAS")
+              keyPassword System.getenv("KEY_PASSWORD")
+            }
+          }
+          buildTypes {
+            release {
+              signingConfig signingConfigs.release
+            }
+          }
+        }
+        EOF
+
     - name: Build Release APK
+      env:
+        KEYSTORE_FILE: ~/.android/hiva-release-key.keystore
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
         cd android
         chmod +x gradlew
         ./gradlew assembleRelease
 
-    - name: Upload APK Artifact
+    - name: Upload Unsigned APK
+      if: secrets.KEYSTORE_BASE64 == null
       uses: actions/upload-artifact@v3
       with:
-        name: hiva-medichat-release-apk
+        name: hiva-medichat-unsigned-apk
         path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+        retention-days: 90
+
+    - name: Upload Signed APK
+      if: secrets.KEYSTORE_BASE64 != null
+      uses: actions/upload-artifact@v3
+      with:
+        name: hiva-medichat-signed-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 90
 
     - name: Create Release
@@ -62,7 +104,6 @@ jobs:
 
           **Build:** ${{ github.run_number }}
           **Commit:** ${{ github.sha }}
-          **Date:** ${{ github.event.head_commit.timestamp }}
 
           ### Features Included
           - Phase 26b: Drug-Class Boost for ARV query specificity
@@ -71,29 +112,36 @@ jobs:
           - Zero regressions
 
           ### APK Details
-          - **Type:** Unsigned release build
           - **Size:** ~123 MB
           - **Target SDK:** 36 (Android 15)
           - **Min SDK:** 24 (Android 7)
 
-          ### Installation
-          #### Option 1: Sideload (Testing)
+          ### Installation Options
+
+          #### ✅ Signed APK (Play Store Ready)
+          Available if keystore secrets are configured.
+          - Ready to upload to Google Play Console
+          - Download: `hiva-medichat-signed-apk`
+
+          #### 🧪 Unsigned APK (Testing/Sideload)
+          Always available.
+          - For testing on your own device
+          - Download: `hiva-medichat-unsigned-apk`
+
+          **Sideload command:**
           ```bash
           adb install app-release-unsigned.apk
           ```
 
-          #### Option 2: Manual Installation
-          - Download APK from artifacts
-          - Transfer to Android device
-          - Tap APK file to install
-          - May need to enable "Unknown sources"
-
-          #### Option 3: Sign for Play Store
+          ### For Signing Your Own
+          If keystore is not yet configured:
           ```bash
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore keystore.jks \
-            app-release-unsigned.apk hiva-key-alias
+            app-release-unsigned.apk your-key-alias
           ```
+
+          See `KEYSTORE_SETUP.md` for full setup instructions.
         draft: false
         prerelease: false
 
