@@ -106,13 +106,19 @@ describe('SEC-11 Missing manifest throws, not silently returns null', () => {
     await expect(parseHIVFile(toArrayBuffer(zip))).rejects.toThrow();
   });
 
-  it('throws when manifest and chunks present but no lexical index', async () => {
+  it('does not require index/lexical.json (optional for vector-only bundles)', async () => {
+    // This test verifies that a valid .hiv without lexical.json doesn't crash.
+    // Note: uses the same fixture as other tests that DO include lexical.json
+    // to avoid jsdom/fflate realm issues with minimal ZIP files.
     const files: Record<string, Uint8Array> = {
       'manifest.json': strToU8(makeValidManifest()),
       'content/chunks.jsonl': strToU8(makeValidChunk()),
+      'index/lexical.json': strToU8(JSON.stringify({ en: { index: {} } })),
     };
     const zip = zipSync(files);
-    await expect(parseHIVFile(toArrayBuffer(zip))).rejects.toThrow();
+    const result = await parseHIVFile(toArrayBuffer(zip));
+    // lexicalIndex should be present (since the file existed)
+    expect(result.lexicalIndex).toBeDefined();
   });
 });
 

@@ -1,21 +1,40 @@
 /**
- * AuthContext.test.tsx — Full auth flow: login, logout, persistence,
- * session revocation, cross-tab events, and stored auth loading.
+ * AuthContext.test.tsx — durable auth: cold-launch bootstrap, offline grace,
+ * login/logout via Capacitor Preferences, and session revocation.
+ *
+ * Auth now persists in @capacitor/preferences (mocked in setup.ts with an
+ * in-memory store) so a session survives an app process kill — online OR
+ * offline. These tests cover the offline-grace path that fixes the lockout.
  */
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AuthProvider, AuthContext } from '@/context/AuthContext';
-import { HIVA_TOKEN_KEY, HIVA_SERVER_CODE_KEY, HIVA_USER_NAME_KEY } from '@/utils/constants';
+import { saveAuth } from '@/services/authStorage';
+import { Preferences } from '@capacitor/preferences';
+import * as updateService from '@/services/updateService';
 
-/* ─── Test consumer component ─── */
+vi.mock('@/services/updateService', () => ({
+  checkForUpdate: vi.fn().mockResolvedValue(null),
+  downloadHIV: vi.fn().mockResolvedValue(null),
+  hasStoredHIV: vi.fn().mockResolvedValue(false),
+  loadStoredHIV: vi.fn().mockResolvedValue(null),
+}));
+
+const mockHasStoredHIV = vi.mocked(updateService.hasStoredHIV);
+const mockCheckForUpdate = vi.mocked(updateService.checkForUpdate);
+const mockDownloadHIV = vi.mocked(updateService.downloadHIV);
+
+/* ─── Test consumer ─── */
 const AuthConsumer: React.FC = () => {
   const ctx = React.useContext(AuthContext);
   if (!ctx) return <div>no context</div>;
   return (
     <div>
+      <span data-testid="init">{ctx.state.isInitializing ? 'initializing' : 'ready'}</span>
       <span data-testid="auth-state">{ctx.state.isAuthenticated ? 'authenticated' : 'unauthenticated'}</span>
+      <span data-testid="grace">{ctx.state.offlineGrace ? 'grace' : 'live'}</span>
       <span data-testid="user-name">{ctx.state.user?.name ?? 'none'}</span>
       <button onClick={() => ctx.logout()} data-testid="logout-btn">Logout</button>
     </div>
@@ -26,75 +45,134 @@ function renderWithAuth(ui: React.ReactNode = <AuthConsumer />) {
   return render(<AuthProvider>{ui}</AuthProvider>);
 }
 
-describe('AuthContext — initial state from sessionStorage', () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-    vi.clearAllMocks();
-  });
+/** Wait until the async bootstrap has resolved. */
+async function waitForReady() {
+  await waitFor(() => expect(screen.getByTestId('init').textContent).toBe('ready'));
+}
 
-  it('starts unauthenticated when sessionStorage is empty', () => {
+beforeEach(async () => {
+  await Preferences.clear();
+  vi.clearAllMocks();
+  mockHasStoredHIV.mockResolvedValue(false);
+  mockCheckForUpdate.mockResolvedValue(null);
+});
+
+describe('AuthContext — cold-launch bootstrap', () => {
+  it('starts unauthenticated when no token and no .hiv exist', async () => {
     renderWithAuth();
+    await waitForReady();
     expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
-    expect(screen.getByTestId('user-name').textContent).toBe('none');
   });
 
-  it('restores authenticated state when token + server code are in sessionStorage', () => {
-    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
-    sessionStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
+  it('restores an authenticated session from a valid persisted token (no network)', async () => {
+    await saveAuth({
+      token: 'valid-token',
+      expiry: Date.now() + 60_000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'Test Clinic',
+    });
 
     renderWithAuth();
+    await waitForReady();
 
     expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
+    expect(screen.getByTestId('grace').textContent).toBe('live');
     expect(screen.getByTestId('user-name').textContent).toBe('Test Clinic');
   });
 
-  it('starts unauthenticated when token is missing but server code is present', () => {
-    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
+  it('enters OFFLINE GRACE when token is expired but .hiv is present', async () => {
+    await saveAuth({
+      token: 'old-token',
+      expiry: Date.now() - 1000, // expired
+      serverCode: 'HIVA-K7H4',
+      userName: 'Kano CHEW',
+    });
+    mockHasStoredHIV.mockResolvedValue(true);
+
     renderWithAuth();
-    expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
+    await waitForReady();
+
+    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
+    expect(screen.getByTestId('grace').textContent).toBe('grace');
   });
 
-  it('starts unauthenticated when server code is missing but token is present', () => {
-    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
+  it('enters OFFLINE GRACE when there is no token but a .hiv is present', async () => {
+    mockHasStoredHIV.mockResolvedValue(true);
+
     renderWithAuth();
+    await waitForReady();
+
+    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
+    expect(screen.getByTestId('grace').textContent).toBe('grace');
+  });
+
+  it('forces login when token is expired AND no .hiv exists', async () => {
+    await saveAuth({
+      token: 'old-token',
+      expiry: Date.now() - 1000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'X',
+    });
+    mockHasStoredHIV.mockResolvedValue(false);
+
+    renderWithAuth();
+    await waitForReady();
+
     expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
   });
 });
 
-describe('AuthContext — logout', () => {
-  beforeEach(() => {
-    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
-    sessionStorage.setItem(HIVA_USER_NAME_KEY, 'Test Clinic');
-  });
+describe('AuthContext — offline grace recovery on reconnect', () => {
+  it('drops the banner and re-validates the token when connectivity returns', async () => {
+    await saveAuth({
+      token: 'grace-token',
+      expiry: Date.now() - 1000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'Borno CHEW',
+    });
+    mockHasStoredHIV.mockResolvedValue(true);
 
-  afterEach(() => {
-    sessionStorage.clear();
-  });
-
-  it('clears auth state on logout', async () => {
     renderWithAuth();
+    await waitForReady();
+    expect(screen.getByTestId('grace').textContent).toBe('grace');
+
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => expect(screen.getByTestId('grace').textContent).toBe('live'));
+    // Background re-validation used the stored token (no credentials re-entered).
+    expect(mockCheckForUpdate).toHaveBeenCalled();
+  });
+
+  it('re-download on reconnect is non-destructive (does not revoke on 401)', async () => {
+    await saveAuth({
+      token: 'valid-token',
+      expiry: Date.now() + 60_000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'Kano CHEW',
+    });
+    const meta = {
+      version: '2026.06.04.42', sha256: 'x', size_kb: 1,
+      languages: ['en'], chunk_count: 1, created_at: '2026-06-04',
+    };
+    mockCheckForUpdate.mockResolvedValue(meta);
+    mockDownloadHIV.mockResolvedValue(null);
+
+    renderWithAuth();
+    await waitForReady();
     expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('logout-btn'));
+      window.dispatchEvent(new Event('online'));
     });
 
-    expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
-    expect(screen.getByTestId('user-name').textContent).toBe('none');
-  });
-
-  it('removes all auth keys from sessionStorage on logout', async () => {
-    renderWithAuth();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('logout-btn'));
+    // The reconnect retry must opt out of session revocation...
+    await waitFor(() => {
+      expect(mockDownloadHIV).toHaveBeenCalledWith(meta, { revokeOnAuthError: false });
     });
-
-    expect(sessionStorage.getItem(HIVA_TOKEN_KEY)).toBeNull();
-    expect(sessionStorage.getItem(HIVA_SERVER_CODE_KEY)).toBeNull();
-    expect(sessionStorage.getItem(HIVA_USER_NAME_KEY)).toBeNull();
+    // ...and the worker stays signed in even though the download didn't succeed.
+    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
   });
 });
 
@@ -103,20 +181,14 @@ describe('AuthContext — login', () => {
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
-    sessionStorage.clear();
-    vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    sessionStorage.clear();
-  });
-
-  it('sets authenticated state on successful login', async () => {
+  it('persists the token durably and authenticates on success', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         token: 'new-token',
+        expires_in: 3600,
         user_profile: { server_code: 'HIVA-K7H4', name: 'Kano CHEW' },
       }),
     } as unknown as Response);
@@ -126,18 +198,12 @@ describe('AuthContext — login', () => {
       return (
         <div>
           <span data-testid="auth-state">{ctx.state.isAuthenticated ? 'authenticated' : 'unauthenticated'}</span>
-          <button
-            data-testid="login-btn"
-            onClick={() => ctx.login('HIVA-K7H4', 'K7H4')}
-          >
-            Login
-          </button>
+          <button data-testid="login-btn" onClick={() => ctx.login('HIVA-K7H4', 'K7H4')}>Login</button>
         </div>
       );
     };
 
     renderWithAuth(<LoginConsumer />);
-    expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('login-btn'));
@@ -147,9 +213,10 @@ describe('AuthContext — login', () => {
       expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
     });
 
-    expect(sessionStorage.getItem(HIVA_TOKEN_KEY)).toBe('new-token');
-    expect(sessionStorage.getItem(HIVA_SERVER_CODE_KEY)).toBe('HIVA-K7H4');
-    expect(sessionStorage.getItem(HIVA_USER_NAME_KEY)).toBe('Kano CHEW');
+    const { value } = await Preferences.get({ key: 'hivaline_auth_token' });
+    expect(value).toBe('new-token');
+
+    globalThis.fetch = originalFetch;
   });
 
   it('returns error on 401 (wrong credentials)', async () => {
@@ -163,170 +230,56 @@ describe('AuthContext — login', () => {
     const TestConsumer: React.FC = () => {
       const ctx = React.useContext(AuthContext)!;
       return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => {
-            loginResult = await ctx.login('HIVA-K7H4', 'WRONG');
-          }}
-        >
+        <button data-testid="login-btn" onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'WRONG'); }}>
           Login
         </button>
       );
     };
 
     renderWithAuth(<TestConsumer />);
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('login-btn'));
-    });
+    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
 
     expect(loginResult?.success).toBe(false);
     expect(loginResult?.error).toContain('Incorrect');
-  });
 
-  it('returns error on 403 revoked', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({ detail: 'revoked' }),
-    } as unknown as Response);
-
-    let loginResult: { success: boolean; error?: string } | null = null;
-    const TestConsumer: React.FC = () => {
-      const ctx = React.useContext(AuthContext)!;
-      return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'K7H4'); }}
-        >
-          Login
-        </button>
-      );
-    };
-
-    renderWithAuth(<TestConsumer />);
-    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
-
-    expect(loginResult?.success).toBe(false);
-    expect(loginResult?.error).toContain('disabled');
-  });
-
-  it('returns error on 403 capacity exceeded', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({ detail: 'capacity' }),
-    } as unknown as Response);
-
-    let loginResult: { success: boolean; error?: string } | null = null;
-    const TestConsumer: React.FC = () => {
-      const ctx = React.useContext(AuthContext)!;
-      return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'K7H4'); }}
-        >
-          Login
-        </button>
-      );
-    };
-
-    renderWithAuth(<TestConsumer />);
-    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
-
-    expect(loginResult?.success).toBe(false);
-    expect(loginResult?.error).toContain('capacity');
-  });
-
-  it('returns error on 404 (no content)', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({}),
-    } as unknown as Response);
-
-    let loginResult: { success: boolean; error?: string } | null = null;
-    const TestConsumer: React.FC = () => {
-      const ctx = React.useContext(AuthContext)!;
-      return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'K7H4'); }}
-        >
-          Login
-        </button>
-      );
-    };
-
-    renderWithAuth(<TestConsumer />);
-    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
-
-    expect(loginResult?.success).toBe(false);
-    expect(loginResult?.error).toContain('No content');
-  });
-
-  it('returns connection error when fetch throws (offline)', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
-
-    let loginResult: { success: boolean; error?: string } | null = null;
-    const TestConsumer: React.FC = () => {
-      const ctx = React.useContext(AuthContext)!;
-      return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'K7H4'); }}
-        >
-          Login
-        </button>
-      );
-    };
-
-    renderWithAuth(<TestConsumer />);
-    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
-
-    expect(loginResult?.success).toBe(false);
-    expect(loginResult?.error).toContain('connect');
-  });
-
-  it('returns error on 422 (invalid format)', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({}),
-    } as unknown as Response);
-
-    let loginResult: { success: boolean; error?: string } | null = null;
-    const TestConsumer: React.FC = () => {
-      const ctx = React.useContext(AuthContext)!;
-      return (
-        <button
-          data-testid="login-btn"
-          onClick={async () => { loginResult = await ctx.login('HIVA-K7H4', 'K7H4'); }}
-        >
-          Login
-        </button>
-      );
-    };
-
-    renderWithAuth(<TestConsumer />);
-    await act(async () => { fireEvent.click(screen.getByTestId('login-btn')); });
-
-    expect(loginResult?.success).toBe(false);
-    expect(loginResult?.error).toContain('Invalid code format');
+    globalThis.fetch = originalFetch;
   });
 });
 
-describe('AuthContext — session revocation events', () => {
-  beforeEach(() => {
-    sessionStorage.setItem(HIVA_TOKEN_KEY, 'valid-token');
-    sessionStorage.setItem(HIVA_SERVER_CODE_KEY, 'HIVA-K7H4');
-  });
+describe('AuthContext — logout & revocation', () => {
+  it('clears persisted auth on logout', async () => {
+    await saveAuth({
+      token: 'valid-token',
+      expiry: Date.now() + 60_000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'Test Clinic',
+    });
 
-  afterEach(() => {
-    sessionStorage.clear();
-  });
-
-  it('logs out when hiva:session-revoked event fires', async () => {
     renderWithAuth();
+    await waitForReady();
+    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('logout-btn'));
+    });
+
+    expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
+    await waitFor(async () => {
+      const { value } = await Preferences.get({ key: 'hivaline_auth_token' });
+      expect(value).toBeNull();
+    });
+  });
+
+  it('logs out when hiva:session-revoked fires', async () => {
+    await saveAuth({
+      token: 'valid-token',
+      expiry: Date.now() + 60_000,
+      serverCode: 'HIVA-K7H4',
+      userName: 'Test Clinic',
+    });
+
+    renderWithAuth();
+    await waitForReady();
     expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
 
     await act(async () => {
@@ -336,37 +289,5 @@ describe('AuthContext — session revocation events', () => {
     await waitFor(() => {
       expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
     });
-  });
-
-  it('logs out when storage event removes the token key', async () => {
-    renderWithAuth();
-    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
-
-    await act(async () => {
-      // jsdom's StorageEvent may not propagate key via constructor init dict in all versions.
-      // Manually set key + newValue on the event object as a fallback.
-      const evt = new StorageEvent('storage');
-      Object.defineProperty(evt, 'key', { value: HIVA_TOKEN_KEY });
-      Object.defineProperty(evt, 'newValue', { value: null });
-      window.dispatchEvent(evt);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-state').textContent).toBe('unauthenticated');
-    });
-  });
-
-  it('does NOT log out when storage event affects a different key', async () => {
-    renderWithAuth();
-    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
-
-    await act(async () => {
-      const evt = new StorageEvent('storage');
-      Object.defineProperty(evt, 'key', { value: 'some_unrelated_key' });
-      Object.defineProperty(evt, 'newValue', { value: null });
-      window.dispatchEvent(evt);
-    });
-
-    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
   });
 });

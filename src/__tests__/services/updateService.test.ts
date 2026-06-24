@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
+import { verifyHivSignature, getTrustedPublicKeyB64 } from '@/utils/security';
 
 /* ─── Helpers ─── */
 
@@ -243,6 +244,30 @@ describe('updateService — downloadHIV', () => {
     });
     expect(result).toBeNull();
   });
+
+  it('throws HivAuthError WITHOUT revoking the session when revokeOnAuthError=false', async () => {
+    let sessionRevokedFired = false;
+    const handler = () => { sessionRevokedFired = true; };
+    window.addEventListener('hiva:session-revoked', handler);
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    } as unknown as Response);
+
+    const { downloadHIV, HivAuthError } = await import('@/services/updateService');
+
+    await expect(
+      downloadHIV(
+        { version: '1.0.0', sha256: 'abc', size_kb: 1, languages: ['en'], chunk_count: 0, created_at: '2024-01-01' },
+        { revokeOnAuthError: false }
+      )
+    ).rejects.toBeInstanceOf(HivAuthError);
+
+    window.removeEventListener('hiva:session-revoked', handler);
+    // Manual flow must NOT log the worker out.
+    expect(sessionRevokedFired).toBe(false);
+  });
 });
 
 describe('updateService — loadStoredHIV', () => {
@@ -257,15 +282,13 @@ describe('updateService — loadStoredHIV', () => {
   });
 });
 
-describe('SEC-20 Signature verification bypass (documented risk)', () => {
-  it('documents: .hiv files without signature/ entries are accepted as valid', async () => {
-    // verifySignature() returns true when sig.bin and pubkey.bin are absent.
-    // This allows unsigned development builds to be loaded.
-    // RISK: A compromised server could serve unsigned content.
-    // Current behavior is intentional for dev — document it with a test.
-    const { zip } = makeZipBuffer(); // no signature/ files
-    const hasNoSig = !Object.keys(zipSync({})).some((k) => k.includes('signature/'));
-    expect(hasNoSig).toBe(true);
-    // The actual verifySignature function is internal; behavior tested via downloadHIV
+describe('SEC-20 Signature verification (fail-closed)', () => {
+  it('rejects unsigned and tamper-keyed .hiv files against the hardcoded trust anchor', () => {
+    // FIX 4: signatures are verified against a HARDCODED public key, and the
+    // in-file pubkey.bin is ignored. Unsigned files, attacker-keyed files, and
+    // a missing trust anchor all fail closed. See security/signature.test.ts for
+    // the full keypair-based coverage; this documents that the bypass is gone.
+    const { zip } = makeZipBuffer(); // no signature/ entries
+    expect(verifyHivSignature(zip, getTrustedPublicKeyB64())).toBe(false);
   });
 });

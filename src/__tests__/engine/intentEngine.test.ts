@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { classifyIntent, probeSentiment, detectGaps, INTENT_PATTERNS } from '@/engine/intentEngine';
+import { classifyIntent, probeSentiment, detectGaps, isAmbiguousInput, INTENT_PATTERNS } from '@/engine/intentEngine';
 import SessionState from '@/engine/sessionState';
 
 describe('classifyIntent', () => {
@@ -83,12 +83,64 @@ describe('classifyIntent', () => {
     expect(classifyIntent('good morning')).toBe('GREETING');
   });
 
-  it('classifies CLINICAL: "my patient has fever"', () => {
-    expect(classifyIntent('my patient has fever')).toBe('CLINICAL');
+  it('classifies HEADING_LOOKUP: "malaria treatment"', () => {
+    expect(classifyIntent('malaria treatment')).toBe('HEADING_LOOKUP');
   });
 
-  it('classifies CLINICAL: "malaria treatment"', () => {
-    expect(classifyIntent('malaria treatment')).toBe('CLINICAL');
+  it('classifies HEADING_LOOKUP: "my patient has fever"', () => {
+    expect(classifyIntent('my patient has fever')).toBe('HEADING_LOOKUP');
+  });
+
+  it('classifies HEADING_LOOKUP: "Outbreak Preparedness and Response"', () => {
+    expect(classifyIntent('Outbreak Preparedness and Response')).toBe('HEADING_LOOKUP');
+  });
+
+  it('classifies CLINICAL not HEADING_LOOKUP: "whats ANC?"', () => {
+    // "whats" has a question-word prefix so isAmbiguousInput is false;
+    // but it also does not match the DEFINE regex, so it falls to CLINICAL
+    expect(classifyIntent('whats ANC?')).toBe('CLINICAL');
+  });
+});
+
+describe('isAmbiguousInput', () => {
+  it('returns true for short topic-like input without verb', () => {
+    expect(isAmbiguousInput('malaria')).toBe(true);
+  });
+
+  it('returns true for 5-token input without verb', () => {
+    expect(isAmbiguousInput('Outbreak Preparedness and Response')).toBe(true);
+  });
+
+  it('returns false for input with question word', () => {
+    expect(isAmbiguousInput('what is malaria')).toBe(false);
+  });
+
+  it('returns false for input with verb', () => {
+    expect(isAmbiguousInput('tell me about malaria')).toBe(false);
+  });
+
+  it('returns false for long input', () => {
+    expect(isAmbiguousInput('my patient has malaria for three days')).toBe(false);
+  });
+
+  it('returns true for single word topic', () => {
+    expect(isAmbiguousInput('ANC')).toBe(true);
+  });
+
+  it('returns false for input starting with question word', () => {
+    expect(isAmbiguousInput('whats ANC?')).toBe(false);
+  });
+
+  it('returns true for short phrase without verb', () => {
+    expect(isAmbiguousInput('newborn care')).toBe(true);
+  });
+
+  it('returns false for input with how', () => {
+    expect(isAmbiguousInput('how to treat')).toBe(false);
+  });
+
+  it('returns true for 5-token heading without verb', () => {
+    expect(isAmbiguousInput('Basic Emergency Obstetric Care')).toBe(true);
   });
 });
 
@@ -164,7 +216,7 @@ describe('detectGaps', () => {
 });
 
 describe('INTENT_PATTERNS', () => {
-  it('has 9 intent patterns defined', () => {
-    expect(Object.keys(INTENT_PATTERNS)).toHaveLength(9);
+  it('has 10 intent patterns defined', () => {
+    expect(Object.keys(INTENT_PATTERNS)).toHaveLength(10);
   });
 });

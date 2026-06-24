@@ -34,6 +34,10 @@ export class SessionState {
   sentimentHistory: Sentiment[];
   currentTopic: string | null;
   turnCount: number;
+  lastClosing: string | null;
+  lastChunkId: string | null;
+  lastOpener: string | null;
+  lastChiefComplaint: string | null;
 
   constructor() {
     this.turnBuffer = [];
@@ -53,6 +57,10 @@ export class SessionState {
     this.sentimentHistory = [];
     this.currentTopic = null;
     this.turnCount = 0;
+    this.lastClosing = null;
+    this.lastChunkId = null;
+    this.lastOpener = null;
+    this.lastChiefComplaint = null;
   }
 
   /**
@@ -113,6 +121,8 @@ export class SessionState {
     this.currentTopic = newTopic;
     this.coveredAspects.clear();
     this.pendingGaps = [];
+    // Clear chiefComplaint on topic shift — new topic = likely different clinical situation
+    this.slotMemory.chiefComplaint = null;
   }
 
   /**

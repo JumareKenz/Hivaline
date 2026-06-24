@@ -5,6 +5,21 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
+// Mock @capacitor/preferences with an in-memory store so authStorage is
+// deterministic in jsdom (no native bridge, no localStorage prefixing quirks).
+vi.mock('@capacitor/preferences', () => {
+  let store: Record<string, string> = {};
+  return {
+    Preferences: {
+      get: vi.fn(async ({ key }: { key: string }) => ({ value: key in store ? store[key] : null })),
+      set: vi.fn(async ({ key, value }: { key: string; value: string }) => { store[key] = value; }),
+      remove: vi.fn(async ({ key }: { key: string }) => { delete store[key]; }),
+      clear: vi.fn(async () => { store = {}; }),
+      keys: vi.fn(async () => ({ keys: Object.keys(store) })),
+    },
+  };
+});
+
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -18,9 +18,82 @@ import type {
   HIVFile,
   SQLiteDatabase,
   QueryExecResult,
+  VariantEmbeddingRecord,
 } from '@/types/hiv';
 
 let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null;
+
+/* ─── Capabilities Detection ─── */
+
+/**
+ * Flags indicating which optional features the loaded .hiv file supports.
+ * Run detectCapabilities() immediately after parseHIVFile() to populate.
+ */
+export interface HivCapabilities {
+  hasEmbeddings: boolean;
+  hasLexicalIndex: boolean;
+  hasGapGraph: boolean;
+  hasCoverageManifest: boolean;
+  hasAcronymChunks: boolean;
+  hasHeadingChunks: boolean;
+  hasQueryProxies: boolean;
+  schemaVersion: string;
+}
+
+/**
+ * Inspect a parsed HIVFile and return capability flags.
+ * Logs a single structured warning if acronym/heading chunks are absent.
+ *
+ * @param hivFile — parsed .hiv result from parseHIVFile()
+ * @returns HivCapabilities snapshot
+ */
+export function detectCapabilities(hivFile: HIVFile): HivCapabilities {
+  const hasEmbeddings = hivFile.embeddings.length > 0 && hivFile.embeddings[0]?.length > 0;
+  const hasLexicalIndex = hivFile.manifest.retrievalCapabilities?.hasLexicalIndex
+    ?? (hivFile.lexicalIndex !== undefined && Object.keys(hivFile.lexicalIndex).length > 0);
+  const hasQueryProxies = hivFile.queryProxies !== undefined && Object.keys(hivFile.queryProxies).length > 0;
+
+  const rules = hivFile.rules as Record<string, unknown>;
+  const manifestExt = hivFile.manifest as unknown as Record<string, unknown>;
+
+  const rawGapGraph =
+    (rules.gap_graph as Record<string, unknown> | undefined) ??
+    (manifestExt.gap_graph as Record<string, unknown> | undefined);
+  const hasGapGraph = rawGapGraph !== undefined && rawGapGraph !== null && Object.keys(rawGapGraph).length > 0;
+
+  const rawCoverage =
+    (rules.coverage_manifest as Record<string, unknown> | undefined) ??
+    (manifestExt.coverage_manifest as Record<string, unknown> | undefined);
+  const hasCoverageManifest = rawCoverage !== undefined && rawCoverage !== null && Object.keys(rawCoverage).length > 0;
+
+  const hasAcronymChunks = hivFile.chunks.some((c) => {
+    const meta = (c as unknown as Record<string, unknown>).extra_metadata as Record<string, unknown> | undefined;
+    return meta?.is_acronym_entry === true;
+  });
+
+  const hasHeadingChunks = hivFile.chunks.some((c) => {
+    const meta = (c as unknown as Record<string, unknown>).extra_metadata as Record<string, unknown> | undefined;
+    return meta?.is_heading_entry === true;
+  });
+
+  const schemaVersion = hivFile.manifest.version ?? 'unknown';
+
+  if (!hasAcronymChunks || !hasHeadingChunks) {
+    // eslint-disable-next-line no-console
+    console.warn('HIVA: loaded .hiv lacks acronym/heading chunks — recompile recommended');
+  }
+
+  return {
+    hasEmbeddings,
+    hasLexicalIndex,
+    hasGapGraph,
+    hasCoverageManifest,
+    hasAcronymChunks,
+    hasHeadingChunks,
+    hasQueryProxies,
+    schemaVersion,
+  };
+}
 
 /**
  * Unzip a .hiv ArrayBuffer and extract all known files.
@@ -36,11 +109,25 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
     throw new Error('.hiv file contains no valid chunks — all entries have empty content');
   }
 
-  const { embeddings, meta: embeddingMeta } = parseEmbeddings(files);
+  const { embeddings, meta: embeddingMeta, chunkIds } = parseEmbeddings(files);
   const lexicalIndex = parseLexicalIndex(files);
   const sources = parseSources(files);
   const rules = parseRules(files);
   const i18n = parseI18n(files);
+  const gapGraph = parseGapGraph(files);
+  const coverageManifest = parseCoverageManifest(files);
+
+  // Query proxies (Tier 3 fallback for vector search when embedding model isn't warm)
+  const queryProxies = parseQueryProxies(files);
+
+  // Variant embeddings (dense vector search)
+  const { matrix: variantEmbeddings, count: variantCount, dims: embeddingDims } = parseVariantEmbeddings(files);
+  const variantEmbeddingsIndex = parseVariantEmbeddingsIndex(files);
+
+  if (!variantEmbeddings) {
+    // eslint-disable-next-line no-console
+    console.warn('[HIVA] variant_embeddings.bin not found — falling back to query proxy search. Recompile for best results.');
+  }
 
   // Try to load SQLite database if present
   let db: SQLiteDatabase | undefined;
@@ -50,16 +137,31 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
     /* No SQLite database found, using JSON fallback */
   }
 
+  // Merge gap_graph and coverage_manifest into rules for backward compatibility
+  if (gapGraph && Object.keys(gapGraph).length > 0) {
+    rules.gap_graph = gapGraph;
+  }
+  if (coverageManifest && Object.keys(coverageManifest).length > 0) {
+    rules.coverage_manifest = coverageManifest;
+  }
+
   return {
     manifest,
     chunks,
     embeddings,
     embeddingMeta,
+    embeddingChunkIds: chunkIds,
     lexicalIndex,
     sources,
     rules,
     i18n,
+    gapGraph,
     db,
+    variantEmbeddings,
+    variantEmbeddingsIndex,
+    variantCount,
+    embeddingDims,
+    queryProxies,
   };
 }
 
@@ -124,68 +226,94 @@ function isValidChunk(chunk: HIVChunk): boolean {
 
 function parseEmbeddings(
   files: Record<string, Uint8Array>
-): { embeddings: Int8Array[]; meta: import('@/types/hiv').EmbeddingMetadata[] } {
+): { embeddings: Int8Array[]; meta: import('@/types/hiv').EmbeddingMetadata[]; chunkIds: string[] } {
   const raw = getFile(files, 'index/embeddings.bin');
-  if (!raw) return { embeddings: [], meta: [] }; // Optional: BM25-only mode
+  if (!raw) {
+    console.log('[parseEmbeddings] embeddings.bin not found');
+    return { embeddings: [], meta: [], chunkIds: [] }; // Optional: BM25-only mode
+  }
 
-  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-  const chunkCount = view.getUint32(0, true);      // number of chunks (informational)
-  const dim = view.getUint32(4, true);             // embedding dimension
-  const embeddingsCount = view.getUint32(8, true); // total embeddings
-  const metadataLen = view.getUint32(12, true);    // JSON metadata length
-
-  let offset = 16; // header is 16 bytes (4 uint32s)
-
-  // Parse metadata JSON
-  let meta: import('@/types/hiv').EmbeddingMetadata[] = [];
-  if (metadataLen > 0 && offset + metadataLen <= raw.byteLength) {
-    const metaBytes = raw.slice(offset, offset + metadataLen);
+  // Parse embeddings_index.json to get chunk ID mapping
+  const indexRaw = getFile(files, 'index/embeddings_index.json');
+  let chunkIds: string[] = [];
+  if (indexRaw) {
     try {
-      const metaStr = strFromU8(metaBytes);
-      meta = JSON.parse(metaStr) as import('@/types/hiv').EmbeddingMetadata[];
-    } catch {
-      /* Failed to parse embeddings metadata JSON — continue without metadata */
+      const indexData = JSON.parse(strFromU8(indexRaw)) as { index: Record<string, string> };
+      const indexMap = indexData.index;
+      // Convert object {0: "uuid", 1: "uuid"} to array ["uuid", "uuid"]
+      chunkIds = Object.keys(indexMap).sort((a, b) => Number(a) - Number(b)).map(k => indexMap[k]);
+    } catch (err) {
+      console.warn('[parseEmbeddings] Failed to parse embeddings_index.json:', err);
     }
   }
-  offset += metadataLen;
 
-  // CRITICAL VALIDATION: metadata count must match embeddings count
-  // If they mismatch, the binary is corrupt — fall back to BM25-only
-  if (meta.length > 0 && meta.length !== embeddingsCount) {
-    return { embeddings: [], meta: [] };
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const chunkCount = view.getUint32(0, true);  // number of chunks
+  const dim = view.getUint32(4, true);         // embedding dimension
+
+  // Simple format: [uint32: count][uint32: dim][float32: embeddings...]
+  // The embeddings start at offset 8 (after the 2 uint32 headers)
+  const offset = 8;
+  const expectedBytes = chunkCount * dim * 4; // float32 = 4 bytes per value
+
+  if (offset + expectedBytes > raw.byteLength) {
+    console.log('[parseEmbeddings] VALIDATION FAILED: file too small');
+    return { embeddings: [], meta: [], chunkIds: [] };
   }
 
-  // CRITICAL VALIDATION: ensure we don't read past the buffer
-  const expectedDataBytes = embeddingsCount * dim;
-  if (offset + expectedDataBytes > raw.byteLength) {
-    return { embeddings: [], meta: [] };
-  }
-
-  // Sanity check: chunk count should be positive if there are embeddings
-  if (chunkCount === 0 && embeddingsCount > 0) {
-    return { embeddings: [], meta: [] };
-  }
-
-  // Parse quantized embeddings: int8[embeddingsCount][dim]
-  const data = new Int8Array(raw.buffer, raw.byteOffset + offset);
+  // Read float32 embeddings and convert to Int8Array (quantize to -127..127)
+  const floatData = new Float32Array(raw.buffer, raw.byteOffset + offset, chunkCount * dim);
   const embeddings: Int8Array[] = [];
-  for (let i = 0; i < embeddingsCount; i++) {
-    embeddings.push(data.slice(i * dim, (i + 1) * dim));
+
+  for (let i = 0; i < chunkCount; i++) {
+    const chunkFloats = floatData.slice(i * dim, (i + 1) * dim);
+    const quantized = new Int8Array(dim);
+
+    // Quantize float32 [-1, 1] to int8 [-127, 127]
+    for (let j = 0; j < dim; j++) {
+      quantized[j] = Math.round(Math.max(-1, Math.min(1, chunkFloats[j])) * 127);
+    }
+
+    embeddings.push(quantized);
   }
 
-  return { embeddings, meta };
+  return { embeddings, meta: [], chunkIds };
 }
 
-function parseLexicalIndex(files: Record<string, Uint8Array>): HIVLexicalIndex {
+function parseLexicalIndex(files: Record<string, Uint8Array>): HIVLexicalIndex | undefined {
   const raw = getFile(files, 'index/lexical.json');
-  if (!raw) throw new Error('.hiv missing index/lexical.json');
-  return JSON.parse(strFromU8(raw)) as HIVLexicalIndex;
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(strFromU8(raw)) as HIVLexicalIndex;
+  } catch {
+    return undefined;
+  }
 }
 
 function parseSources(files: Record<string, Uint8Array>): HIVSources {
   const raw = getFile(files, 'content/sources.json');
   if (!raw) return { sources: [] };
   return JSON.parse(strFromU8(raw)) as HIVSources;
+}
+
+function parseGapGraph(files: Record<string, Uint8Array>): Record<string, Array<{ to: string; score: number; label?: string }>> | undefined {
+  const raw = getFile(files, 'index/gap_graph.json');
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(strFromU8(raw)) as Record<string, Array<{ to: string; score: number; label?: string }>>;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseCoverageManifest(files: Record<string, Uint8Array>): Record<string, unknown> | undefined {
+  const raw = getFile(files, 'index/coverage_manifest.json');
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(strFromU8(raw)) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
 }
 
 function parseRules(files: Record<string, Uint8Array>): Record<string, unknown> {
@@ -208,6 +336,59 @@ function parseI18n(files: Record<string, Uint8Array>): Record<string, HIVI18N> {
     }
   }
   return i18n;
+}
+
+function parseQueryProxies(files: Record<string, Uint8Array>): Record<string, number[]> | undefined {
+  const raw = getFile(files, 'index/query_proxies.json');
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(strFromU8(raw));
+    // Format: { "en": [ { pattern: string, vector: number[] }, ... ] }
+    const entries = parsed?.en ?? parsed?.entries ?? [];
+    if (Array.isArray(entries)) {
+      const result: Record<string, number[]> = {};
+      for (const entry of entries) {
+        if (entry.pattern && Array.isArray(entry.vector)) {
+          result[entry.pattern] = entry.vector;
+        }
+      }
+      return Object.keys(result).length > 0 ? result : undefined;
+    }
+    // Fallback: already in Record<string, number[]> format
+    if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, number[]>;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseVariantEmbeddings(files: Record<string, Uint8Array>): { matrix: Float32Array | null; count: number; dims: number } {
+  const raw = getFile(files, 'index/variant_embeddings.bin');
+  if (!raw) return { matrix: null, count: 0, dims: 0 };
+
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const N = view.getInt32(0, true);
+  const D = view.getInt32(4, true);
+
+  const expectedBytes = 8 + N * D * 4;
+  if (raw.byteLength < expectedBytes) {
+    return { matrix: null, count: 0, dims: 0 };
+  }
+
+  const matrix = new Float32Array(raw.buffer, raw.byteOffset + 8, N * D);
+  return { matrix, count: N, dims: D };
+}
+
+function parseVariantEmbeddingsIndex(files: Record<string, Uint8Array>): VariantEmbeddingRecord[] | null {
+  const raw = getFile(files, 'index/variant_embeddings_index.json');
+  if (!raw) return null;
+  try {
+    return JSON.parse(strFromU8(raw)) as VariantEmbeddingRecord[];
+  } catch {
+    return null;
+  }
 }
 
 async function parseDatabase(files: Record<string, Uint8Array>): Promise<SQLiteDatabase | undefined> {

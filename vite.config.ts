@@ -10,8 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'HIVALINE',
-        short_name: 'HIVALINE',
+        name: 'Hiva Medichat',
+        short_name: 'Hiva Medichat',
         description: 'Offline Clinical AI for Nigeria CHEWs',
         theme_color: '#155D46',
         background_color: '#ffffff',
@@ -27,7 +27,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB
       }
-    })
+    }),
+    {
+      name: 'wasm-content-type',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.endsWith('.wasm')) {
+            res.setHeader('Content-Type', 'application/wasm');
+          }
+          next();
+        });
+      },
+    }
   ],
   resolve: {
     alias: {

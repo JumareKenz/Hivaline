@@ -15,11 +15,21 @@ export const MAX_WEIGHT_KG = 60;
 
 export const SESSION_STORAGE_KEY = 'hivaline_session';
 
-// Auth localStorage keys (persistent session)
+// Legacy auth keys (sessionStorage — wiped on app kill).
+// Retained only for backward-compatible references/tests; auth now persists
+// via @capacitor/preferences using the HIVA_AUTH_* keys below.
 export const HIVA_TOKEN_KEY = 'hiva_token';
 export const HIVA_SERVER_CODE_KEY = 'hiva_server_code';
 export const HIVA_USER_NAME_KEY = 'hiva_user_name';
+
+// known_version stays in localStorage — not an auth credential.
 export const HIVA_KNOWN_VERSION_KEY = 'hiva_known_version';
+
+// Durable auth keys (Capacitor Preferences — survive app process kill).
+export const HIVA_AUTH_TOKEN_KEY = 'hivaline_auth_token';
+export const HIVA_AUTH_EXPIRY_KEY = 'hivaline_auth_expiry';
+export const HIVA_AUTH_SERVER_CODE_KEY = 'hivaline_auth_server_code';
+export const HIVA_AUTH_USER_NAME_KEY = 'hivaline_auth_user_name';
 export const THEME_STORAGE_KEY = 'hivaline_theme';
 export const SETTINGS_STORAGE_KEY = 'hivaline_settings';
 export const TTS_STORAGE_KEY = 'hivaline_tts';

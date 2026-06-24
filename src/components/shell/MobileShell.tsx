@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
+import { OfflineBanner } from './OfflineBanner';
 
 interface MobileShellProps {
   children: React.ReactNode;
@@ -18,10 +19,13 @@ const MobileShell: React.FC<MobileShellProps> = ({ children }) => {
         <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-n-800 rounded-b-2xl z-50" />
         
         {/* Content */}
-        <div className="h-full w-full overflow-hidden pt-[env(safe-area-inset-top)]">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
+        <div className="h-full w-full flex flex-col overflow-hidden pt-[env(safe-area-inset-top)]">
+          <OfflineBanner />
+          <div className="flex-1 overflow-hidden">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
     </div>

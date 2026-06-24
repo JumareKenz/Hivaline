@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><title>Check IndexedDB</title></head>
+<body>
+<h1>Checking IndexedDB for .hiv file</h1>
+<pre id="output">Loading...</pre>
+<script>
+async function check() {
+  const output = document.getElementById('output');
+  try {
+    const dbReq = indexedDB.open('hivaline-hiv', 1);
+
+    dbReq.onsuccess = (event) => {
+      const db = event.target.result;
+      const tx = db.transaction('files', 'readonly');
+      const store = tx.objectStore('files');
+      const req = store.get('current');
+
+      req.onsuccess = () => {
+        const data = req.result;
+        if (data) {
+          output.textContent = `Found .hiv file in IndexedDB!\nVersion: ${data.version}\nDownloaded: ${data.downloadedAt}\nSize: ${(data.blob.byteLength / 1024 / 1024).toFixed(2)}MB\n\nExporting to file...`;
+
+          // Export to file
+          const blob = new Blob([data.blob], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `hiv-cache-${data.version}.bin`;
+          a.click();
+
+          output.textContent += `\n\n✅ Downloaded as hiv-cache-${data.version}.bin`;
+        } else {
+          output.textContent = 'No .hiv file found in IndexedDB.';
+        }
+      };
+
+      req.onerror = () => {
+        output.textContent = 'Error reading from IndexedDB: ' + req.error;
+      };
+    };
+
+    dbReq.onerror = () => {
+      output.textContent = 'Error opening IndexedDB: ' + dbReq.error;
+    };
+  } catch (err) {
+    output.textContent = 'Error: ' + err.message;
+  }
+}
+
+check();
+</script>
+</body>
+</html>

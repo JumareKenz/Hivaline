@@ -159,6 +159,12 @@ export interface DocumentSource {
   url?: string;
 }
 
+export interface RetrievalCapabilities {
+  hasLexicalIndex: boolean;
+  hasStructuredExactMatch: boolean;
+  embeddingDims: number;
+}
+
 export interface HIVManifest {
   version: string;
   sha256: string;
@@ -176,11 +182,13 @@ export interface HIVManifest {
     rrf_k: number;
     type_boost: Record<HIVChunkType, number>;
   };
+  retrievalCapabilities?: RetrievalCapabilities;
 }
 
 export interface HIVChunk {
   id: string;
   type: HIVChunkType;
+  display_title?: string;
   trigger_phrases: Record<string, string[]>;
   question_variants?: Record<string, string[]>;
   fallback_response?: string;
@@ -215,16 +223,30 @@ export interface EmbeddingMetadata {
   text: string;
 }
 
+export interface VariantEmbeddingRecord {
+  chunk_id: string;
+  field_type: 'primary_question' | 'question_variant' | 'trigger_phrase' | 'display_title';
+  lang: string;
+  text: string;
+}
+
 export interface HIVFile {
   manifest: HIVManifest;
   chunks: HIVChunk[];
   embeddings: Int8Array[];
   embeddingMeta: EmbeddingMetadata[];
-  lexicalIndex: HIVLexicalIndex;
+  embeddingChunkIds: string[];
+  lexicalIndex?: HIVLexicalIndex;
   sources: HIVSources;
   rules: HIVRules;
   i18n: Record<string, HIVI18N>;
+  gapGraph?: Record<string, Array<{ to: string; score: number; label?: string }>>;
   db?: SQLiteDatabase;
+  variantEmbeddings?: Float32Array | null;
+  variantEmbeddingsIndex?: VariantEmbeddingRecord[] | null;
+  variantCount?: number;
+  embeddingDims?: number;
+  queryProxies?: Record<string, number[]>;
 }
 
 export interface SQLiteDatabase {

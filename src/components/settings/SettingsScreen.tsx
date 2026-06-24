@@ -18,7 +18,8 @@ import { ServerCodeDisplay } from './ServerCodeDisplay';
 import { TTSSettings } from './TTSSettings';
 import { STTLanguageSelector } from './STTLanguageSelector';
 import { sttService } from '@/services/sttService';
-import { checkForUpdate, downloadHIV } from '@/services/updateService';
+import { checkForUpdate, downloadHIV, HivAuthError } from '@/services/updateService';
+import { getToken } from '@/services/authStorage';
 import type { Language, InteractionMode } from '@/types/hiv';
 
 const SettingsScreen: React.FC = () => {
@@ -48,8 +49,9 @@ const SettingsScreen: React.FC = () => {
     setIsCheckingUpdate(true);
     setUpdateStatus('Checking for updates...');
     
+    let meta: Awaited<ReturnType<typeof checkForUpdate>> = null;
     try {
-      const meta = await checkForUpdate();
+      meta = await checkForUpdate();
       if (!meta) {
         setUpdateStatus('Already up to date');
         setTimeout(() => setUpdateStatus(''), 3000);
@@ -58,21 +60,33 @@ const SettingsScreen: React.FC = () => {
       }
 
       setUpdateStatus(`Downloading v${meta.version}...`);
-      const bytes = await downloadHIV(meta);
-      
+      // Manual flow: do NOT revoke the session on a 401/403 — surface why instead.
+      const bytes = await downloadHIV(meta, { revokeOnAuthError: false });
+
       if (bytes) {
         setUpdateStatus('Download complete!');
         await reload();
         setTimeout(() => setUpdateStatus(''), 3000);
       } else {
-        setUpdateStatus('Download failed');
+        setUpdateStatus(`Download failed — keeping current version. Try again later.`);
+        setTimeout(() => setUpdateStatus(''), 5000);
+      }
+    } catch (err) {
+      if (err instanceof HivAuthError) {
+        // 401/403: the update was found but the code can't download it.
+        const signedIn = (await getToken()) !== null;
+        setUpdateStatus(
+          signedIn
+            ? `Update available (v${meta?.version ?? '?'}), but your access code isn't authorized to download it. Contact your supervisor.`
+            : `Update available (v${meta?.version ?? '?'}). Sign in with an authorized access code to download it.`
+        );
+        setTimeout(() => setUpdateStatus(''), 8000);
+      } else {
+        setUpdateStatus('Update error');
         setTimeout(() => setUpdateStatus(''), 3000);
       }
-    } catch {
-      setUpdateStatus('Update error');
-      setTimeout(() => setUpdateStatus(''), 3000);
     }
-    
+
     setIsCheckingUpdate(false);
   }, [reload]);
 

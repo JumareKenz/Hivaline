@@ -51,19 +51,30 @@ export const Router: React.FC = () => {
     return ROUTES.find((r) => matchRoute(path, r.path));
   }, [path]);
 
+  // Wait for the durable session to load before gating routes — otherwise the
+  // async auth bootstrap would briefly flash the login screen (or redirect)
+  // before a persisted token is read on cold launch.
+  const isInitializing = authState.isInitializing ?? false;
+
   // Auth guard — evaluated synchronously before render to prevent flash
   const needsRedirect =
-    (activeRoute?.requiresAuth && !authState.isAuthenticated) ||
-    (path === '/' && authState.isAuthenticated);
+    !isInitializing &&
+    ((activeRoute?.requiresAuth && !authState.isAuthenticated) ||
+      (path === '/' && authState.isAuthenticated));
 
   React.useEffect(() => {
+    if (isInitializing) return;
     if (activeRoute?.requiresAuth && !authState.isAuthenticated) {
       navigate('/');
     }
     if (path === '/' && authState.isAuthenticated) {
       navigate('/chat');
     }
-  }, [activeRoute, authState.isAuthenticated, path, navigate]);
+  }, [activeRoute, authState.isAuthenticated, isInitializing, path, navigate]);
+
+  if (isInitializing) {
+    return <div className="flex flex-col h-full" aria-hidden />;
+  }
 
   const showTabBar = !needsRedirect && (activeRoute?.tabBar ?? false);
 

@@ -1,18 +1,18 @@
-import React, { createContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { User } from '@/types/hiv';
-import {
-  HIVA_TOKEN_KEY,
-  HIVA_SERVER_CODE_KEY,
-  HIVA_USER_NAME_KEY,
-  HIVA_KNOWN_VERSION_KEY,
-} from '@/utils/constants';
-import { checkForUpdate, downloadHIV } from '@/services/updateService';
+import { HIVA_KNOWN_VERSION_KEY } from '@/utils/constants';
+import { checkForUpdate, downloadHIV, hasStoredHIV } from '@/services/updateService';
+import { saveAuth, loadAuth, clearAuth, isExpired, type StoredAuth } from '@/services/authStorage';
 
 const API_BASE = 'https://compiler.hiva.chat';
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
+  /** True until the durable session has been read from Preferences on launch. */
+  isInitializing: boolean;
+  /** True when the app is usable but not on a freshly-confirmed online session. */
+  offlineGrace: boolean;
 }
 
 export interface LoginResult {
@@ -28,29 +28,104 @@ interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-function loadStoredAuth(): AuthState {
-  try {
-    const token = sessionStorage.getItem(HIVA_TOKEN_KEY);
-    const serverCode = sessionStorage.getItem(HIVA_SERVER_CODE_KEY);
-    const userName = sessionStorage.getItem(HIVA_USER_NAME_KEY);
-    if (!token || !serverCode) return { isAuthenticated: false, user: null };
-    const user: User = {
-      id: serverCode,
-      name: userName ?? serverCode,
-      facility: userName ?? serverCode,
-      state: '',
-      serverCode,
-      supervisor: '',
-      role: 'chew',
-    };
-    return { isAuthenticated: true, user };
-  } catch {
-    return { isAuthenticated: false, user: null };
-  }
+/** Build a display User from a stored session. */
+function userFromStored(auth: StoredAuth): User {
+  const name = auth.userName || auth.serverCode || 'Health Worker';
+  return {
+    id: auth.serverCode || 'offline',
+    name,
+    facility: name,
+    state: '',
+    serverCode: auth.serverCode,
+    supervisor: '',
+    role: 'chew',
+  };
+}
+
+/** Fallback User for grace mode where no stored profile exists (.hiv present, no token). */
+function graceUser(): User {
+  return {
+    id: 'offline',
+    name: 'Health Worker',
+    facility: 'Offline session',
+    state: '',
+    serverCode: '',
+    supervisor: '',
+    role: 'chew',
+  };
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AuthState>(loadStoredAuth);
+  const [state, setState] = useState<AuthState>({
+    isAuthenticated: false,
+    user: null,
+    isInitializing: true,
+    offlineGrace: false,
+  });
+
+  // Whether a token is currently held (drives background re-validation on reconnect).
+  const hasTokenRef = useRef(false);
+
+  /* ─── Launch bootstrap: read durable session before gating routes ─── */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const stored = await loadAuth();
+      const hivPresent = await hasStoredHIV();
+      if (cancelled) return;
+
+      // Case 1: valid (non-expired) token → normal authenticated session, no network needed.
+      if (stored && !isExpired(stored)) {
+        hasTokenRef.current = true;
+        setState({
+          isAuthenticated: true,
+          user: userFromStored(stored),
+          isInitializing: false,
+          // If we happen to be offline right now, surface the banner.
+          offlineGrace: typeof navigator !== 'undefined' && navigator.onLine === false,
+        });
+        return;
+      }
+
+      // Case 2: token expired BUT clinical data is on device → offline grace.
+      if (stored && hivPresent) {
+        hasTokenRef.current = true;
+        setState({
+          isAuthenticated: true,
+          user: userFromStored(stored),
+          isInitializing: false,
+          offlineGrace: true,
+        });
+        return;
+      }
+
+      // Case 3: no token but .hiv is present → let the worker in (offline grace).
+      if (!stored && hivPresent) {
+        hasTokenRef.current = false;
+        setState({
+          isAuthenticated: true,
+          user: graceUser(),
+          isInitializing: false,
+          offlineGrace: true,
+        });
+        return;
+      }
+
+      // Case 4: no token AND no .hiv → true first install, must log in.
+      hasTokenRef.current = false;
+      setState({
+        isAuthenticated: false,
+        user: null,
+        isInitializing: false,
+        offlineGrace: false,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback(async (serverCode: string, accessKey: string): Promise<LoginResult> => {
     try {
@@ -63,13 +138,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = (await response.json()) as {
           token: string;
+          expires_in?: number;
           user_profile: { server_code: string; name: string };
           version_info?: { version: string; sha256: string };
         };
 
-        sessionStorage.setItem(HIVA_TOKEN_KEY, data.token);
-        sessionStorage.setItem(HIVA_SERVER_CODE_KEY, data.user_profile.server_code);
-        sessionStorage.setItem(HIVA_USER_NAME_KEY, data.user_profile.name);
+        const expiry =
+          typeof data.expires_in === 'number' && data.expires_in > 0
+            ? Date.now() + data.expires_in * 1000
+            : null;
+
+        // Persist durably BEFORE the auto-download (downloadHIV reads the token).
+        await saveAuth({
+          token: data.token,
+          expiry,
+          serverCode: data.user_profile.server_code,
+          userName: data.user_profile.name,
+        });
         if (data.version_info) {
           localStorage.setItem(HIVA_KNOWN_VERSION_KEY, data.version_info.version);
         }
@@ -83,7 +168,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supervisor: '',
           role: 'chew',
         };
-        setState({ isAuthenticated: true, user });
+        hasTokenRef.current = true;
+        setState({ isAuthenticated: true, user, isInitializing: false, offlineGrace: false });
 
         // Auto-download .hiv file after successful login
         try {
@@ -125,29 +211,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem(HIVA_TOKEN_KEY);
-    sessionStorage.removeItem(HIVA_SERVER_CODE_KEY);
-    sessionStorage.removeItem(HIVA_USER_NAME_KEY);
-    setState({ isAuthenticated: false, user: null });
+    hasTokenRef.current = false;
+    void clearAuth();
+    setState({ isAuthenticated: false, user: null, isInitializing: false, offlineGrace: false });
   }, []);
 
   useEffect(() => {
     const handleRevoked = () => {
-      setState({ isAuthenticated: false, user: null });
+      hasTokenRef.current = false;
+      void clearAuth();
+      setState({ isAuthenticated: false, user: null, isInitializing: false, offlineGrace: false });
     };
-    // Same-tab revocation (from updateService when token is rejected by server)
     window.addEventListener('hiva:session-revoked', handleRevoked);
-    // Cross-tab: browser fires 'storage' when another tab modifies sessionStorage
-    // Note: sessionStorage is NOT shared across tabs, so this only catches localStorage changes
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === HIVA_TOKEN_KEY && e.newValue === null) {
-        setState({ isAuthenticated: false, user: null });
-      }
+
+    // Connectivity transitions: show the banner when offline, silently
+    // re-validate the stored token when connectivity returns.
+    const handleOffline = () => {
+      setState((prev) => (prev.isAuthenticated ? { ...prev, offlineGrace: true } : prev));
     };
-    window.addEventListener('storage', handleStorage);
+    const handleOnline = () => {
+      // Re-validate using the stored token only — no credentials are re-entered.
+      // Non-destructive: a 401/403 here throws HivAuthError (caught and ignored)
+      // instead of revoking. An auto-retry with an unauthorized/expired token
+      // must not silently log the worker out — they keep using the offline bundle.
+      if (hasTokenRef.current) {
+        checkForUpdate()
+          .then((meta) => (meta ? downloadHIV(meta, { revokeOnAuthError: false }) : null))
+          .then((bytes) => {
+            if (bytes) window.dispatchEvent(new CustomEvent('hiva:file-downloaded'));
+          })
+          .catch(() => { /* offline, transient, or unauthorized — keep the session */ });
+      }
+      // Drop the banner optimistically; revocation path will flip us out if needed.
+      setState((prev) => (prev.isAuthenticated ? { ...prev, offlineGrace: false } : prev));
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
     return () => {
       window.removeEventListener('hiva:session-revoked', handleRevoked);
-      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
     };
   }, []);
 

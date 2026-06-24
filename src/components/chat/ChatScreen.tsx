@@ -19,6 +19,9 @@ import { SuggestionChips } from './SuggestionChips';
 import { VoiceToast } from './VoiceToast';
 import { useVoiceService } from '@/hooks/useVoiceService';
 import { useTTS } from '@/hooks/useTTS';
+import { useEmbeddingModel } from '@/hooks/useEmbeddingModel';
+import { MessageFeedback } from './MessageFeedback';
+import { submitFeedback } from '@/services/telemetry';
 import type { ChatMessage } from '@/types/hiv';
 import { formatDate } from '@/utils/formatters';
 
@@ -49,6 +52,7 @@ const ChatScreen: React.FC = () => {
   const { respond } = useConversation(file);
   const voice = useVoiceService();
   const { isEnabled: ttsEnabled, isAvailable: ttsAvailable, speak: ttsSpeak, cancel: ttsCancel, toggleEnabled: toggleTTS } = useTTS();
+  const model = useEmbeddingModel();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -56,8 +60,11 @@ const ChatScreen: React.FC = () => {
   const [typingText, setTypingText] = useState('');
   const [suggestedChips, setSuggestedChips] = useState<string[]>([]);
   const [showVoiceToast, setShowVoiceToast] = useState(false);
+  const [ratedIds, setRatedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Per-response latency (query submit → engine response), keyed by message id.
+  const latencyRef = useRef<Map<string, number>>(new Map());
 
   const userName = authState.user?.name ?? 'Health Worker';
 
@@ -99,8 +106,10 @@ const ChatScreen: React.FC = () => {
     setIsTyping(true);
     setTypingText('');
 
-    // Get response from conversation engine
+    // Get response from conversation engine (measure latency for feedback)
+    const t0 = performance.now();
     const result = await respond(text);
+    const latencyMs = performance.now() - t0;
 
     // Calculate typing delay based on response length
     const typingDelay = Math.min(600, 400 + result.message.length * 8);
@@ -135,6 +144,7 @@ const ChatScreen: React.FC = () => {
               }
             : undefined,
         };
+        latencyRef.current.set(hivaMsg.id, latencyMs);
         setMessages((prev) => [...prev, hivaMsg]);
         setSuggestedChips(result.suggestedFollowUps);
       }
@@ -151,6 +161,17 @@ const ChatScreen: React.FC = () => {
   const handleSuggestion = useCallback((text: string) => {
     sendMessage(text);
   }, [sendMessage]);
+
+  const handleFeedback = useCallback((msg: ChatMessage, rating: 1 | -1) => {
+    // Anonymous, best-effort — never blocks or throws; query text is not sent.
+    void submitFeedback({
+      chunkId: msg.metadata?.artifactId ?? null,
+      rating,
+      latencyMs: latencyRef.current.get(msg.id) ?? 0,
+      version: file?.manifest.version,
+    });
+    setRatedIds((prev) => new Set(prev).add(msg.id));
+  }, [file]);
 
   // Handle voice transcript — placed after sendMessage to avoid TDZ
   const lastTranscriptRef = useRef<string | null>(null);
@@ -211,6 +232,15 @@ const ChatScreen: React.FC = () => {
         <div className="mx-4 mt-3 p-3 rounded-xl bg-warning/10 border border-warning/20 flex items-start gap-2">
           <span className="text-warning text-xs leading-relaxed">
             No clinical data loaded. Log in and check Settings to download the latest guidelines.
+          </span>
+        </div>
+      )}
+
+      {model.status === 'downloading' && (
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-accent-600/10 border border-accent-600/20 flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full border-2 border-accent-600 border-t-transparent animate-spin flex-shrink-0" />
+          <span className="text-accent-600 text-xs leading-relaxed">
+            Downloading intelligence model… {model.progress > 0 ? `${model.progress}%` : ''} You can keep asking questions — answers improve once it&apos;s ready.
           </span>
         </div>
       )}
@@ -280,10 +310,18 @@ const ChatScreen: React.FC = () => {
             >
               <MessageBubble message={msg} />
               <div className={clsx(
-                'text-[10px] font-body text-n-400 mt-1',
-                msg.sender === 'user' ? 'text-right pr-2' : 'text-left pl-2'
+                'flex items-center gap-2 mt-1',
+                msg.sender === 'user' ? 'justify-end pr-2' : 'justify-start pl-2'
               )}>
-                {formatDate(msg.timestamp)}
+                <span className="text-[10px] font-body text-n-400">
+                  {formatDate(msg.timestamp)}
+                </span>
+                {msg.sender === 'hiva' && msg.metadata?.artifactId && (
+                  <MessageFeedback
+                    rated={ratedIds.has(msg.id)}
+                    onRate={(r) => handleFeedback(msg, r)}
+                  />
+                )}
               </div>
             </motion.div>
           ))}

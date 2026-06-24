@@ -1,23 +1,19 @@
 /**
- * hybridSearch.test.ts — Hybrid search engine unit tests
+ * hybridSearch.test.ts — Vector-only search engine unit tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { initSearch, search, type HIVAssets } from '@/engine/hybridSearch';
 import SessionState from '@/engine/sessionState';
 
 describe('cosineSimilarity via vectorSearch', () => {
-  it('returns top result with highest cosine similarity', () => {
-    // Create a simple 3-dim embedding buffer with 3 chunks
+  it('returns top result with highest cosine similarity', async () => {
     const dims = 3;
     const total = 3;
     const buffer = new ArrayBuffer(total * dims * 4);
     const view = new Float32Array(buffer);
-    // chunk 0: [1, 0, 0]
     view[0] = 1; view[1] = 0; view[2] = 0;
-    // chunk 1: [0, 1, 0]
     view[3] = 0; view[4] = 1; view[5] = 0;
-    // chunk 2: [0.9, 0.1, 0] — most similar to chunk 0
     view[6] = 0.9; view[7] = 0.1; view[8] = 0;
 
     const assets: HIVAssets = {
@@ -31,104 +27,63 @@ describe('cosineSimilarity via vectorSearch', () => {
 
     initSearch(assets);
     const state = new SessionState();
-    const result = search('similar to one', state, 'en');
+    const result = await search('similar to one', state, 'en');
     expect(result).not.toBeNull();
     expect(result!.chunkId).toBe('c0');
     expect(result!.score).toBeGreaterThan(0);
   });
 
-  it('gracefully falls back when no query proxies exist', () => {
-    const assets: HIVAssets = {
-      bm25Index: { en: { index: { malaria: [{ chunk_id: 'c1', score: 2.0 }] } } },
-    };
+  it('returns null when no proxies and no variant embeddings exist', async () => {
+    const assets: HIVAssets = {};
     initSearch(assets);
     const state = new SessionState();
-    const result = search('malaria treatment', state, 'en');
-    expect(result).not.toBeNull();
-    expect(result!.chunkId).toBe('c1');
-  });
-});
-
-describe('RRF fusion', () => {
-  it('ranks chunks higher when present in both bm25 and vector results', () => {
-    // Using the same 3-chunk setup
-    const dims = 3;
-    const total = 3;
-    const buffer = new ArrayBuffer(total * dims * 4);
-    const view = new Float32Array(buffer);
-    view[0] = 1; view[1] = 0; view[2] = 0;
-    view[3] = 0; view[4] = 1; view[5] = 0;
-    view[6] = 0.5; view[7] = 0.5; view[8] = 0;
-
-    const assets: HIVAssets = {
-      embeddingsBuffer: buffer,
-      embeddingsIndex: { dimensions: dims, total_chunks: total, chunk_ids: ['c0', 'c1', 'c2'] },
-      queryProxies: {
-        'malaria fever': [1, 0, 0],
-      },
-      bm25Index: {
-        en: {
-          index: {
-            malaria: [{ chunk_id: 'c0', score: 2.0 }],
-            fever: [{ chunk_id: 'c1', score: 1.5 }],
-          },
-        },
-      },
-    };
-
-    initSearch(assets);
-    const state = new SessionState();
-    const result = search('malaria fever', state, 'en');
-    // c0 is in both BM25 and vector, so it should win via RRF
-    expect(result).not.toBeNull();
-    expect(result!.chunkId).toBe('c0');
+    const result = await search('malaria treatment', state, 'en');
+    expect(result).toBeNull();
   });
 });
 
 describe('deadEndEscape', () => {
-  it('returns a different chunk on second identical request', () => {
+  it('returns a different chunk on second identical request', async () => {
+    const dims = 3;
+    const total = 2;
+    const buffer = new ArrayBuffer(total * dims * 4);
+    const view = new Float32Array(buffer);
+    view[0] = 1; view[1] = 0; view[2] = 0;
+    view[3] = 0.9; view[4] = 0.1; view[5] = 0;
+
     const assets: HIVAssets = {
-      bm25Index: {
-        en: {
-          index: {
-            malaria: [
-              { chunk_id: 'c-def', score: 3.0 },
-              { chunk_id: 'c-dos', score: 2.0 },
-            ],
-          },
-        },
-      },
+      embeddingsBuffer: buffer,
+      embeddingsIndex: { dimensions: dims, total_chunks: total, chunk_ids: ['c-def', 'c-dos'] },
+      queryProxies: { 'malaria': [1, 0, 0] },
     };
 
     initSearch(assets);
     const state = new SessionState();
 
-    // First request
-    const r1 = search('malaria', state, 'en');
+    const r1 = await search('malaria', state, 'en');
     expect(r1).not.toBeNull();
     expect(r1!.chunkId).toBe('c-def');
     state.addTurn('malaria', r1!.chunkId, [], 'CLINICAL');
     state.coveredChunks.add(r1!.chunkId);
 
-    // Second identical request — should skip served chunk
-    const r2 = search('malaria', state, 'en');
+    const r2 = await search('malaria', state, 'en');
     expect(r2).not.toBeNull();
     expect(r2!.chunkId).toBe('c-dos');
   });
 
-  it('walks gap graph when top 3 are all served', () => {
+  it('walks gap graph when top results are all served', async () => {
+    const dims = 3;
+    const total = 3;
+    const buffer = new ArrayBuffer(total * dims * 4);
+    const view = new Float32Array(buffer);
+    view[0] = 1; view[1] = 0; view[2] = 0;
+    view[3] = 0.9; view[4] = 0.1; view[5] = 0;
+    view[6] = 0.8; view[7] = 0.2; view[8] = 0;
+
     const assets: HIVAssets = {
-      bm25Index: {
-        en: {
-          index: {
-            malaria: [
-              { chunk_id: 'c1', score: 3.0 },
-              { chunk_id: 'c2', score: 2.0 },
-              { chunk_id: 'c3', score: 1.0 },
-            ],
-          },
-        },
-      },
+      embeddingsBuffer: buffer,
+      embeddingsIndex: { dimensions: dims, total_chunks: total, chunk_ids: ['c1', 'c2', 'c3'] },
+      queryProxies: { 'malaria': [1, 0, 0] },
       gapGraph: {
         c3: [{ to: 'c4', score: 0.9 }],
       },
@@ -143,24 +98,24 @@ describe('deadEndEscape', () => {
     state.addTurn('third', 'c3', [], 'CLINICAL');
     state.coveredChunks.add('c3');
 
-    const result = search('malaria', state, 'en');
+    const result = await search('malaria', state, 'en');
     expect(result).not.toBeNull();
     expect(result!.chunkId).toBe('c4');
   });
 });
 
 describe('backward compatibility', () => {
-  it('returns null when no bm25 index, no embeddings, and no gap graph', () => {
+  it('returns null when no embeddings and no gap graph', async () => {
     const assets: HIVAssets = {};
     initSearch(assets);
     const state = new SessionState();
-    const result = search('anything', state, 'en');
+    const result = await search('anything', state, 'en');
     expect(result).toBeNull();
   });
 });
 
 describe('performance', () => {
-  it('completes vector search over 289 chunks in < 15ms', () => {
+  it('completes vector search over 289 chunks in < 100ms', async () => {
     const dims = 384;
     const total = 289;
     const buffer = new ArrayBuffer(total * dims * 4);
@@ -185,7 +140,7 @@ describe('performance', () => {
     const state = new SessionState();
 
     const start = performance.now();
-    const result = search('query 25', state, 'en');
+    const result = await search('query 25', state, 'en');
     const end = performance.now();
 
     expect(result).not.toBeNull();

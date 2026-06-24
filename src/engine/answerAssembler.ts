@@ -70,6 +70,75 @@ export function hasAnyPatientSlot(slotMemory: SlotMemory): boolean {
 }
 
 /**
+ * Strip document boilerplate phrases from answer text.
+ */
+function stripBoilerplate(text: string): string {
+  const boilerplatePatterns = [
+    /In Nigeria[,\s]+/gi,
+    /A comprehensive plan of action[,\s]+/gi,
+    /significantly contribute to[,\s]+/gi,
+    /It is important to note that[,\s]+/gi,
+    /It should be noted that[,\s]+/gi,
+    /Research has shown that[,\s]+/gi,
+    /Studies indicate that[,\s]+/gi,
+  ];
+  let cleaned = text;
+  for (const pattern of boilerplatePatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  return cleaned;
+}
+
+/**
+ * Rewrite dosing parentheticals for conversational delivery.
+ * "(10 IU, IV/IM)" → "— give 10 IU IV or IM"
+ */
+function rewriteDosingParenthetical(text: string): string {
+  let rewritten = text;
+  // Rewrite parenthetical dosing
+  rewritten = rewritten.replace(
+    /\((\d+(?:\.\d+)?\s*(?:mg|g|kg|ml|IU|mcg|units?))[,\s]+([^)]+)\)/gi,
+    '— give $1 $2'
+  );
+  // Handle "IV/IM" style slashes
+  rewritten = rewritten.replace(/\bgive\s+([^—]+?)\s+(IV|IM|PO|SC)\/([IVMOSC]+)\b/gi, 'give $1 $2 or $3');
+  return rewritten;
+}
+
+/**
+ * Truncate long answers: first 2 sentences + bullet points.
+ */
+function truncateLongAnswer(text: string): string {
+  const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+  if (wordCount <= 120) return text;
+
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  const spokenPart = sentences.slice(0, 2).join(' ').trim();
+  const remaining = sentences.slice(2).join(' ').trim();
+
+  if (!remaining) return spokenPart;
+
+  // Extract short bullet points
+  const bullets: string[] = [];
+  const remainingSentences = remaining.match(/[^.!?]+[.!?]+/g) || [remaining];
+
+  for (const sentence of remainingSentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) continue;
+    const bulletText = words.slice(0, 12).join(' ');
+    bullets.push(bulletText.replace(/[.!?]+$/, ''));
+    if (bullets.length >= 4) break;
+  }
+
+  if (bullets.length > 0) {
+    return `${spokenPart}\n\nKey points:\n${bullets.map(b => `• ${b}`).join('\n')}`;
+  }
+  return spokenPart;
+}
+
+/**
  * Select answer content based on progressive disclosure rules.
  * Does not repeat aspects already covered this session.
  * Skips fields that contain compiler error messages.
@@ -82,8 +151,24 @@ export function selectAnswerContent(chunk: Chunk, sessionState: SessionState, in
   const safeField = (val: unknown): string | null => {
     if (!val) return null;
     const s = String(val);
-    return isCompilerError(s) ? null : s;
+    if (isCompilerError(s)) return null;
+    let formatted = stripBoilerplate(s);
+    formatted = rewriteDosingParenthetical(formatted);
+    formatted = truncateLongAnswer(formatted);
+    return formatted;
   };
+
+  // Only deflect to fallback if this EXACT chunk was already served
+  // AND all its aspects are covered. A new chunk with covered aspect
+  // categories still has new content worth showing.
+  const chunkAlreadyServed = sessionState.coveredChunks.has(chunk.id);
+  const allAspectsCovered = aspects.length > 0 &&
+    aspects.every(a => sessionState.coveredAspects.has(a));
+
+  if (chunkAlreadyServed && allAspectsCovered) {
+    const fallback = safeField(langContent.fallback_response);
+    if (fallback) return fallback;
+  }
 
   if (intent === 'DEFINE' || intent === 'HEADING_LOOKUP') {
     if (!sessionState.coveredAspects.has('definition')) {
@@ -346,7 +431,8 @@ function truncateToQuestion(text: string): string {
 }
 
 function gapToChipLabel(gap: string): string {
-  const labels: Record<string, string> = {
+  const ASPECT_TO_CHIP: Record<string, string> = {
+    // Clinical
     dosage: "What's the dose?",
     referral: 'When to refer?',
     danger_signs: 'What are the danger signs?',
@@ -355,7 +441,35 @@ function gapToChipLabel(gap: string): string {
     contraindications: 'Who should not receive this?',
     coverage: 'What does this cover?',
     definition: 'What exactly is this?',
-    prognosis: 'What is the prognosis?',
+    when_to_refer: 'When should I refer?',
+    prognosis: 'What is the outlook?',
+    // Administrative / policy documents
+    eligibility: 'Who is eligible?',
+    accreditation: 'What are the accreditation steps?',
+    registration: 'How do I register?',
+    equipment: 'What equipment is needed?',
+    requirements: 'What are the requirements?',
+    compliance: 'What are the compliance rules?',
+    penalties: 'What are the penalties?',
+    exclusions: 'What is excluded?',
+    membership: 'How does membership work?',
+    administration: 'How is it administered?',
+    personnel: 'What staff are needed?',
+    facility: 'What facility requirements exist?',
+    benefits: 'What are the benefits?',
+    obligations: 'What are the obligations?',
+    regulations: 'What regulations apply?',
+    guidelines: 'What are the guidelines?',
+    roles: 'What are the roles?',
+    responsibilities: 'What are the responsibilities?',
+    remuneration: 'How does remuneration work?',
+    licencing: 'What are the licensing requirements?',
+    records: 'What records are required?',
+    management: 'How is it managed?',
+    fund_management: 'How are funds managed?',
+    payment_mechanisms: 'How does payment work?',
   };
-  return labels[gap] || gap.replace(/_/g, ' ') + '?';
+
+  // Fallback for any aspect not in the map
+  return ASPECT_TO_CHIP[gap] ?? `What about ${gap.replace(/_/g, ' ')}?`;
 }

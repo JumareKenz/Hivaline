@@ -18,6 +18,7 @@ export const INTENT_PATTERNS: Record<string, RegExp | null> = {
   AFFIRM: /^yes[.!?]?$|^yeah$|^ok$|^okay$|correct|right|exactly|sure/i,
   NEGATE: /^no[.!?]?$|not that|wrong|different|other|else/i,
   GREETING: /^(hi|hello|good morning|good afternoon|salam|ẹ káàbọ̀|ndewo)[\s!.?]*$/i,
+  HEADING_LOOKUP: null, // handled by isAmbiguousInput pre-check
 };
 
 const SENTIMENT_PATTERNS: Record<string, RegExp | null> = {
@@ -27,6 +28,22 @@ const SENTIMENT_PATTERNS: Record<string, RegExp | null> = {
   calm: null,
 };
 
+function tokenize(query: string): string[] {
+  return query.toLowerCase().split(/\s+/).filter((t) => t.length >= 2);
+}
+
+/**
+ * Detect short/ambiguous inputs that look like topic headings rather than questions.
+ * @param query — raw user query
+ * @returns true if input is too short and lacks verbs/question words
+ */
+export function isAmbiguousInput(query: string): boolean {
+  const tokens = tokenize(query);
+  const hasVerb = /\b(is|are|was|were|do|does|did|what|how|when|where|why|tell|explain|give|show)\b/i.test(query);
+  const hasQuestionWord = /^(what|how|when|where|why|who|which|can|should|does)/i.test(query.trim());
+  return tokens.length <= 5 && !hasVerb && !hasQuestionWord;
+}
+
 /**
  * Classify primary intent from query.
  * @param query — raw user query
@@ -34,11 +51,20 @@ const SENTIMENT_PATTERNS: Record<string, RegExp | null> = {
  */
 export function classifyIntent(query: string): string {
   const lower = query.toLowerCase().trim();
+
+  // First pass: check explicit intent patterns (HEADING_LOOKUP is fallback only)
   for (const [intent, pattern] of Object.entries(INTENT_PATTERNS)) {
+    if (intent === 'HEADING_LOOKUP') continue;
     if (pattern && pattern.test(lower)) {
       return intent;
     }
   }
+
+  // Fallback: ambiguous short inputs → HEADING_LOOKUP
+  if (isAmbiguousInput(query)) {
+    return 'HEADING_LOOKUP';
+  }
+
   return 'CLINICAL';
 }
 
@@ -71,7 +97,30 @@ export interface CoverageManifest {
 export function detectGaps(topic: string, coverageManifest: CoverageManifest, sessionState: SessionState): string[] {
   const topicData = coverageManifest?.topics?.[topic];
   if (!topicData) return [];
-  const uncovered = sessionState.getUncoveredAspects(topicData.aspects_covered || []);
-  const priority = ['dosage', 'referral', 'danger_signs', 'procedure', 'side_effects', 'contraindications', 'coverage', 'prognosis'];
-  return priority.filter((a) => uncovered.includes(a)).slice(0, 3);
+
+  // Use aspects_covered from manifest — these are aspects that
+  // actually exist in THIS document for THIS topic
+  const documentAspects = topicData.aspects_covered ?? [];
+
+  // Find which of these the user has NOT yet seen
+  const uncovered = documentAspects.filter(
+    a => !sessionState.coveredAspects.has(a)
+  );
+
+  if (uncovered.length === 0) return [];
+
+  // Prioritize known high-value aspects, then alphabetical
+  const PRIORITY = [
+    'dosage', 'referral', 'danger_signs', 'procedure',
+    'eligibility', 'accreditation', 'registration', 'equipment',
+    'coverage', 'contraindications', 'exclusions', 'membership',
+    'requirements', 'compliance', 'penalties', 'administration',
+  ];
+
+  const prioritized = PRIORITY.filter(a => uncovered.includes(a));
+  const remaining = uncovered
+    .filter(a => !PRIORITY.includes(a))
+    .sort();
+
+  return [...prioritized, ...remaining].slice(0, 3);
 }

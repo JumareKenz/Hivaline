@@ -9,7 +9,7 @@
 import { useCallback, useMemo } from 'react';
 import type { ChatMessage, HIVChunk, HIVChunkType } from '@/types/hiv';
 import { useHIVFile } from './useHIVFile';
-import { hybridSearch, variantSearch } from '@/services/searchEngine';
+import { variantSearch } from '@/services/variantSearch';
 import { renderChunk, getChunkPreview } from '@/services/responseRenderer';
 
 export interface SearchResult {
@@ -160,9 +160,8 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
       };
     }
   } else {
-    // Fall back to BM25 search
-    const bm25Results = hybridSearch(query, null, file, lang, 5);
-    results = bm25Results;
+    // Variant search found nothing — return no results
+    results = [];
   }
 
   if (results.length === 0) {

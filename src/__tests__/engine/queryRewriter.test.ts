@@ -13,27 +13,27 @@ describe('rewriteQuery', () => {
     sessionState = new SessionState();
   });
 
-  describe('Stage 1 — Pronoun resolution', () => {
-    it('replaces "it" with currentTopic', () => {
+  describe('Stage 1 — Pronoun passthrough', () => {
+    it('preserves raw query with pronouns (topic continuity handled in hybridSearch)', () => {
       sessionState.currentTopic = 'malaria';
       const result = rewriteQuery('what is it', 'CLINICAL', sessionState);
-      expect(result.rewritten).toContain('malaria');
-      expect(result.rewritten).not.toContain(' it ');
+      expect(result.rewritten).toContain('what');
+      expect(result.rewritten).toContain('is');
     });
 
-    it('replaces "this" with currentTopic', () => {
+    it('preserves "this" in query (resolved by hybridSearch title bonus)', () => {
       sessionState.currentTopic = 'newborn care';
       const result = rewriteQuery('what does this cover', 'SCOPE', sessionState);
-      expect(result.rewritten).toContain('newborn');
+      expect(result.rewritten).toContain('cover');
     });
 
-    it('replaces "that" with currentTopic', () => {
+    it('preserves "that" in query (resolved by hybridSearch title bonus)', () => {
       sessionState.currentTopic = 'ACT';
       const result = rewriteQuery('dose for that', 'DETAIL', sessionState);
-      expect(result.rewritten).toContain('ACT');
+      expect(result.rewritten).toContain('dose');
     });
 
-    it('does nothing when currentTopic is null', () => {
+    it('preserves query unchanged when currentTopic is null', () => {
       const result = rewriteQuery('what is it', 'CLINICAL', sessionState);
       expect(result.rewritten).toBe('what is it');
     });
@@ -85,19 +85,19 @@ describe('rewriteQuery', () => {
     });
   });
 
-  describe('Stage 4 — Topic continuity', () => {
-    it('prepends currentTopic when query has < 2 clinical keywords', () => {
+  describe('Stage 4 — Topic continuity (handled in hybridSearch)', () => {
+    it('does NOT prepend currentTopic to query (handled by search title bonus)', () => {
       sessionState.currentTopic = 'malaria';
       const result = rewriteQuery('what about it', 'CLINICAL', sessionState);
-      expect(result.rewritten.startsWith('malaria')).toBe(true);
+      expect(result.rewritten.startsWith('malaria')).toBe(false);
+      expect(result.rewritten).toContain('what');
     });
 
-    it('does not prepend when query already has >= 2 clinical keywords', () => {
+    it('preserves query unmodified regardless of clinical keyword count', () => {
       sessionState.currentTopic = 'malaria';
       const result = rewriteQuery('my patient has malaria and fever', 'CLINICAL', sessionState);
-      const parts = result.rewritten.split(' ');
-      // Should not start with duplicate "malaria malaria"
-      expect(parts[0]).not.toBe('malaria');
+      expect(result.rewritten).toContain('malaria');
+      expect(result.rewritten).toContain('fever');
     });
   });
 

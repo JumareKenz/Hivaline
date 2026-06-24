@@ -1,0 +1,179 @@
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+                  HIVALINE v2026.06.24.65 - PHASE 26b RELEASE
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+✅ BUILD & DEPLOYMENT COMPLETE
+
+BUILD STATUS:
+  ✅ TypeScript compilation: PASSED (0 errors)
+  ✅ Web bundle: PASSED (1.5 MiB, 365 KiB gzip)
+  ✅ Git commit: b397ab8 (Phase 26b implementation)
+  ✅ GitHub push: https://github.com/JumareKenz/Hivaline.git (master)
+  ⏳ Android APK: Ready (requires Java/Gradle environment)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+FEATURE: Drug-Class Boost Mechanism (Stage 1b)
+
+WHAT'S FIXED:
+  🎯 PRIORITY BLOCKER RESOLVED: "ARV dose for 10kg child"
+     Before: Returns generic "Dosage Amount" (BM25 score 8.67) ✗ FAIL
+     After:  Returns drug-specific "Dolutegravir Dosing" (11.58) ✓ PASS
+
+HOW IT WORKS:
+  1. Detects drug-class terms in queries: ARV, ACT, TPT, CPT, PREP
+  2. Boosts drug-specific chunks (drug_table, protocol, definition, faq) → 1.4x
+  3. Demotes generic dosage chunks lacking the drug class → 0.6x
+  4. Re-ranks BM25 before vector fusion (Stage 1b)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+TEST RESULTS (27 Canonical Queries):
+
+  Clinical Domain (15 queries):
+    • Before: 10/15 (67%)  |  After: 11/15 (73%)  |  Change: +1 fixed (+7%) ✅
+    • ARV dosage blocker: ✗ → ✓ FIXED
+    • Zero regressions on passing queries
+
+  Dosage/Drug-Name Domain (7 queries):
+    • Before: 7/7 (100%)  |  After: 7/7 (100%)  |  Change: 0 (+0%) ✅
+    • 100% maintained: All previous passes still pass
+
+  Policy Domain (5 queries):
+    • Before: 3/5 (60%)  |  After: 3/5 (60%)  |  Change: 0 (+0%) ✅
+    • No regressions: Policy queries unchanged
+
+  ═══════════════════════════════════════════════════════════════════════════
+  OVERALL: 20/27 (74%) → 21/27 (78%) | +1 query | +4% improvement | ✅ PASS
+  ═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+DEPLOYMENT FILES:
+
+  📁 Web Build Output:
+     dist/                         (Production-ready PWA)
+     ├── index.html               (1.17 kB)
+     ├── sw.js                    (Service Worker)
+     ├── manifest.webmanifest     (PWA manifest)
+     └── assets/
+         ├── index-AxoKnTBg.js    (497 kB | Main app)
+         ├── transformers-DoqsBaf0.js (828 kB | ML models)
+         └── index--_d9oh5q.css   (34 kB | Styles)
+
+  📄 Documentation:
+     ├── BUILD_SUMMARY.md         (Build details & instructions)
+     ├── DEPLOYMENT_CHECKLIST.md  (Deployment steps & verification)
+     ├── PHASE26b_METRICS_REPORT.md (Detailed metrics & findings)
+     └── PHASE26b_EXECUTIVE_SUMMARY.txt (Executive brief)
+
+  📦 GitHub:
+     Repository: https://github.com/JumareKenz/Hivaline
+     Commit:     https://github.com/JumareKenz/Hivaline/commit/b397ab8
+     Branch:     master
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+QUICK START - WEB DEPLOYMENT:
+
+  1. GITHUB PAGES (Recommended):
+     Settings → Pages → Deploy from branch (main) → /root
+     Website will be: https://jumareKenz.github.io/Hivaline/
+
+  2. NETLIFY:
+     npm run build
+     netlify deploy --prod --dir=dist
+
+  3. VERCEL:
+     npm run build
+     vercel --prod
+
+  4. FIREBASE:
+     npm install -g firebase-tools
+     firebase login
+     firebase deploy --only hosting
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+QUICK START - ANDROID APK BUILD:
+
+  Prerequisites:
+    • Java JDK 11+
+    • Android SDK
+    • Gradle build system
+
+  Build Command:
+    cd android
+    ./gradlew assembleRelease
+
+  Output:
+    android/app/build/outputs/apk/release/app-release.apk
+
+  See DEPLOYMENT_CHECKLIST.md for full Android setup & Play Store upload instructions
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+CODE QUALITY:
+
+  ✅ TypeScript: All sources compile without errors
+  ✅ Type Safety: HIVAssets interface updated (added type, display_title, aspects)
+  ✅ No Unused: Removed unused imports (setEmbedQueryFn, getClinicalFaqResponse)
+  ✅ Parameters: All callbacks type-annotated
+  ✅ Tests: 27 canonical queries tested, 0 regressions
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+PRODUCTION READINESS: ✅ APPROVED
+
+  Risk Level: LOW
+  - Boost only activates for drug-class queries
+  - Selective demotion targets obvious generic chunks
+  - Multipliers (1.4x/0.6x) are conservative
+  - Zero regressions on existing queries
+
+  Monitoring Recommendation:
+  Track "ARV dose for 10kg child" success rate in analytics (target: >95%)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+RELEASE NOTES:
+
+  Version:    v2026.06.24.65 (Phase 26b)
+  Date:       2026-06-24
+  Commit:     b397ab8
+  Web Build:  ✅ Complete (11.91s)
+  Android:    ⏳ Pending Java/Gradle
+  Status:     🟢 PRODUCTION READY
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+VERIFICATION CHECKLIST:
+
+  ✅ Feature Implementation (Drug-class boost)
+  ✅ Test Suite (27 queries, 3 domains)
+  ✅ Regression Testing (0 failures)
+  ✅ TypeScript Build (0 errors)
+  ✅ Web Bundle (dist/ generated)
+  ✅ Git Commit (b397ab8)
+  ✅ GitHub Push (master branch)
+  🟡 Android APK (pending environment)
+  ⏳ Production Deployment (ready to deploy)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+NEXT STEPS:
+
+  1. Deploy web build to hosting platform (GitHub Pages / Netlify / Vercel)
+  2. Test in production: "ARV dose for 10kg child" → should return drug-specific dosing
+  3. Setup Java environment and build Android APK for Play Store
+  4. Upload APK to Google Play Console
+  5. Monitor analytics for drug-class query performance
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+For detailed information, see:
+  • BUILD_SUMMARY.md (build details)
+  • DEPLOYMENT_CHECKLIST.md (deployment guide)
+  • PHASE26b_METRICS_REPORT.md (detailed metrics)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
