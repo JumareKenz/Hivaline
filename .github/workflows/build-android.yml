@@ -36,14 +36,23 @@ jobs:
     - name: Sync to Android
       run: npx cap sync android
 
-    - name: Decode keystore (if secrets exist)
-      if: secrets.KEYSTORE_BASE64 != null
+    - name: Check keystore
+      id: keystore-check
+      run: |
+        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "has-keystore=false" >> $GITHUB_OUTPUT
+        else
+          echo "has-keystore=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Decode keystore
+      if: steps.keystore-check.outputs.has-keystore == 'true'
       run: |
         mkdir -p ~/.android
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ~/.android/hiva-release-key.keystore
 
     - name: Update gradle signing config
-      if: secrets.KEYSTORE_BASE64 != null
+      if: steps.keystore-check.outputs.has-keystore == 'true'
       run: |
         cat >> android/app/build.gradle << 'EOF'
 
@@ -75,16 +84,16 @@ jobs:
         chmod +x gradlew
         ./gradlew assembleRelease
 
-    - name: Upload Unsigned APK
-      if: secrets.KEYSTORE_BASE64 == null
+    - name: Upload Unsigned APK (No keystore)
+      if: steps.keystore-check.outputs.has-keystore == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: hiva-medichat-unsigned-apk
         path: android/app/build/outputs/apk/release/app-release-unsigned.apk
         retention-days: 90
 
-    - name: Upload Signed APK
-      if: secrets.KEYSTORE_BASE64 != null
+    - name: Upload Signed APK (With keystore)
+      if: steps.keystore-check.outputs.has-keystore == 'true'
       uses: actions/upload-artifact@v3
       with:
         name: hiva-medichat-signed-apk
