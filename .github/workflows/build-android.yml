@@ -3,12 +3,6 @@ name: Build Android Release APK
 on:
   push:
     branches: [master]
-    paths:
-      - 'src/**'
-      - 'android/**'
-      - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
 
 jobs:
