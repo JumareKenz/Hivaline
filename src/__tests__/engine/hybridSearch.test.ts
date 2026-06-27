@@ -124,10 +124,19 @@ describe('performance', () => {
       view[i] = Math.random() * 2 - 1;
     }
 
+    // Ensure chunk-25 has a strong match with its proxy (unit vector in first dim)
+    const targetProxy = new Array(dims).fill(0);
+    targetProxy[0] = 1;
+    for (let j = 0; j < dims; j++) {
+      view[25 * dims + j] = targetProxy[j];
+    }
+
     const chunkIds = Array.from({ length: total }, (_, i) => `chunk-${i}`);
     const proxies: Record<string, number[]> = {};
     for (let i = 0; i < 50; i++) {
-      proxies[`query ${i}`] = Array.from({ length: dims }, () => Math.random() * 2 - 1);
+      proxies[`query ${i}`] = i === 25
+        ? targetProxy
+        : Array.from({ length: dims }, () => Math.random() * 2 - 1);
     }
 
     const assets: HIVAssets = {

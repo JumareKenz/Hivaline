@@ -7,6 +7,7 @@
 import { useRef, useCallback, useState } from 'react';
 import type { HIVFile, EngineResponse, ConversationState } from '@/types/hiv';
 import { ConversationEngine } from '@/services/conversationEngine';
+import { getQueryLog, exportQueryLog, clearQueryLog } from '@/services/queryLogger';
 
 export interface UseConversationReturn {
   respond: (message: string) => Promise<EngineResponse>;
@@ -56,6 +57,11 @@ export function useConversation(hivFile: HIVFile | null): UseConversationReturn 
         configurable: true,
       });
     }
+
+    // Query log always available (production + dev) for diagnostic export
+    (window as any).__hiva_query_log = getQueryLog;
+    (window as any).__hiva_export_log = exportQueryLog;
+    (window as any).__hiva_clear_log = clearQueryLog;
   }
 
   const respond = useCallback(async (message: string): Promise<EngineResponse> => {

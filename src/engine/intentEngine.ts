@@ -1,8 +1,9 @@
 /**
- * intentEngine.ts — Two-stage intent classifier + gap detection
+ * intentEngine.ts — Multi-stage intent classifier + gap detection
  *
- * Stage 1: Primary intent classification
- * Stage 2: Sentiment probing
+ * Stage 1: Composite intent classification with priority resolution
+ * Stage 2: Negation/correction detection
+ * Stage 3: Sentiment probing
  * Gap detection: compute which aspects the user likely still needs
  */
 
@@ -12,7 +13,7 @@ export const INTENT_PATTERNS: Record<string, RegExp | null> = {
   URGENT: /convuls|not breath|uncon|severe bleed|collapse|fitting|not waking|emergency/i,
   DEFINE: /\bwhat is\b|\bwhat are\b|tell me about|explain|define|meaning of/i,
   SCOPE: /what does.{0,20}cover|what topics|what does it include|what is included/i,
-  DETAIL: /specific|exact|how much|dosage|dose|how many|quantity|amount/i,
+  DETAIL: /specific|exact|how much|dosage|dose|how many|quantity|amount|tablet|mg\b|ml\b|administration/i,
   PROCEDURE: /how to|how do i|steps|protocol|process|procedure|method/i,
   REFERRAL: /when to refer|when should|when is it serious|when to send|refer/i,
   AFFIRM: /^yes[.!?]?$|^yeah$|^ok$|^okay$|correct|right|exactly|sure/i,
@@ -20,6 +21,19 @@ export const INTENT_PATTERNS: Record<string, RegExp | null> = {
   GREETING: /^(hi|hello|good morning|good afternoon|salam|ẹ káàbọ̀|ndewo)[\s!.?]*$/i,
   HEADING_LOOKUP: null, // handled by isAmbiguousInput pre-check
 };
+
+/**
+ * Dosage-semantic terms that should force DETAIL even when DEFINE also matches.
+ * Resolves H1: "what is the dose" → DETAIL, not DEFINE.
+ */
+const DOSAGE_TERMS = /\b(dose|dosage|how much|how many|tablet|capsule|mg|ml|amount|quantity|administration)\b/i;
+
+/**
+ * Negation + correction pattern: user is correcting a prior assumption.
+ * "no I meant TB", "not malaria, it's pneumonia", "actually diarrhea"
+ */
+const CORRECTION_PATTERN = /^(?:no|not|nope|sorry|actually)\s*[,.]?\s*(?:i\s*(?:meant?|mean|was\s*(?:talking|asking|referring))|it'?s\s*(?:not|actually)|(?:not\s+)?(?:\w+)[,.]?\s*(?:i\s*mean|actually|rather))/i;
+const SIMPLE_CORRECTION = /^(?:no|not|nope|actually|sorry)\s+(?!that\b)(\w[\w\s]{2,30})$/i;
 
 const SENTIMENT_PATTERNS: Record<string, RegExp | null> = {
   panic: /urgent|emergency|dying|help me|please|scared|worried|afraid|crisis/i,
@@ -34,31 +48,61 @@ function tokenize(query: string): string[] {
 
 /**
  * Detect short/ambiguous inputs that look like topic headings rather than questions.
- * @param query — raw user query
- * @returns true if input is too short and lacks verbs/question words
+ * M4 fix: expanded verb list to include conversational correction verbs.
  */
 export function isAmbiguousInput(query: string): boolean {
   const tokens = tokenize(query);
-  const hasVerb = /\b(is|are|was|were|do|does|did|what|how|when|where|why|tell|explain|give|show)\b/i.test(query);
+  const hasVerb = /\b(is|are|was|were|do|does|did|what|how|when|where|why|tell|explain|give|show|meant|said|tried|asked|thinking|want|need|got|referring|talking|mean|know|think)\b/i.test(query);
   const hasQuestionWord = /^(what|how|when|where|why|who|which|can|should|does)/i.test(query.trim());
   return tokens.length <= 5 && !hasVerb && !hasQuestionWord;
 }
 
 /**
+ * Detect if a query is a correction of a previous topic/assumption.
+ * Returns the corrected topic if detected, null otherwise.
+ */
+export function detectCorrection(query: string): string | null {
+  const lower = query.toLowerCase().trim();
+
+  if (CORRECTION_PATTERN.test(lower)) {
+    const match = lower.match(/(?:meant?|mean|it'?s|actually|rather)\s+(.+?)[\s.!?]*$/);
+    if (match) return match[1].trim();
+  }
+
+  const simple = lower.match(SIMPLE_CORRECTION);
+  if (simple) return simple[1].trim();
+
+  return null;
+}
+
+/**
  * Classify primary intent from query.
- * @param query — raw user query
- * @returns intent class string (e.g. 'URGENT', 'DEFINE', 'CLINICAL')
+ * Uses composite resolution: when multiple patterns match, applies priority rules.
  */
 export function classifyIntent(query: string): string {
   const lower = query.toLowerCase().trim();
 
-  // First pass: check explicit intent patterns (HEADING_LOOKUP is fallback only)
-  for (const [intent, pattern] of Object.entries(INTENT_PATTERNS)) {
-    if (intent === 'HEADING_LOOKUP') continue;
-    if (pattern && pattern.test(lower)) {
-      return intent;
-    }
+  // URGENT always wins — safety-critical
+  if (INTENT_PATTERNS.URGENT!.test(lower)) return 'URGENT';
+
+  // Composite resolution: DEFINE + DETAIL conflict → DETAIL wins when dose terms present
+  const matchesDefine = INTENT_PATTERNS.DEFINE!.test(lower);
+  const matchesDetail = INTENT_PATTERNS.DETAIL!.test(lower);
+  if (matchesDefine && matchesDetail) {
+    if (DOSAGE_TERMS.test(lower)) return 'DETAIL';
   }
+  if (matchesDetail) return 'DETAIL';
+
+  // REFERRAL before PROCEDURE (safety: referral questions are clinically important)
+  if (INTENT_PATTERNS.REFERRAL!.test(lower)) return 'REFERRAL';
+  if (INTENT_PATTERNS.PROCEDURE!.test(lower)) return 'PROCEDURE';
+
+  if (INTENT_PATTERNS.SCOPE!.test(lower)) return 'SCOPE';
+  if (matchesDefine) return 'DEFINE';
+
+  if (INTENT_PATTERNS.GREETING!.test(lower)) return 'GREETING';
+  if (INTENT_PATTERNS.AFFIRM!.test(lower)) return 'AFFIRM';
+  if (INTENT_PATTERNS.NEGATE!.test(lower)) return 'NEGATE';
 
   // Fallback: ambiguous short inputs → HEADING_LOOKUP
   if (isAmbiguousInput(query)) {

@@ -16,9 +16,10 @@ import type {
   EngineResponse,
 } from '@/types/hiv';
 import SessionState from '@/engine/sessionState';
-import { classifyIntent, probeSentiment, detectGaps } from '@/engine/intentEngine';
+import { classifyIntent, probeSentiment, detectGaps, detectCorrection } from '@/engine/intentEngine';
+import { hasClinicalPresence } from '@/engine/fuzzyNormalizer';
 import { rewriteQuery } from '@/engine/queryRewriter';
-import { search, initSearch, setEmbedQueryFn, type HIVAssets } from '@/engine/hybridSearch';
+import { search, initSearch, setEmbedQueryFn, getLastVectorTier, getLastSearchDiagnostics, type HIVAssets } from '@/engine/hybridSearch';
 import {
   selectAnswerContent,
   computePatientDose,
@@ -41,6 +42,7 @@ import {
 } from '@/engine/greetingHandler';
 import { generateHivReport } from '@/engine/debugReport';
 import { reportError } from '@/services/telemetry';
+import { logQuery } from '@/services/queryLogger';
 import { isEmbeddingModelReady } from '@/services/modelManager';
 import { embedQuery } from '@/services/embeddingModel';
 
@@ -96,6 +98,13 @@ export class ConversationEngine {
     // Extract slots
     this.extractSlots(userMessage);
 
+    // M5: Correction detection — "no I meant TB", "actually pneumonia"
+    const correction = detectCorrection(userMessage);
+    if (correction && this.sessionState.currentTopic) {
+      this.sessionState.onTopicShift(correction);
+      this.sessionState.slotMemory.chiefComplaint = null;
+    }
+
     // New intent classification
     const newIntent = classifyIntent(userMessage);
 
@@ -112,6 +121,18 @@ export class ConversationEngine {
         chunkId: null,
         suggestedFollowUps: appFaqMatch.followUps,
       };
+    }
+
+    // M3: Secondary out-of-scope check — minimum clinical presence
+    if (!hasClinicalPresence(userMessage) && !correction && newIntent === 'CLINICAL') {
+      if (isOutOfScope(userMessage)) {
+        return {
+          message: 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?',
+          type: 'fallback',
+          chunkId: null,
+          suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+        };
+      }
     }
 
     // Out-of-scope detection (BEFORE search)
@@ -175,7 +196,7 @@ export class ConversationEngine {
 
     let searchResult: Awaited<ReturnType<typeof search>> = null;
     try {
-      searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets);
+      searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets, rewritten.bm25Query || undefined);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
@@ -194,8 +215,37 @@ export class ConversationEngine {
       };
     }
 
-    // null means the embedding model is still loading — show a temporary message
     if (searchResult === null) {
+      const diag = getLastSearchDiagnostics();
+      const tier = getLastVectorTier();
+
+      if (diag.confidenceGateFired) {
+        // Confidence floor fired — no signal strong enough to return a reliable answer
+        logQuery({
+          ts: Date.now(),
+          query: userMessage,
+          rewritten: rewritten.rewritten,
+          tier,
+          topChunkId: null,
+          topChunkTitle: null,
+          topBm25Score: diag.topBm25Score,
+          topVectorScore: diag.topVectorScore,
+          fusedScore: null,
+          vectorGatePassed: diag.vectorGatePassed,
+          confidenceGateFired: true,
+          responseType: 'low_confidence',
+        });
+
+        const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+        return {
+          message: fallback,
+          type: 'fallback',
+          chunkId: null,
+          suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+        };
+      }
+
+      // Model still loading — transient state
       return {
         message: 'I\'m still preparing the clinical guidelines — please ask again in a few seconds.',
         type: 'fallback',
@@ -257,10 +307,18 @@ export class ConversationEngine {
 
     // Slot-aware dose computation
     const langContent = chunk.content['en'] as Record<string, unknown> | undefined;
-    if ((newIntent === 'DETAIL' || newIntent === 'PROCEDURE') && langContent?.dosage_rules) {
+    if (langContent?.dosage_rules) {
       const doseResult = computePatientDose(langContent.dosage_rules as DoseRule[], this.sessionState.slotMemory);
       if (doseResult) {
-        answerText = doseResult;
+        if (newIntent === 'DETAIL') {
+          answerText = doseResult;
+        } else if (newIntent === 'PROCEDURE' && answerText) {
+          answerText = `${answerText}\n\n${doseResult}`;
+        } else if (this.sessionState.slotMemory.patientWeightKg !== null && answerText) {
+          answerText = `${answerText}\n\n${doseResult}`;
+        } else if (!answerText) {
+          answerText = doseResult;
+        }
       }
     }
 
@@ -310,6 +368,31 @@ export class ConversationEngine {
       message = `${message}\n\n\u2014 ${companionNote.trim()}`;
     }
 
+    // Source attribution
+    const sourceDoc = chunk.source?.document;
+    if (sourceDoc) {
+      message = `${message}\n\n\ud83d\udccb Source: ${sourceDoc}`;
+    }
+
+    // Danger sign auto-escalation: if user describes emergency symptoms but
+    // the retrieved chunk is NOT already a danger_sign type, prepend warning
+    if (chunk.type !== 'danger_sign') {
+      const dangerPatterns: Array<{ pattern: RegExp; warning: string }> = [
+        { pattern: /convuls|fitting|seizure/i, warning: 'Convulsions are a DANGER SIGN requiring immediate referral.' },
+        { pattern: /unconscious|not responding|unresponsive|lethargi/i, warning: 'Unconsciousness/lethargy is a DANGER SIGN \u2014 refer immediately.' },
+        { pattern: /(?:unable|cannot|can'?t|not able)\s*(?:to\s*)?(?:drink|breastfeed|eat|swallow)/i, warning: 'Inability to drink is a DANGER SIGN \u2014 assess for severe dehydration and refer.' },
+        { pattern: /(?:severe|heavy|massive)\s*bleed/i, warning: 'Severe bleeding requires URGENT intervention \u2014 refer if uncontrolled.' },
+        { pattern: /not\s*breath|stopped?\s*breath|apn[oe]a|blue|cyanosis/i, warning: 'Breathing failure/cyanosis is a LIFE-THREATENING emergency \u2014 begin resuscitation.' },
+        { pattern: /shock|weak\s*pulse|cold\s*extremit/i, warning: 'Signs of shock detected \u2014 start IV fluids and REFER URGENTLY.' },
+      ];
+      for (const { pattern, warning } of dangerPatterns) {
+        if (pattern.test(userMessage)) {
+          message = `\u26a0\ufe0f ${warning}\n\n${message}`;
+          break;
+        }
+      }
+    }
+
     // Update states (don't double-increment turnCount since we already did it at the start)
     const chunkAspects = chunk.aspects || [];
     this.sessionState.turnBuffer.push({
@@ -332,7 +415,24 @@ export class ConversationEngine {
       this.sessionState.currentTopic = topic;
     }
     this.sessionState.lastChiefComplaint = this.sessionState.slotMemory.chiefComplaint;
-    // recordHivaTurn removed(message);
+
+    // Log query diagnostics for production debugging
+    const diag = getLastSearchDiagnostics();
+    const tier = getLastVectorTier();
+    logQuery({
+      ts: Date.now(),
+      query: userMessage,
+      rewritten: rewritten.rewritten,
+      tier,
+      topChunkId: chunk.id,
+      topChunkTitle: chunk.display_title || null,
+      topBm25Score: diag.topBm25Score,
+      topVectorScore: diag.topVectorScore,
+      fusedScore: diag.fusedScore,
+      vectorGatePassed: diag.vectorGatePassed,
+      confidenceGateFired: false,
+      responseType: mappedIntent,
+    });
 
     return {
       message,

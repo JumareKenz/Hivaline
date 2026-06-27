@@ -53,6 +53,38 @@ export interface ProcessMessageResult {
   chunkId: string | null;
   intent: string;
   fallback: boolean;
+  source?: string;
+  dangerEscalation?: string;
+}
+
+/**
+ * Danger signs that should trigger auto-escalation regardless of what was asked.
+ * If a user describes these symptoms across the conversation, the system should
+ * alert them even if they asked about something routine.
+ */
+const DANGER_SIGN_PATTERNS = [
+  { pattern: /convuls|fitting|seizure/i, warning: 'Convulsions are a DANGER SIGN requiring immediate referral.' },
+  { pattern: /unconscious|not responding|unresponsive|lethargi/i, warning: 'Unconsciousness/lethargy is a DANGER SIGN — refer immediately.' },
+  { pattern: /(?:unable|cannot|can'?t|not able)\s*(?:to\s*)?(?:drink|breastfeed|eat|swallow)/i, warning: 'Inability to drink is a DANGER SIGN — assess for severe dehydration and refer.' },
+  { pattern: /(?:severe|heavy|massive)\s*bleed/i, warning: 'Severe bleeding requires URGENT intervention — refer if uncontrolled.' },
+  { pattern: /not\s*breath|stopped?\s*breath|apn[oe]a|blue|cyanosis/i, warning: 'Breathing failure/cyanosis is a LIFE-THREATENING emergency — begin resuscitation.' },
+  { pattern: /shock|weak\s*pulse|cold\s*extremit/i, warning: 'Signs of shock detected — start IV fluids and REFER URGENTLY.' },
+];
+
+/**
+ * Check if the current query contains danger signs that warrant auto-escalation.
+ * Returns a warning string if danger is detected, null otherwise.
+ */
+function detectDangerEscalation(query: string, currentChunkType?: string): string | null {
+  // Don't escalate if already on a danger_sign chunk (redundant)
+  if (currentChunkType === 'danger_sign') return null;
+
+  for (const { pattern, warning } of DANGER_SIGN_PATTERNS) {
+    if (pattern.test(query)) {
+      return `⚠️ ${warning}`;
+    }
+  }
+  return null;
 }
 
 const CLINICAL_KEYWORDS = [
@@ -163,7 +195,7 @@ export async function processMessage(
   // coverage-aware fallback, never reject and freeze the caller.
   let searchResult: Awaited<ReturnType<typeof search>> = null;
   try {
-    searchResult = await search(rewritten.rewritten, sessionState, language, hivAssets);
+    searchResult = await search(rewritten.rewritten, sessionState, language, hivAssets, rewritten.bm25Query || undefined);
   } catch {
     const fallbackText = buildFallback(rewritten.rewritten, sessionState, { topics: coverageManifest });
     sessionState.addTurn(userMessage, null, [], intent);
@@ -242,10 +274,19 @@ export async function processMessage(
 
   // 9. Compute patient dose if applicable
   const langContent = chunk.content['en'] as Record<string, unknown> | undefined;
-  if ((intent === 'DETAIL' || intent === 'PROCEDURE') && langContent?.dosage_rules) {
+  if (langContent?.dosage_rules) {
     const doseResult = computePatientDose(langContent.dosage_rules as DoseRule[], sessionState.slotMemory);
     if (doseResult) {
-      answerText = doseResult;
+      if (intent === 'DETAIL') {
+        answerText = doseResult;
+      } else if (intent === 'PROCEDURE' && answerText) {
+        answerText = `${answerText}\n\n${doseResult}`;
+      } else if (sessionState.slotMemory.patientWeightKg !== null && answerText) {
+        // Proactive dose: patient weight is known, include dose automatically
+        answerText = `${answerText}\n\n${doseResult}`;
+      } else if (!answerText) {
+        answerText = doseResult;
+      }
     }
   }
 
@@ -299,6 +340,19 @@ export async function processMessage(
     sessionState.currentTopic = topic;
   }
 
+  // Source attribution
+  const source = chunk.source?.document || null;
+  if (source) {
+    answer = `${answer}\n\n📋 Source: ${source}`;
+  }
+
+  // Danger sign auto-escalation: detect if query describes emergency symptoms
+  // even when the retrieved chunk is not a danger_sign type
+  const dangerEscalation = detectDangerEscalation(userMessage, chunk.type);
+  if (dangerEscalation) {
+    answer = `${dangerEscalation}\n\n${answer}`;
+  }
+
   return {
     answer,
     closing,
@@ -307,5 +361,7 @@ export async function processMessage(
     chunkId: chunk.id,
     intent,
     fallback: false,
+    source: source || undefined,
+    dangerEscalation: dangerEscalation || undefined,
   };
 }

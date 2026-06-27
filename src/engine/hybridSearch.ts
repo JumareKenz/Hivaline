@@ -38,13 +38,33 @@ export interface SearchResult {
   score: number;
 }
 
+export interface SearchDiagnostics {
+  topBm25Score: number | null;
+  topVectorScore: number | null;
+  fusedScore: number | null;
+  vectorGatePassed: boolean;
+  confidenceGateFired: boolean;
+}
+
 export type VectorTier = 'embedding_model' | 'variant_embeddings' | 'proxy_jaccard' | 'none';
 
 let lastVectorTier: VectorTier = 'none';
+let lastDiagnostics: SearchDiagnostics = {
+  topBm25Score: null,
+  topVectorScore: null,
+  fusedScore: null,
+  vectorGatePassed: false,
+  confidenceGateFired: false,
+};
 
 /** Returns which vector search tier served the most recent query. */
 export function getLastVectorTier(): VectorTier {
   return lastVectorTier;
+}
+
+/** Returns diagnostics from the most recent search call. */
+export function getLastSearchDiagnostics(): SearchDiagnostics {
+  return lastDiagnostics;
 }
 
 let globalAssets: HIVAssets | null = null;
@@ -57,11 +77,28 @@ export function initSearch(hivAssets: HIVAssets): void {
   globalAssets = hivAssets;
 }
 
+const PROXY_STOP_WORDS = new Set([
+  'what', 'whats', 'how', 'when', 'where', 'why', 'who', 'which',
+  'is', 'are', 'was', 'were', 'be', 'been', 'am',
+  'do', 'does', 'did', 'the', 'an', 'of', 'to', 'for', 'in', 'on',
+  'it', 'its', 'my', 'me', 'we', 'us', 'our', 'you', 'your',
+  'that', 'this', 'these', 'those',
+  'overview', 'definition', 'about', 'tell',
+]);
+
 /**
- * Tokenize a string into unigrams.
+ * Tokenize a string into unigrams (strips punctuation to match BM25 behavior).
  */
 function tokenize(text: string): string[] {
-  return text.toLowerCase().split(/\s+/).filter((t) => t.length >= 2);
+  return text.toLowerCase().split(/\s+/).map(t => t.replace(/[^\w]/g, '')).filter((t) => t.length >= 2);
+}
+
+/**
+ * Tokenize for Jaccard computation, excluding stop words that add no
+ * discriminative value (especially those injected by the query rewriter).
+ */
+function tokenizeForJaccard(text: string): string[] {
+  return tokenize(text).filter(t => !PROXY_STOP_WORDS.has(t));
 }
 
 /**
@@ -164,23 +201,27 @@ async function variantEmbeddingSearch(queryEmbedding: Float32Array, topK = 10): 
  * Tier 3 (legacy): Vector search using query proxies.
  * Finds best-matching proxy by Jaccard similarity, then cosine-similarity against all chunk vectors.
  *
- * Safety gate: if the best Jaccard score is below 0.25 (query shares fewer than 1-in-4
- * tokens with any proxy), the match is essentially random — return empty rather than
- * serving potentially wrong clinical content during model warmup.
+ * Safety gate: if the best Jaccard score is below the floor, the match is
+ * essentially random — return empty rather than serving potentially wrong
+ * clinical content during model warmup. Set at 0.18 to catch purely noise
+ * matches (shared stop words like "what", "is") while allowing short queries
+ * where a single specific clinical term (e.g. "dose") is the only overlap.
  */
+const PROXY_JACCARD_FLOOR = 0.18;
+
 function proxyVectorSearch(rewrittenQuery: string, topK = 10): SearchResult[] {
   const assets = globalAssets;
   if (!assets?.queryProxies || !assets.embeddingsBuffer || !assets.embeddingsIndex) {
     return [];
   }
 
-  const queryTokens = new Set(tokenize(rewrittenQuery));
+  const queryTokens = new Set(tokenizeForJaccard(rewrittenQuery));
 
   let bestProxy: number[] | null = null;
   let bestJaccard = -1;
 
   for (const [proxyText, proxyVector] of Object.entries(assets.queryProxies)) {
-    const proxyTokens = new Set(tokenize(proxyText));
+    const proxyTokens = new Set(tokenizeForJaccard(proxyText));
     const inter = setIntersection(queryTokens, proxyTokens).length;
     const union = new Set([...queryTokens, ...proxyTokens]).size;
     const jaccard = union > 0 ? inter / union : 0;
@@ -191,6 +232,8 @@ function proxyVectorSearch(rewrittenQuery: string, topK = 10): SearchResult[] {
   }
 
   if (!bestProxy) return [];
+
+  if (bestJaccard < PROXY_JACCARD_FLOOR) return [];
 
   const dims = assets.embeddingsIndex.dimensions ?? 384;
   const totalChunks = assets.embeddingsIndex.total_chunks ?? 0;
@@ -510,11 +553,20 @@ function isVectorSignalConfident(vectorResults: SearchResult[]): boolean {
   return true;
 }
 
-export async function search(rewrittenQuery: string, sessionState: SessionState, language = 'en', hivAssets?: HIVAssets): Promise<SearchResult | null> {
+/**
+ * Minimum absolute BM25 score floor. If the top BM25 result scores below this,
+ * the match is likely coincidental (shared generic terms like "dose", "child").
+ * Without this floor, a BM25 match on a single generic term can produce a
+ * confident-looking answer on a completely unrelated topic.
+ */
+const BM25_ABSOLUTE_FLOOR = 1.5;
+
+export async function search(rewrittenQuery: string, sessionState: SessionState, language = 'en', hivAssets?: HIVAssets, bm25Query?: string): Promise<SearchResult | null> {
   const assets = hivAssets || globalAssets || {};
 
-  // Stage 1: BM25 (existing)
-  let bm25 = bm25Search(rewrittenQuery, language, assets.bm25Index);
+  // Stage 1: BM25 — use the narrative-normalized query if provided, otherwise the full rewritten query.
+  // Vector search always gets the full rewritten query (embeddings handle narrative well).
+  let bm25 = bm25Search(bm25Query || rewrittenQuery, language, assets.bm25Index);
 
   // Stage 1b: Drug-class boost on BM25 results (pre-fusion)
   // Applied before vector fusion so the boost is baked into ranking early
@@ -539,17 +591,48 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
   }
   const vectorForFusion = useVector ? vector : [];
 
-  // Stage 4: Gap graph boost — applied after RRF fusion
+  // Record diagnostics for logging
+  const topBm25Score = bm25.length > 0 ? bm25[0].score : null;
+  const topVectorScore = vector.length > 0 ? vector[0].score : null;
+
+
+  // Stage 4: Confidence floor — "I don't know" path.
+  // If all available signals are weak, return null rather than serving a
+  // low-confidence match that looks authoritative to the user.
+  const bm25Confident = topBm25Score !== null && topBm25Score >= BM25_ABSOLUTE_FLOOR;
+  const vectorConfident = useVector && topVectorScore !== null && topVectorScore >= 0.3;
+  if (!bm25Confident && !vectorConfident) {
+    lastDiagnostics = {
+      topBm25Score,
+      topVectorScore,
+      fusedScore: null,
+      vectorGatePassed: useVector,
+      confidenceGateFired: true,
+    };
+    return null;
+  }
+
+  // Stage 5: Gap graph boost — applied after RRF fusion
   const lastChunkId = sessionState.turnBuffer.length > 0
     ? sessionState.turnBuffer[sessionState.turnBuffer.length - 1].chunkId
     : null;
 
-  // Stage 5: RRF fusion on the separate ranked lists
+  // Stage 6: RRF fusion on the separate ranked lists
   const fused = rrfFuse(bm25, vectorForFusion);
 
-  // Stage 6: Gap graph boost — applied after fusion
+  // Stage 7: Gap graph boost — applied after fusion
   const boosted = gapGraphBoost(fused, lastChunkId, assets.gapGraph);
 
-  // Stage 7: Dead-end escape
-  return deadEndEscape(boosted, sessionState, assets.gapGraph);
+  // Stage 8: Dead-end escape
+  const result = deadEndEscape(boosted, sessionState, assets.gapGraph);
+
+  lastDiagnostics = {
+    topBm25Score,
+    topVectorScore,
+    fusedScore: result?.score ?? null,
+    vectorGatePassed: useVector,
+    confidenceGateFired: false,
+  };
+
+  return result;
 }

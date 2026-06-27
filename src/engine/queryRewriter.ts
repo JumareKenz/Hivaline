@@ -9,6 +9,8 @@
  */
 
 import type SessionState from './sessionState';
+import { isNarrativeQuery, normalizeForBm25 } from './narrativeNormalizer';
+import { normalizeQuery } from './fuzzyNormalizer';
 
 /**
  * Clinical synonym map: abbreviation/short-form → expanded terms.
@@ -97,6 +99,7 @@ const CLINICAL_KEYWORDS = [
 export interface RewrittenQuery {
   original: string;
   rewritten: string;
+  bm25Query: string | null;
   detectedTopic: string | null;
   isTopicShift: boolean;
 }
@@ -110,7 +113,9 @@ export interface RewrittenQuery {
  */
 export function rewriteQuery(query: string, intent: string, sessionState: SessionState): RewrittenQuery {
   const original = query;
-  let rewritten = query;
+
+  // Stage 0: Fuzzy normalization — correct typos and expand local language
+  let rewritten = normalizeQuery(query);
 
   // Stage 1: Pronoun resolution — only resolve pronouns to chiefComplaint,
   // NOT to currentTopic. Topic continuity is handled by hybridSearch via
@@ -145,6 +150,18 @@ export function rewriteQuery(query: string, intent: string, sessionState: Sessio
   // Stage 6: Clinical synonym expansion — expand abbreviations to improve BM25 recall
   rewritten = expandClinicalSynonyms(rewritten);
 
+  // Stage 7: Narrative normalization for BM25
+  // If the original query is narrative-style, produce a focused BM25 query
+  // that extracts clinical n-grams. The full rewritten query still goes to
+  // vector search where embeddings handle narrative phrasing natively.
+  let bm25Query: string | null = null;
+  if (isNarrativeQuery(original)) {
+    const normalized = normalizeForBm25(original);
+    if (normalized !== original) {
+      bm25Query = expandClinicalSynonyms(normalized);
+    }
+  }
+
   // Detect topic shift
   const detectedTopic = extractTopic(rewritten) || sessionState.currentTopic;
   const isTopicShift = sessionState.detectTopicShift(detectedTopic);
@@ -152,6 +169,7 @@ export function rewriteQuery(query: string, intent: string, sessionState: Sessio
   return {
     original,
     rewritten: deduplicateTerms(rewritten),
+    bm25Query: bm25Query ? deduplicateTerms(bm25Query) : null,
     detectedTopic,
     isTopicShift,
   };
