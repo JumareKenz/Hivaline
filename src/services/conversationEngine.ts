@@ -4,6 +4,10 @@
  * Integrates the new intelligence engine (sessionState, intentEngine,
  * queryRewriter, hybridSearch, answerAssembler, driftDetector, fallbackHandler)
  * while preserving the original public API for backward compatibility.
+ *
+ * Threading: a CognitiveStateObject (CSO) is constructed at the start of each
+ * query and populated progressively as the pipeline executes. The CSO is the
+ * single per-query contract; EngineResponse is derived from cso.response.
  */
 
 import type {
@@ -15,6 +19,7 @@ import type {
   IntentType,
   EngineResponse,
 } from '@/types/hiv';
+import type { CognitiveStateObject } from '@/types/cso';
 import SessionState from '@/engine/sessionState';
 import { classifyIntent, probeSentiment, detectGaps, detectCorrection } from '@/engine/intentEngine';
 import { hasClinicalPresence } from '@/engine/fuzzyNormalizer';
@@ -41,12 +46,16 @@ import {
   CLINICAL_KEYWORDS,
 } from '@/engine/greetingHandler';
 import { generateHivReport } from '@/engine/debugReport';
+import { computeConfidenceTier, VERIFICATION_NOTICE, type RawConfidenceSignals } from '@/engine/confidenceScoring';
+import { shouldInvokeGeneration } from '@/engine/generationRouter';
+import { generateGrounded, checkGrounding, isEdgeBrainReady } from '@/services/edgeBrainService';
 import { reportError } from '@/services/telemetry';
 import { logQuery } from '@/services/queryLogger';
 import { isEmbeddingModelReady } from '@/services/modelManager';
 import { embedQuery } from '@/services/embeddingModel';
 
 export type { ConversationState, ConversationTurn, ConversationSlots, IntentType, EngineResponse };
+export type { CognitiveStateObject };
 
 export class ConversationEngine {
   private hivFile: HIVFile;
@@ -55,6 +64,7 @@ export class ConversationEngine {
   private hivAssets: HIVAssets;
   private coverageManifest: Record<string, { aspects_covered: string[] }>;
   private openerMatrix: Record<string, string>;
+  private _lastCSO: CognitiveStateObject | null = null;
 
   constructor(hivFile: HIVFile) {
     this.hivFile = hivFile;
@@ -91,7 +101,26 @@ export class ConversationEngine {
 
   }
 
+  /** Returns the CSO from the most recent respond() call (for testing/diagnostics). */
+  getLastCSO(): CognitiveStateObject | null {
+    return this._lastCSO;
+  }
+
   async respond(userMessage: string): Promise<EngineResponse> {
+    // ─── Layer 1: Identity ───
+    const identity: CognitiveStateObject['identity'] = {
+      role: 'chew',
+      location: undefined, // TODO: location not currently captured in auth or session — stub for future task
+      language: 'en',
+      connectivityStatus: (typeof navigator !== 'undefined' && navigator.onLine === false) ? 'offline' : 'online',
+    };
+
+    // ─── Layer 2: Request ───
+    const request: CognitiveStateObject['request'] = {
+      rawInput: userMessage,
+      translatedInput: undefined,
+    };
+
     // Increment turn count immediately for greeting/intent logic
     this.sessionState.turnCount += 1;
 
@@ -105,16 +134,80 @@ export class ConversationEngine {
       this.sessionState.slotMemory.chiefComplaint = null;
     }
 
-    // New intent classification
+    // ─── Layer 3: Intent ───
     const newIntent = classifyIntent(userMessage);
-
-    // Probe sentiment and push to session state
     const sentiment = probeSentiment(userMessage);
     this.sessionState.pushSentiment(sentiment as import('@/engine/sessionState').Sentiment);
+
+    const mappedIntent = this.mapIntentToOld(newIntent);
+
+    const intentLayer: CognitiveStateObject['intent'] = {
+      intent: newIntent,
+      mappedIntent,
+      slots: { ...this.sessionState.slotMemory },
+      confidenceScore: 1.0,
+      sentiment: sentiment as import('@/engine/sessionState').Sentiment,
+      targetModuleId: undefined,
+      correctionTopic: correction,
+    };
+
+    // ─── Layer 4: Memory (snapshot current session state) ───
+    const memoryLayer: CognitiveStateObject['memory'] = {
+      turnBuffer: [...this.sessionState.turnBuffer],
+      slotMemory: this.sessionState.slotMemory,
+      topicStack: [...this.sessionState.topicStack],
+      coveredChunks: this.sessionState.coveredChunks,
+      coveredAspects: this.sessionState.coveredAspects,
+      currentTopic: this.sessionState.currentTopic,
+      turnCount: this.sessionState.turnCount,
+      pendingGaps: [...this.sessionState.pendingGaps],
+      sentimentHistory: [...this.sessionState.sentimentHistory],
+    };
+
+    // Helper to build a CSO with early-exit response layers
+    const buildEarlyCSO = (
+      responseText: string,
+      responseType: IntentType,
+      followUps: string[],
+      moduleResponse?: Partial<CognitiveStateObject['moduleResponse']>,
+      genControl?: Partial<CognitiveStateObject['generationControl']>,
+    ): CognitiveStateObject => ({
+      identity,
+      request,
+      intent: intentLayer,
+      memory: memoryLayer,
+      moduleResponse: {
+        chunkId: null,
+        score: null,
+        confidenceGateFired: false,
+        vectorTier: 'none',
+        topBm25Score: null,
+        topVectorScore: null,
+        vectorGatePassed: false,
+        source: undefined,
+        chunkDisplayTitle: null,
+        ...moduleResponse,
+      },
+      generationControl: {
+        confidenceTier: 'HIGH',
+        escalationFlag: false,
+        groundingConstraint: 'hiv_content_only',
+        ...genControl,
+      },
+      response: {
+        text: responseText,
+        sources: [],
+        verified: false,
+        suggestedFollowUps: followUps,
+        type: responseType,
+        verificationFlag: false,
+      },
+    });
 
     // App FAQ
     const appFaqMatch = getAppFaqResponse(userMessage);
     if (appFaqMatch) {
+      this._lastCSO = buildEarlyCSO(appFaqMatch.response, 'greeting', appFaqMatch.followUps);
       return {
         message: appFaqMatch.response,
         type: 'greeting',
@@ -126,8 +219,10 @@ export class ConversationEngine {
     // M3: Secondary out-of-scope check — minimum clinical presence
     if (!hasClinicalPresence(userMessage) && !correction && newIntent === 'CLINICAL') {
       if (isOutOfScope(userMessage)) {
+        const msg = 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?';
+        this._lastCSO = buildEarlyCSO(msg, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care']);
         return {
-          message: 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?',
+          message: msg,
           type: 'fallback',
           chunkId: null,
           suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
@@ -137,24 +232,15 @@ export class ConversationEngine {
 
     // Out-of-scope detection (BEFORE search)
     if (isOutOfScope(userMessage)) {
+      const msg = 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?';
+      this._lastCSO = buildEarlyCSO(msg, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care']);
       return {
-        message: 'That question is outside my clinical knowledge area. I focus on HIV, TB, maternal health, child health, and related medical topics. Can I help you with something clinical?',
+        message: msg,
         type: 'fallback',
         chunkId: null,
         suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
       };
     }
-
-    // Clinical FAQ (pattern-matched Q&A pairs) - DISABLED for now to prevent false matches
-    // const clinicalFaqMatch = getClinicalFaqResponse(userMessage);
-    // if (clinicalFaqMatch) {
-    //   return {
-    //     message: clinicalFaqMatch.response,
-    //     type: 'clinical',
-    //     chunkId: null,
-    //     suggestedFollowUps: clinicalFaqMatch.followUps,
-    //   };
-    // }
 
     // Handle greeting or social acknowledgment
     const hasActiveTopic = !!this.sessionState.currentTopic;
@@ -167,26 +253,21 @@ export class ConversationEngine {
         ? getSocialResponse(this.sessionState.turnCount)
         : getGreetingResponse(this.sessionState.turnCount);
 
+      const followUps = socialTrigger ? [] : ['What can you do?', 'How do you work offline?', 'How do I search?'];
+      this._lastCSO = buildEarlyCSO(message, 'greeting', followUps);
       return {
         message,
         type: 'greeting',
         chunkId: null,
-        suggestedFollowUps: socialTrigger ? [] : ['What can you do?', 'How do you work offline?', 'How do I search?'],
+        suggestedFollowUps: followUps,
       };
     }
 
-    // Map new intent to old IntentType for backward-compatible response shape
-    const mappedIntent = this.mapIntentToOld(newIntent);
-
     // Rewrite query using new engine
     const rewritten = rewriteQuery(userMessage, newIntent, this.sessionState);
-
-    // Note: topic shift from rewriter is NOT applied here — extractPrimaryTopic()
-    // handles topic transitions after search with proper confidence gating.
+    request.translatedInput = rewritten.rewritten;
 
     // Hybrid search (new engine — async for dense variant embedding).
-    // Guard the whole search: any failure (e.g. embedding error while offline)
-    // must produce a graceful clinical fallback, never reject and freeze the UI.
     initSearch(this.hivAssets);
 
     // Lazily wire the embedding model if it became ready after construction
@@ -198,15 +279,18 @@ export class ConversationEngine {
     try {
       searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets, rewritten.bm25Query || undefined);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const errMsg = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
       console.warn('[HIVA][telemetry]', JSON.stringify({
         event: 'engine_search_failed',
-        message,
+        message: errMsg,
         ts: Date.now(),
       }));
-      void reportError('engine_search_failed', message);
+      void reportError('engine_search_failed', errMsg);
       const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], {
+        confidenceGateFired: false,
+      }, { confidenceTier: 'LOW' });
       return {
         message: fallback,
         type: 'fallback',
@@ -220,7 +304,6 @@ export class ConversationEngine {
       const tier = getLastVectorTier();
 
       if (diag.confidenceGateFired) {
-        // Confidence floor fired — no signal strong enough to return a reliable answer
         logQuery({
           ts: Date.now(),
           query: userMessage,
@@ -237,6 +320,13 @@ export class ConversationEngine {
         });
 
         const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+        this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care'], {
+          confidenceGateFired: true,
+          vectorTier: tier,
+          topBm25Score: diag.topBm25Score,
+          topVectorScore: diag.topVectorScore,
+          vectorGatePassed: diag.vectorGatePassed,
+        }, { confidenceTier: 'LOW' });
         return {
           message: fallback,
           type: 'fallback',
@@ -246,8 +336,10 @@ export class ConversationEngine {
       }
 
       // Model still loading — transient state
+      const transientMsg = 'I\'m still preparing the clinical guidelines — please ask again in a few seconds.';
+      this._lastCSO = buildEarlyCSO(transientMsg, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], {}, { confidenceTier: 'LOW' });
       return {
-        message: 'I\'m still preparing the clinical guidelines — please ask again in a few seconds.',
+        message: transientMsg,
         type: 'fallback',
         chunkId: null,
         suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
@@ -259,6 +351,10 @@ export class ConversationEngine {
 
     if (!chunk) {
       const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], {
+        chunkId: searchResult.chunkId,
+        score: searchResult.score,
+      }, { confidenceTier: 'LOW' });
       return {
         message: fallback,
         type: 'fallback',
@@ -269,6 +365,34 @@ export class ConversationEngine {
 
     this.sessionState.lastChunkId = chunk.id;
 
+    // ─── Layer 5: Module Response (populated after search) ───
+    const diag = getLastSearchDiagnostics();
+    const tier = getLastVectorTier();
+    const fusedScore = searchResult?.score ?? 0;
+
+    const moduleResponse: CognitiveStateObject['moduleResponse'] = {
+      chunkId: chunk.id,
+      score: fusedScore,
+      confidenceGateFired: false,
+      vectorTier: tier,
+      topBm25Score: diag.topBm25Score,
+      topVectorScore: diag.topVectorScore,
+      vectorGatePassed: diag.vectorGatePassed,
+      source: chunk.source,
+      chunkDisplayTitle: chunk.display_title || null,
+    };
+
+    // ─── Layer 6: Generation Control ───
+    const confidenceSignals: RawConfidenceSignals = {
+      topVectorScore: diag.topVectorScore,
+      vectorMargin: diag.vectorMargin,
+      topBm25Score: diag.topBm25Score,
+      vectorGatePassed: diag.vectorGatePassed,
+      confidenceGateFired: false,
+    };
+    const { tier: confidenceTier } = computeConfidenceTier(confidenceSignals);
+    let escalationFlag = false;
+
     // Drift detection
     const chunkTopics = this.getChunkTopics(chunk);
     const drift = detectDrift(rewritten.rewritten, chunkTopics, this.sessionState);
@@ -277,7 +401,6 @@ export class ConversationEngine {
     }
 
     // Determine primary topic using 3-priority cascade
-    const fusedScore = searchResult?.score ?? 0;
     const topic = extractPrimaryTopic(
       userMessage,
       chunkTopics,
@@ -325,7 +448,7 @@ export class ConversationEngine {
     // If no answer content, return fallback
     if (!answerText) {
       const fallback = 'I found relevant information, but the content is not available in this release.';
-      // recordHivaTurn removed(fallback);
+      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
       return {
         message: fallback,
         type: 'fallback',
@@ -333,6 +456,83 @@ export class ConversationEngine {
         source: chunk.source,
         suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
       };
+    }
+
+    // LOW tier: return the safe-fallback path even though search returned a result —
+    // the confidence scoring determined the signals are too weak to serve an answer.
+    if (confidenceTier === 'LOW') {
+      const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care'], moduleResponse, { confidenceTier: 'LOW' });
+      return {
+        message: fallback,
+        type: 'fallback',
+        chunkId: null,
+        suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+      };
+    }
+
+    // Edge Brain generation decision: only invoke if template assembly can't produce a complete answer
+    const genDecision = shouldInvokeGeneration(chunk, newIntent, this.sessionState.slotMemory, answerText);
+
+    if (genDecision.shouldGenerate && genDecision.evidence) {
+      // Check if Edge Brain is available (model loaded)
+      const brainReady = await isEdgeBrainReady();
+
+      if (brainReady) {
+        try {
+          // Invoke Edge Brain for grounded generation
+          const genResult = await generateGrounded(genDecision.evidence, userMessage);
+
+          // Post-generation grounding check
+          const groundingCheck = checkGrounding(genResult.text, genDecision.evidence);
+
+          if (!groundingCheck.grounded) {
+            // Grounding check failed — force LOW tier and log the mismatch
+            // eslint-disable-next-line no-console
+            console.warn('[HIVA] Generation grounding check FAILED:', {
+              score: groundingCheck.score,
+              unmatched: groundingCheck.unmatchedTerms,
+            });
+
+            const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+            this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care'], moduleResponse, { confidenceTier: 'LOW', escalationFlag: true });
+            return {
+              message: fallback,
+              type: 'fallback',
+              chunkId: null,
+              suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+            };
+          }
+
+          // Generation passed grounding check — use it as the answer
+          if (genResult.text === 'INSUFFICIENT_EVIDENCE') {
+            // Model explicitly declined to answer — treat as LOW confidence
+            const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+            this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['HIV treatment guidelines', 'TB screening', 'Newborn care'], moduleResponse, { confidenceTier: 'LOW' });
+            return {
+              message: fallback,
+              type: 'fallback',
+              chunkId: chunk.id,
+              suggestedFollowUps: ['HIV treatment guidelines', 'TB screening', 'Newborn care'],
+            };
+          }
+
+          // Use the generated text as the answer
+          answerText = genResult.text;
+
+          // eslint-disable-next-line no-console
+          console.log(`[HIVA] Edge Brain generated ${genResult.tokenCount} tokens in ${genResult.durationMs}ms (${genResult.tokensPerSecond.toFixed(1)} tok/s)`);
+        } catch (err) {
+          // Generation failed — fall back to template assembly
+          // eslint-disable-next-line no-console
+          console.error('[HIVA] Edge Brain generation failed:', err);
+          // Continue with template-assembled answerText
+        }
+      } else {
+        // Edge Brain not ready — continue with template-assembled answerText
+        // eslint-disable-next-line no-console
+        console.log('[HIVA] Edge Brain not ready — using template assembly');
+      }
     }
 
     // Build opener, closing, and chips using new engine
@@ -347,7 +547,6 @@ export class ConversationEngine {
     const chunkMap = new Map(this.hivFile.chunks.map((c) => [c.id, c]));
     const chips = buildFollowUpChips(gaps, this.hivAssets.gapGraph, chunk.id, chunkMap);
 
-    // Warn if chips are dropped (UI layer should display them)
     if (chips.length === 0) {
       // eslint-disable-next-line no-console
       console.warn('[HIVA Engine] buildFollowUpChips returned empty array for chunk', chunk.id);
@@ -362,38 +561,38 @@ export class ConversationEngine {
       message = `${message}\n\n${closing}`;
     }
 
-    // Append companion_note if present (colleague aside, not clinical answer)
+    // Append companion_note if present
     const companionNote = (langContent as Record<string, unknown> | undefined)?.companion_note;
     if (typeof companionNote === 'string' && companionNote.trim().length > 0) {
-      message = `${message}\n\n\u2014 ${companionNote.trim()}`;
+      message = `${message}\n\n— ${companionNote.trim()}`;
     }
 
     // Source attribution
     const sourceDoc = chunk.source?.document;
     if (sourceDoc) {
-      message = `${message}\n\n\ud83d\udccb Source: ${sourceDoc}`;
+      message = `${message}\n\n📋 Source: ${sourceDoc}`;
     }
 
-    // Danger sign auto-escalation: if user describes emergency symptoms but
-    // the retrieved chunk is NOT already a danger_sign type, prepend warning
+    // Danger sign auto-escalation
     if (chunk.type !== 'danger_sign') {
       const dangerPatterns: Array<{ pattern: RegExp; warning: string }> = [
         { pattern: /convuls|fitting|seizure/i, warning: 'Convulsions are a DANGER SIGN requiring immediate referral.' },
-        { pattern: /unconscious|not responding|unresponsive|lethargi/i, warning: 'Unconsciousness/lethargy is a DANGER SIGN \u2014 refer immediately.' },
-        { pattern: /(?:unable|cannot|can'?t|not able)\s*(?:to\s*)?(?:drink|breastfeed|eat|swallow)/i, warning: 'Inability to drink is a DANGER SIGN \u2014 assess for severe dehydration and refer.' },
-        { pattern: /(?:severe|heavy|massive)\s*bleed/i, warning: 'Severe bleeding requires URGENT intervention \u2014 refer if uncontrolled.' },
-        { pattern: /not\s*breath|stopped?\s*breath|apn[oe]a|blue|cyanosis/i, warning: 'Breathing failure/cyanosis is a LIFE-THREATENING emergency \u2014 begin resuscitation.' },
-        { pattern: /shock|weak\s*pulse|cold\s*extremit/i, warning: 'Signs of shock detected \u2014 start IV fluids and REFER URGENTLY.' },
+        { pattern: /unconscious|not responding|unresponsive|lethargi/i, warning: 'Unconsciousness/lethargy is a DANGER SIGN — refer immediately.' },
+        { pattern: /(?:unable|cannot|can'?t|not able)\s*(?:to\s*)?(?:drink|breastfeed|eat|swallow)/i, warning: 'Inability to drink is a DANGER SIGN — assess for severe dehydration and refer.' },
+        { pattern: /(?:severe|heavy|massive)\s*bleed/i, warning: 'Severe bleeding requires URGENT intervention — refer if uncontrolled.' },
+        { pattern: /not\s*breath|stopped?\s*breath|apn[oe]a|blue|cyanosis/i, warning: 'Breathing failure/cyanosis is a LIFE-THREATENING emergency — begin resuscitation.' },
+        { pattern: /shock|weak\s*pulse|cold\s*extremit/i, warning: 'Signs of shock detected — start IV fluids and REFER URGENTLY.' },
       ];
       for (const { pattern, warning } of dangerPatterns) {
         if (pattern.test(userMessage)) {
-          message = `\u26a0\ufe0f ${warning}\n\n${message}`;
+          message = `⚠️ ${warning}\n\n${message}`;
+          escalationFlag = true;
           break;
         }
       }
     }
 
-    // Update states (don't double-increment turnCount since we already did it at the start)
+    // Update states
     const chunkAspects = chunk.aspects || [];
     this.sessionState.turnBuffer.push({
       query: userMessage,
@@ -404,7 +603,6 @@ export class ConversationEngine {
     if (this.sessionState.turnBuffer.length > 8) {
       this.sessionState.turnBuffer.shift();
     }
-    // Only mark aspects covered if the response is not a deflection
     if (!this.isDeflectionResponse(answerText)) {
       this.sessionState.markAspectsCovered(chunkAspects);
     }
@@ -416,9 +614,46 @@ export class ConversationEngine {
     }
     this.sessionState.lastChiefComplaint = this.sessionState.slotMemory.chiefComplaint;
 
-    // Log query diagnostics for production debugging
-    const diag = getLastSearchDiagnostics();
-    const tier = getLastVectorTier();
+    // MEDIUM tier: append verification notice to the assembled message
+    const verificationFlag = confidenceTier === 'MEDIUM';
+    if (verificationFlag) {
+      message = `${message}\n\n⚕️ ${VERIFICATION_NOTICE}`;
+    }
+
+    // ─── Layer 6: Generation Control (finalized) ───
+    const generationControl: CognitiveStateObject['generationControl'] = {
+      confidenceTier,
+      escalationFlag,
+      groundingConstraint: 'hiv_content_only',
+    };
+
+    // ─── Layer 7: Response ───
+    const sources: Array<{ document: string; span?: string }> = [];
+    if (chunk.source) sources.push(chunk.source);
+
+    const suggestedFollowUps = chips.length > 0 ? chips : this.getFollowUpQuestions(chunk);
+
+    const responseLayer: CognitiveStateObject['response'] = {
+      text: message,
+      sources,
+      verified: true,
+      suggestedFollowUps,
+      type: mappedIntent,
+      verificationFlag,
+    };
+
+    // ─── Assemble final CSO ───
+    this._lastCSO = {
+      identity,
+      request,
+      intent: intentLayer,
+      memory: memoryLayer,
+      moduleResponse,
+      generationControl,
+      response: responseLayer,
+    };
+
+    // Log query diagnostics
     logQuery({
       ts: Date.now(),
       query: userMessage,
@@ -439,7 +674,7 @@ export class ConversationEngine {
       type: mappedIntent,
       chunkId: chunk.id,
       source: chunk.source,
-      suggestedFollowUps: chips.length > 0 ? chips : this.getFollowUpQuestions(chunk),
+      suggestedFollowUps,
     };
   }
 
@@ -448,7 +683,6 @@ export class ConversationEngine {
   }
 
   getState(): ConversationState {
-    // For backward compatibility, return old state format from sessionState
     return {
       turns: this.sessionState.turnBuffer.map(t => ({
         role: t.chunkId ? ('hiva' as const) : ('user' as const),
@@ -458,7 +692,7 @@ export class ConversationEngine {
       slots: {
         patientAge: this.sessionState.slotMemory.patientAge,
         patientWeight: this.sessionState.slotMemory.patientWeight,
-        symptomDuration: null, // deprecated
+        symptomDuration: null,
         chiefComplaint: this.sessionState.slotMemory.chiefComplaint,
       },
       lastChunkId: this.sessionState.lastChunkId,
@@ -472,7 +706,7 @@ export class ConversationEngine {
     return {
       patientAge: this.sessionState.slotMemory.patientAge,
       patientWeight: this.sessionState.slotMemory.patientWeight,
-      symptomDuration: null, // deprecated
+      symptomDuration: null,
       chiefComplaint: this.sessionState.slotMemory.chiefComplaint,
     };
   }
@@ -486,17 +720,13 @@ export class ConversationEngine {
   private isDeflectionResponse(answer: string): boolean {
     const text = answer.trim();
 
-    // Pattern 1: "I can help with X. Tell me [more/what/which]"
     if (/^I can help with .+\.\s*Tell me/i.test(text)) return true;
 
-    // Pattern 2: Ends with an open question after minimal content
-    // Short responses (under 60 words) that end with "Tell me..."
     const wordCount = text.split(/\s+/).length;
     if (wordCount < 60 && /Tell me (more|what|which|about)/i.test(text)) {
       return true;
     }
 
-    // Pattern 3: Explicit deflection phrases
     const deflectionPhrases = [
       /Tell me more about your (patient|role|situation|query)/i,
       /Tell me what (type|kind|aspect|specific)/i,
@@ -506,8 +736,6 @@ export class ConversationEngine {
     ];
     if (deflectionPhrases.some(p => p.test(text))) return true;
 
-    // Pattern 4: Last sentence is a redirect question
-    // ("Should I explain...", "Want me to...", "Would you like me to...")
     const lastSentence = text.split(/[.!]\s*/).filter(s => s.trim()).pop() ?? '';
     if (/\b(should I|want me to|would you like me to)\b.{0,60}\?$/i.test(lastSentence.trim())) {
       return true;
@@ -517,7 +745,6 @@ export class ConversationEngine {
   }
 
   private buildHivAssets(hivFile: HIVFile): HIVAssets {
-    // Convert Int8Array quantized embeddings to a single Float32Array buffer
     let embeddingsBuffer: ArrayBuffer | undefined;
     if (hivFile.embeddings.length > 0 && hivFile.embeddings[0].length > 0) {
       const dims = hivFile.embeddings[0].length;
@@ -533,10 +760,8 @@ export class ConversationEngine {
       embeddingsBuffer = buffer;
     }
 
-    // Use chunk IDs from embeddings_index.json
     const chunkIds = hivFile.embeddingChunkIds || [];
 
-    // Get coverage manifest from rules (already has { topics: {...} } structure)
     const manifestExt = hivFile.manifest as unknown as Record<string, unknown>;
     const coverageManifestFromFile =
       (manifestExt.coverage_manifest as HIVAssets['coverageManifest']) ||
@@ -561,13 +786,11 @@ export class ConversationEngine {
       embeddingDims: hivFile.embeddingDims ?? 384,
       chunkTitleMap: new Map(hivFile.chunks.map(c => [c.id, c.display_title || ''])),
       chunkContentMap: new Map(hivFile.chunks.map(c => {
-        // Build searchable text from title + content
         const title = c.display_title || '';
         const contentObj = (c.content as Record<string, any>)?.en;
         let contentText = '';
 
         if (contentObj) {
-          // Extract text from various content fields
           const extractText = (obj: any): string => {
             if (typeof obj === 'string') return obj;
             if (Array.isArray(obj)) return obj.map(extractText).join(' ');
@@ -599,7 +822,6 @@ export class ConversationEngine {
       case 'PROCEDURE':
       case 'REFERRAL':
       case 'HEADING_LOOKUP': {
-        // In the old system, follow-up is detected by trigger words or turn count
         if (this.sessionState.turnCount > 1 && this.sessionState.slotMemory.chiefComplaint) {
           return 'follow_up';
         }
@@ -624,7 +846,6 @@ export class ConversationEngine {
   }
 
   private isInformationalQuery(query: string): boolean {
-    // Queries that are clearly asking ABOUT a topic, not treating a patient
     const informationalPatterns = [
       /\bwhat is\b/i, /\bwhat are\b/i, /\bwhat does\b/i,
       /\bdefine\b/i, /\bexplain\b/i, /\btell me about\b/i,
@@ -652,10 +873,6 @@ export class ConversationEngine {
       this.sessionState.slotMemory.patientWeightKg = this.sessionState.normalizeWeight(weightStr);
     }
 
-    // Note: symptomDuration not used in new engine; could be removed
-
-    // Only set chiefComplaint if NOT a purely informational query
-    // OR if there's an explicit patient reference
     if (!this.isInformationalQuery(message) || this.hasPatientReference(message)) {
       for (const keyword of CLINICAL_KEYWORDS) {
         if (lower.includes(keyword)) {

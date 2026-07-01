@@ -44,6 +44,8 @@ export interface SearchDiagnostics {
   fusedScore: number | null;
   vectorGatePassed: boolean;
   confidenceGateFired: boolean;
+  /** Relative margin between top and second vector result: (top - second) / second. Null if < 2 results. */
+  vectorMargin: number | null;
 }
 
 export type VectorTier = 'embedding_model' | 'variant_embeddings' | 'proxy_jaccard' | 'none';
@@ -55,6 +57,7 @@ let lastDiagnostics: SearchDiagnostics = {
   fusedScore: null,
   vectorGatePassed: false,
   confidenceGateFired: false,
+  vectorMargin: null,
 };
 
 /** Returns which vector search tier served the most recent query. */
@@ -594,6 +597,9 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
   // Record diagnostics for logging
   const topBm25Score = bm25.length > 0 ? bm25[0].score : null;
   const topVectorScore = vector.length > 0 ? vector[0].score : null;
+  const vectorMargin: number | null = (vector.length >= 2 && vector[1].score > 0)
+    ? (vector[0].score - vector[1].score) / vector[1].score
+    : null;
 
 
   // Stage 4: Confidence floor — "I don't know" path.
@@ -608,6 +614,7 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
       fusedScore: null,
       vectorGatePassed: useVector,
       confidenceGateFired: true,
+      vectorMargin,
     };
     return null;
   }
@@ -632,6 +639,7 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
     fusedScore: result?.score ?? null,
     vectorGatePassed: useVector,
     confidenceGateFired: false,
+    vectorMargin,
   };
 
   return result;
