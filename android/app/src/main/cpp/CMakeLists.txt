@@ -25,20 +25,23 @@ set(GGML_METAL OFF CACHE BOOL "" FORCE)
 set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
 set(GGML_OPENCL OFF CACHE BOOL "" FORCE)
 
+# Disable llamafile optimizations (causes FP16 intrinsic errors on some NDKs)
+set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
+
 # Build llama.cpp as a static library
 add_subdirectory(llama.cpp)
 
-# JNI bridge library
+# Build JNI bridge (inline the minimal common functions we need)
 add_library(edgebrain_jni SHARED edgebrain_jni.cpp)
 
 target_include_directories(edgebrain_jni PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp/ggml/include
 )
 
 target_link_libraries(edgebrain_jni
     llama
-    common
     log
     android
 )

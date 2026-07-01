@@ -12,6 +12,7 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
+import { isModelDownloaded } from './modelDownloader';
 
 export interface EdgeBrainPlugin {
   loadModel(): Promise<{ success: boolean; loadTimeMs: number }>;
@@ -80,6 +81,8 @@ export function subscribeEdgeBrainState(fn: (s: EdgeBrainState) => void): () => 
 /**
  * Load the Edge Brain model (idempotent).
  * Safe to call repeatedly — will short-circuit if already loaded.
+ *
+ * @throws {Error} If model file is not downloaded
  */
 export async function loadEdgeBrain(): Promise<void> {
   if (state.status === 'ready') return;
@@ -89,6 +92,14 @@ export async function loadEdgeBrain(): Promise<void> {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     return;
+  }
+
+  // Check if model is downloaded
+  const downloaded = await isModelDownloaded();
+  if (!downloaded) {
+    const error = 'Model not downloaded. Please download the model first.';
+    emit({ status: 'error', error });
+    throw new Error(error);
   }
 
   emit({ status: 'loading', error: null });

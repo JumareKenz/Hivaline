@@ -31,3 +31,8 @@ debug_zip.mjs
 
 # Aider AI
 .aider*
+models/*.gguf
+*.apk
+*.keystore
+*.sig
+*.idsig

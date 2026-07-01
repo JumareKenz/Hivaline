@@ -1,0 +1,7203 @@
+{
+  "total": 188,
+  "types": [
+    "definition",
+    "faq",
+    "protocol",
+    "danger_sign",
+    "drug_table"
+  ],
+  "chunks": [
+    {
+      "id": "98070d50-34a0-4544-befe-ab9b10f31d49",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "Osun health insurance details",
+          "what is Osun health plan",
+          "benefits of Osun health scheme",
+          "Osun state health insurance package",
+          "how Osun health insurance works"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 0–3",
+        "span": "Osun Health Insurance Scheme introduction"
+      }
+    },
+    {
+      "id": "697ce7e8-a5c3-4a7b-8b06-7aceb67a6e36",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "THEMATIC AREAS",
+          "thematic areas",
+          "what is THEMATIC AREAS",
+          "tell me about THEMATIC AREAS",
+          "explain THEMATIC AREAS"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 4",
+        "span": "block 4"
+      }
+    },
+    {
+      "id": "86d052c6-9a5b-4457-914d-eb3955cc6b18",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "ENTITLEMENT",
+          "entitlement",
+          "what is ENTITLEMENT",
+          "tell me about ENTITLEMENT",
+          "explain ENTITLEMENT"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 5",
+        "span": "block 5"
+      }
+    },
+    {
+      "id": "fbeba901-cf19-47e2-9b5d-0c5a0a1c08d4",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Outpatient services",
+          "outpatient services",
+          "what is Outpatient services",
+          "tell me about Outpatient services",
+          "explain Outpatient services"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 6",
+        "span": "block 6"
+      }
+    },
+    {
+      "id": "f29e5890-5cd9-424f-bcc2-4eeb57013b6d",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Health Care Prevention and Promotion",
+          "health care prevention and promotion",
+          "what is Health Care Prevention and Promotion",
+          "tell me about Health Care Prevention and Promotion",
+          "explain Health Care Prevention and Promotion"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 7",
+        "span": "block 7"
+      }
+    },
+    {
+      "id": "7aa241ff-7dd4-4f5f-9fb4-a540808d32bf",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "O’HIS BENEFIT PACKAGE (OSUN HEALTH PLAN)",
+          "o’his benefit package (osun health plan)",
+          "what is O’HIS BENEFIT PACKAGE (OSUN HEALTH PLAN)",
+          "tell me about O’HIS BENEFIT PACKAGE (OSUN HEALTH PLAN)",
+          "explain O’HIS BENEFIT PACKAGE (OSUN HEALTH PLAN)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 8",
+        "span": "block 8"
+      }
+    },
+    {
+      "id": "5e569d81-b070-42cf-8896-c600abd8c3c7",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "SERVICES",
+          "services",
+          "what is SERVICES",
+          "tell me about SERVICES",
+          "explain SERVICES"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 9",
+        "span": "block 9"
+      }
+    },
+    {
+      "id": "7e8528bd-f081-491f-844a-320a7c996bd0",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "PRIMARY CARE",
+          "primary care",
+          "what is PRIMARY CARE",
+          "tell me about PRIMARY CARE",
+          "explain PRIMARY CARE"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 10",
+        "span": "block 10"
+      }
+    },
+    {
+      "id": "2b50cf2e-78ef-4796-9e2f-51695d548ece",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "SECONDARY CARE",
+          "secondary care",
+          "what is SECONDARY CARE",
+          "tell me about SECONDARY CARE",
+          "explain SECONDARY CARE"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 11",
+        "span": "block 11"
+      }
+    },
+    {
+      "id": "09e932df-0711-492f-a749-a0b48f07cd1d",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what services are offered at secondary care",
+          "secondary care options",
+          "what is included in general medical consultations",
+          "secondary care for chronic diseases",
+          "immunization services at secondary care",
+          "family planning at secondary care",
+          "child welfare services at secondary care"
+        ]
+      },
+      "aspects": [
+        "coverage",
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 12–15",
+        "span": "Secondary care services"
+      }
+    },
+    {
+      "id": "5c99c19f-c2e0-40a2-b5ba-eb51fb64ee7f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "HIV/AIDS  Voluntary counseling and",
+          "hiv/aids  voluntary counseling and",
+          "what is HIV/AIDS  Voluntary counseling and",
+          "tell me about HIV/AIDS  Voluntary counseling and",
+          "explain HIV/AIDS  Voluntary counseling and"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 16",
+        "span": "block 16"
+      }
+    },
+    {
+      "id": "f8e3128d-204e-49f7-9d73-c202a7192bbe",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Testing",
+          "testing",
+          "what is Testing",
+          "tell me about Testing",
+          "explain Testing"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 17",
+        "span": "block 17"
+      }
+    },
+    {
+      "id": "69162e30-2945-42b5-a517-71b56c10173d",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "what is health education",
+          "health education meaning",
+          "importance of health education",
+          "health education in Nigeria",
+          "wetin be health education",
+          "health education definition",
+          "explain health education",
+          "health education overview"
+        ]
+      },
+      "aspects": [
+        "definition"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Health education is about teaching people how to stay healthy and prevent diseases. It's a crucial part of healthcare th",
+      "source": {
+        "document": "blocks 18–18",
+        "span": "health education overview"
+      }
+    },
+    {
+      "id": "ad02e29b-f346-4382-9add-90f1be151e4f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "TUBERCULOSIS  Health Education  Screening for TB",
+          "tuberculosis  health education  screening for tb",
+          "what is TUBERCULOSIS  Health Education  Screening for TB",
+          "tell me about TUBERCULOSIS  Health Education  Screening for TB",
+          "explain TUBERCULOSIS  Health Education  Screening for TB"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "DENTAL CARE  Dental care education  STIs  Health education  counseling  HIV education  HIV Testing Services with",
+      "source": {
+        "document": "block 19",
+        "span": "block 19"
+      }
+    },
+    {
+      "id": "b3159d49-a106-499f-8b7c-ac7bad212501",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "what is tuberculosis",
+          "wetin be tuberculosis",
+          "how to prevent TB",
+          "tuberculosis education",
+          "TB health talk"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 20–20",
+        "span": "Tuberculosis and dental care section"
+      }
+    },
+    {
+      "id": "a0725f56-09ac-4e15-a57c-7b8e8d9d6511",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Rapid Test Kits",
+          "rapid test kits",
+          "what is Rapid Test Kits",
+          "tell me about Rapid Test Kits",
+          "explain Rapid Test Kits"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 21",
+        "span": "block 21"
+      }
+    },
+    {
+      "id": "d27aa13f-58fe-427a-81c4-54ea89fbee0e",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what to do after rapid test",
+          "rapid test kit protocol",
+          "how to counsel after rapid test",
+          "what is adherence counseling",
+          "next steps after HIV test",
+          "how to refer patient after test",
+          "contact tracking after test",
+          "assisted referrals for HIV"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "referral"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 22–23",
+        "span": "Rapid Test Kits section"
+      }
+    },
+    {
+      "id": "b075411a-453f-4c83-8b2a-5df85fe00425",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "PARTIAL EXCLUSION S",
+          "partial exclusion s",
+          "what is PARTIAL EXCLUSION S",
+          "tell me about PARTIAL EXCLUSION S",
+          "explain PARTIAL EXCLUSION S"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 24",
+        "span": "block 24"
+      }
+    },
+    {
+      "id": "3f4ba206-b8bb-48ad-a2b0-d9e82810925c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "2",
+          "2",
+          "what is 2",
+          "tell me about 2",
+          "explain 2"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 25",
+        "span": "block 25"
+      }
+    },
+    {
+      "id": "1f556c25-1cac-43c9-b2f0-3bc93e6fbf64",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Maternal and Child Health",
+          "maternal and child health",
+          "what is Maternal and Child Health",
+          "tell me about Maternal and Child Health",
+          "explain Maternal and Child Health"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 26",
+        "span": "block 26"
+      }
+    },
+    {
+      "id": "4c7b472e-d592-45f2-bd07-3c1c910bb79f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Maternal Health Routine Maternity Care  ANC for Pregnancies up to",
+          "maternal health routine maternity care  anc for pregnancies up to",
+          "what is Maternal Health Routine Maternity Care  ANC for Pregnancies up to",
+          "tell me about Maternal Health Routine Maternity Care  ANC for Pregnancies up to",
+          "explain Maternal Health Routine Maternity Care  ANC for Pregnancies up to"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 27",
+        "span": "block 27"
+      }
+    },
+    {
+      "id": "46f45f46-21c2-4bc3-96b4-9f2acfb0e047",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Four (4) Live Births",
+          "four (4) live births",
+          "what is Four (4) Live Births",
+          "tell me about Four (4) Live Births",
+          "explain Four (4) Live Births"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 28",
+        "span": "block 28"
+      }
+    },
+    {
+      "id": "44c65cc4-39fd-4649-ad87-70d3d6fd1346",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "antenatal care for four live births",
+          "what to do for woman with 4 live births",
+          "consultation for woman with 4 children",
+          "USS scan for pregnant woman with 4 kids",
+          "how many USS scans for 4 live births",
+          "malaria screening for pregnant woman",
+          "HIV screening for pregnant woman with 4 kids"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For a woman with four live births, consultation by skilled health care workers is essential. This should include two USS",
+      "source": {
+        "document": "blocks 29–29",
+        "span": "antenatal care protocol"
+      }
+    },
+    {
+      "id": "6d2d7cd7-40ed-4fb1-935d-52583624dada",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Syphilis, HBsAg",
+          "syphilis, hbsag",
+          "what is Syphilis, HBsAg",
+          "tell me about Syphilis, HBsAg",
+          "explain Syphilis, HBsAg"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 30",
+        "span": "block 30"
+      }
+    },
+    {
+      "id": "1695be58-0a79-4e4d-80f8-7b643f83b6ee",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "antenatal care protocol",
+          "what to do during pregnancy",
+          "how to monitor labour",
+          "IPT for malaria in pregnancy",
+          "blood tests for pregnant women",
+          "health education for pregnant women",
+          "wetin be protocol for pregnant woman"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Your patient should have a PCV check, blood group test, IPT for malaria prophylaxis, and hematinics. Also, provide healt",
+      "source": {
+        "document": "blocks 31–32",
+        "span": "antenatal care section"
+      }
+    },
+    {
+      "id": "1ed9ea97-4340-4588-ab60-84f114f9ac4a",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "patograph  Normal Delivery  Provision and repair of",
+          "patograph  normal delivery  provision and repair of",
+          "what is patograph  Normal Delivery  Provision and repair of",
+          "tell me about patograph  Normal Delivery  Provision and repair of",
+          "explain patograph  Normal Delivery  Provision and repair of"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 33",
+        "span": "block 33"
+      }
+    },
+    {
+      "id": "98db76d9-1c2c-4dde-8cdf-0348edc5d944",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "episiotomy  IV/IM Antibiotics  IV/IM Oxytocic’s +Augmentation",
+          "episiotomy  iv/im antibiotics  iv/im oxytocic’s +augmentation",
+          "what is episiotomy  IV/IM Antibiotics  IV/IM Oxytocic’s +Augmentation",
+          "tell me about episiotomy  IV/IM Antibiotics  IV/IM Oxytocic’s +Augmentation",
+          "explain episiotomy  IV/IM Antibiotics  IV/IM Oxytocic’s +Augmentation"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 34",
+        "span": "block 34"
+      }
+    },
+    {
+      "id": "3703c3ac-7edf-40de-9b10-99114974aad0",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "of labour",
+          "of labour",
+          "what is of labour",
+          "tell me about of labour",
+          "explain of labour"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 35",
+        "span": "block 35"
+      }
+    },
+    {
+      "id": "f71253df-6edf-455e-8a78-4e1ff7d67bfe",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "management of labour",
+          "labour protocols",
+          "what to do during labour",
+          "how to manage labour",
+          "labour procedures",
+          "wetin dey happen for labour",
+          "labour management guidelines",
+          "what to expect during labour"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "During labour, key procedures include administering IV/IM anticonvulsants, manual removal of placenta, repair of episiot",
+      "source": {
+        "document": "blocks 36–36",
+        "span": "labour management protocols"
+      }
+    },
+    {
+      "id": "f926d6de-b482-4ad1-a43d-981283db6e0d",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Uncomplicated Medical/Surgical Illnesses in Pregnancy  Malaria  Diarrhea using drugs stipulated",
+          "uncomplicated medical/surgical illnesses in pregnancy  malaria  diarrhea using drugs stipulated",
+          "what is Uncomplicated Medical/Surgical Illnesses in Pregnancy  Malaria  Diarrhea using drugs stipulated",
+          "tell me about Uncomplicated Medical/Surgical Illnesses in Pregnancy  Malaria  Diarrhea using drugs stipulated",
+          "explain Uncomplicated Medical/Surgical Illnesses in Pregnancy  Malaria  Diarrhea using drugs stipulated"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 37",
+        "span": "block 37"
+      }
+    },
+    {
+      "id": "afee3100-64ae-4788-a244-60741d064678",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "in the EML",
+          "in the eml",
+          "what is in the EML",
+          "tell me about in the EML",
+          "explain in the EML"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 38",
+        "span": "block 38"
+      }
+    },
+    {
+      "id": "d14c13f2-85a7-403e-b32f-0f46b23214ff",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "post-natal care for mothers",
+          "post-delivery care for baby",
+          "what to do after birth",
+          "six weeks postpartum care",
+          "care for mother and child after delivery",
+          "post-natal care up to six weeks",
+          "mother and child care after birth",
+          "six weeks post-delivery protocol"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Provide post-natal care to mothers and children up to six weeks after delivery. This includes provision of drugs as stip",
+      "source": {
+        "document": "blocks 39–40",
+        "span": "page 3"
+      }
+    },
+    {
+      "id": "13e1ce2e-f74c-4564-8b0d-6bdd2298f764",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Maternal Health  Consultation with a",
+          "maternal health  consultation with a",
+          "what is Maternal Health  Consultation with a",
+          "tell me about Maternal Health  Consultation with a",
+          "explain Maternal Health  Consultation with a"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 41",
+        "span": "block 41"
+      }
+    },
+    {
+      "id": "f2cd99e9-202d-4a97-a861-4026506c7a3e",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "specialist",
+          "specialist",
+          "what is specialist",
+          "tell me about specialist",
+          "explain specialist"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 42",
+        "span": "block 42"
+      }
+    },
+    {
+      "id": "bb5a0784-ea21-4aa7-8840-5281ebc5e9aa",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "managing high risk pregnancies",
+          "delivery of multiple gestation",
+          "how to handle mal-presentation",
+          "managing hypertension in pregnancy",
+          "high risk pregnancy care",
+          "complicated pregnancy delivery",
+          "pregnancy with mal-positioning",
+          "managing pregnancy complications"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "management"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 43–44",
+        "span": "specialist delivery and management"
+      }
+    },
+    {
+      "id": "82666486-8332-414c-bceb-85333e5ab9b3",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Gestational Diabetes.",
+          "gestational diabetes.",
+          "what is Gestational Diabetes.",
+          "tell me about Gestational Diabetes.",
+          "explain Gestational Diabetes."
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Management of Preterm labour. Premature Rupture of membrane (PROM)\n\nManagement of\n\nbleeding in pregnancy – Abortion and ",
+      "source": {
+        "document": "block 45",
+        "span": "block 45"
+      }
+    },
+    {
+      "id": "3cf71063-3268-4c0f-9f29-248da5312826",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "gestational diabetes management",
+          "what is preterm labour",
+          "premature rupture of membrane",
+          "pregnancy bleeding complications",
+          "abortion and APH",
+          "PPH management",
+          "how to manage preterm labour",
+          "what is PROM"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Managing pregnancy complications involves several key areas, including gestational diabetes, preterm labour, premature r",
+      "source": {
+        "document": "blocks 46–50",
+        "span": "Introduction to pregnancy complications"
+      }
+    },
+    {
+      "id": "6729c0a8-ec74-4491-81fc-0387fa2fad14",
+      "type": "danger_sign",
+      "trigger_phrases": {
+        "en": [
+          "intrauterine fetal death",
+          "intrauterine fetal death",
+          "what is intrauterine fetal death",
+          "tell me about intrauterine fetal death",
+          "explain intrauterine fetal death"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 51",
+        "span": "block 51"
+      }
+    },
+    {
+      "id": "f9f1d116-2827-41d4-8e50-ac11b5eb2c7b",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "management of ectopic pregnancy",
+          "how to handle uterine rupture",
+          "caesarean section criteria",
+          "intrauterine fetal death management",
+          "salpingectomy procedure",
+          "forceps delivery indications",
+          "vacuum delivery technique",
+          "hysterectomy indications"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 52–57",
+        "span": "obstetric complications management"
+      }
+    },
+    {
+      "id": "f12a9c5d-7e5e-4456-8a1a-cdad15200a7c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "prophylaxis mothers and for infants",
+          "prophylaxis mothers and for infants",
+          "what is prophylaxis mothers and for infants",
+          "tell me about prophylaxis mothers and for infants",
+          "explain prophylaxis mothers and for infants"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 58",
+        "span": "block 58"
+      }
+    },
+    {
+      "id": "4dea4205-03a4-486d-8045-6ffc0d71728e",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "what is emergency in clinic",
+          "how to know if na emergency",
+          "wetin be emergency for patient",
+          "crisis situation in clinic",
+          "patient stabilization",
+          "what to do in emergency",
+          "emergency definition",
+          "clinic emergency situation"
+        ]
+      },
+      "aspects": [
+        "definition"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "An emergency is a crisis situation that requires immediate patient stabilization. It's a critical moment that demands sw",
+      "source": {
+        "document": "blocks 59–60",
+        "span": "page 3"
+      }
+    },
+    {
+      "id": "57cea212-c00f-4023-9eb8-03a9cc9b2608",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Gastroenteritis:",
+          "gastroenteritis:",
+          "what is Gastroenteritis:",
+          "tell me about Gastroenteritis:",
+          "explain Gastroenteritis:"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 61",
+        "span": "block 61"
+      }
+    },
+    {
+      "id": "1bfe5770-41ed-4720-a835-6cb86150e8e7",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "in the Essential Drug List  Consultation by skilled Health",
+          "in the essential drug list  consultation by skilled health",
+          "what is in the Essential Drug List  Consultation by skilled Health",
+          "tell me about in the Essential Drug List  Consultation by skilled Health",
+          "explain in the Essential Drug List  Consultation by skilled Health"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 62",
+        "span": "block 62"
+      }
+    },
+    {
+      "id": "59ce3698-5386-4cc7-9dc3-5741e8f8746c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Care Provider",
+          "care provider",
+          "what is Care Provider",
+          "tell me about Care Provider",
+          "explain Care Provider"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 63",
+        "span": "block 63"
+      }
+    },
+    {
+      "id": "8b3dbab3-5b74-4a48-903b-558b67a9cb97",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "post-natal care steps",
+          "how to manage simple post-natal infections",
+          "what to do for post-partum hemorrhage",
+          "newborn care basics",
+          "family planning information",
+          "common childhood illnesses treatment",
+          "uncomplicated malaria treatment",
+          "diarrhea treatment in children"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 64–69",
+        "span": "Basic care and management for post-natal and newborn care"
+      }
+    },
+    {
+      "id": "c5c9b167-9c9d-40e8-b125-1483b162de0e",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "diseases",
+          "diseases",
+          "what is diseases",
+          "tell me about diseases",
+          "explain diseases"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 70",
+        "span": "block 70"
+      }
+    },
+    {
+      "id": "fd578062-7b60-4ddd-aa0b-defc370e50c2",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "common diseases in children",
+          "what diseases can I treat",
+          "list of uncomplicated diseases",
+          "diseases I can manage",
+          "wetin be diseases wey no dey serious"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "You can manage uncomplicated UTI, URTI like acute coryza, uncomplicated otitis media, deworming, and skin diseases such ",
+      "source": {
+        "document": "blocks 71–71",
+        "span": "diseases section"
+      }
+    },
+    {
+      "id": "d348b96b-90b0-4684-bca6-ea3939160f81",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "eczema and simple allergies)",
+          "eczema and simple allergies)",
+          "what is eczema and simple allergies)?",
+          "tell me about eczema and simple allergies)?",
+          "explain eczema and simple allergies)?"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Insect Bite and Stings  Management of uncomplicated malnutrition\n\nWith counseling on proper dietary intake and investig",
+      "source": {
+        "document": "block 72",
+        "span": "block 72"
+      }
+    },
+    {
+      "id": "a4a48a33-1b76-4d42-87b5-5ed596e4ffce",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "emergency procedures for uncomplicated cases",
+          "how to manage insect bites",
+          "first aid for fractures",
+          "what to do for convulsions",
+          "uncomplicated malnutrition management",
+          "insect sting treatment",
+          "airway management",
+          "cardiopulmonary resuscitation steps"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "management"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For uncomplicated cases, establish an intravenous line, ensure a patent airway, and be prepared to manage convulsions an",
+      "source": {
+        "document": "blocks 73–80",
+        "span": "emergency procedures"
+      }
+    },
+    {
+      "id": "4cc6ab7b-7343-47ac-abd5-10ef4e0df694",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Child Health  Consultation with a",
+          "child health  consultation with a",
+          "what is Child Health  Consultation with a",
+          "tell me about Child Health  Consultation with a",
+          "explain Child Health  Consultation with a"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 81",
+        "span": "block 81"
+      }
+    },
+    {
+      "id": "c044b05e-4aab-493d-b3d9-1f2ff9c22aa3",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "pediatrician",
+          "pediatrician",
+          "what is pediatrician",
+          "tell me about pediatrician",
+          "explain pediatrician"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 82",
+        "span": "block 82"
+      }
+    },
+    {
+      "id": "49602998-abe5-4120-98ef-8d98e9969980",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "paediatric care services",
+          "what services for children",
+          "pediatrician services",
+          "treatment options for kids",
+          "how long for incubator care",
+          "phototherapy duration",
+          "EBT sessions for children",
+          "nebulization for kids",
+          "circumcision age limit",
+          "anti-retroviral therapy"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For pediatric care, services include incubator care for up to 10 days, phototherapy for up to 6 days, EBT for up to 2 se",
+      "source": {
+        "document": "blocks 83–86",
+        "span": "pediatric care services"
+      }
+    },
+    {
+      "id": "62ecb391-9903-41e7-ab1b-7eb5e89e1980",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "prophylaxis for infants",
+          "prophylaxis for infants",
+          "what is prophylaxis for infants",
+          "tell me about prophylaxis for infants",
+          "explain prophylaxis for infants"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 87",
+        "span": "block 87"
+      }
+    },
+    {
+      "id": "7fc59c21-3a79-493c-9f1e-38f3a4a5b9af",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "infant prophylaxis",
+          "how to prevent HIV in babies",
+          "EID for newborns",
+          "DBS testing",
+          "wetin be prophylaxis for pikin",
+          "how to prevent mother to child transmission",
+          "HIV prevention in infants",
+          "what is EID"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Prophylaxis for infants refers to measures taken to prevent HIV transmission from mother to child. Early Infant Diagnosi",
+      "source": {
+        "document": "blocks 88–89",
+        "span": "prophylaxis for infants"
+      }
+    },
+    {
+      "id": "29b8a55d-952e-4b9c-84db-11946209ef63",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "emergencies such as accidents (stabilization)",
+          "emergencies such as accidents (stabilization)",
+          "what is emergencies such as accidents (stabilization)",
+          "tell me about emergencies such as accidents (stabilization)",
+          "explain emergencies such as accidents (stabilization)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 90",
+        "span": "block 90"
+      }
+    },
+    {
+      "id": "ff574e5d-5911-4c56-b2ec-503071897219",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what to do in emergency",
+          "how to handle accident",
+          "stabilization procedure",
+          "poisoning treatment",
+          "activated charcoal use",
+          "severe shock management",
+          "emergency care steps"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For emergencies such as accidents, focus on stabilization. In cases of moderate to severe poisoning, use activated charc",
+      "source": {
+        "document": "blocks 91–91",
+        "span": "emergency care protocols"
+      }
+    },
+    {
+      "id": "377363c0-0005-4499-82f4-3267c27626ed",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Asthmatic Attack:",
+          "asthmatic attack:",
+          "what is Asthmatic Attack:",
+          "tell me about Asthmatic Attack:",
+          "explain Asthmatic Attack:"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 92",
+        "span": "block 92"
+      }
+    },
+    {
+      "id": "34cc9055-8abe-45db-bf66-677d71bddc92",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Accidents/ RTA",
+          "accidents/ rta",
+          "what is Accidents/ RTA",
+          "tell me about Accidents/ RTA",
+          "explain Accidents/ RTA"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 93",
+        "span": "block 93"
+      }
+    },
+    {
+      "id": "3b98d7a1-e8c2-49c2-ae86-6df2deb4e737",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Acute Urinary Retention:",
+          "acute urinary retention:",
+          "what is Acute Urinary Retention:",
+          "tell me about Acute Urinary Retention:",
+          "explain Acute Urinary Retention:"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 94",
+        "span": "block 94"
+      }
+    },
+    {
+      "id": "f1bf699d-dd51-485e-a6e0-9ebea7cda0c6",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Convulsions from any cause Acute Abdomen",
+          "convulsions from any cause acute abdomen",
+          "what is Convulsions from any cause Acute Abdomen",
+          "tell me about Convulsions from any cause Acute Abdomen",
+          "explain Convulsions from any cause Acute Abdomen"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 95",
+        "span": "block 95"
+      }
+    },
+    {
+      "id": "704b39ee-3a2e-4259-be7b-ff42262d6be6",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Allergic Reactions",
+          "allergic reactions",
+          "what is Allergic Reactions",
+          "tell me about Allergic Reactions",
+          "explain Allergic Reactions"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 96",
+        "span": "block 96"
+      }
+    },
+    {
+      "id": "d5a5ed98-47fe-4fdc-b52d-1ff71ecbab49",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Stroke",
+          "stroke",
+          "what is Stroke",
+          "tell me about Stroke",
+          "explain Stroke"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "A stroke occurs when the blood supply to part of your brain is interrupted or reduced, preventing brain tissue from gett",
+      "source": {
+        "document": "block 97",
+        "span": "block 97"
+      }
+    },
+    {
+      "id": "29b237c6-ee6d-4c1d-8ed2-70ff16527f22",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Foreign bodies to any orifice",
+          "foreign bodies to any orifice",
+          "what is Foreign bodies to any orifice",
+          "tell me about Foreign bodies to any orifice",
+          "explain Foreign bodies to any orifice"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 98",
+        "span": "block 98"
+      }
+    },
+    {
+      "id": "27644124-1772-4b38-a49a-4e38353ef0c0",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "foreign body treatment",
+          "how to treat foreign object",
+          "orifice foreign body first aid",
+          "what to do with object stuck",
+          "foreign body in child",
+          "object stuck in orifice",
+          "emergency care for foreign body",
+          "first aid for stuck object"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "treatment"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For a foreign body in any orifice, consider the use of Ringers Lactate or Normal Saline for initial management. Other me",
+      "source": {
+        "document": "blocks 99–101",
+        "span": "foreign body management"
+      }
+    },
+    {
+      "id": "82b44026-9515-448e-9a51-ed3921f4ac9b",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Dislocations",
+          "dislocations",
+          "what is Dislocations",
+          "tell me about Dislocations",
+          "explain Dislocations"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 102",
+        "span": "block 102"
+      }
+    },
+    {
+      "id": "59bd915e-a819-491d-91ef-e9d2db3eaff5",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "how to treat dislocation",
+          "first aid for laceration",
+          "burn treatment protocol",
+          "wound care procedure",
+          "what to do for bleeding",
+          "dislocation first aid",
+          "laceration treatment steps",
+          "burn care guidelines",
+          "wound management tips"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For dislocations, use bandages and analgesics. For lacerations, bleeding, or wounds, use suture, cotton wool, normal sal",
+      "source": {
+        "document": "blocks 103–105",
+        "span": "dislocation and wound care protocols"
+      }
+    },
+    {
+      "id": "414cd458-3e4f-4c6c-a8a7-681aff4cf3a8",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Sprains:",
+          "sprains:",
+          "what is Sprains:",
+          "tell me about Sprains:",
+          "explain Sprains:"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 106",
+        "span": "block 106"
+      }
+    },
+    {
+      "id": "5245742a-2a6d-46da-af09-e214c7ab8e38",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "how to treat sprains",
+          "sprain treatment protocol",
+          "what to do for sprain",
+          "treatment for sprain",
+          "wetin I go do for sprain",
+          "sprain management",
+          "first aid for sprain",
+          "sprain care"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "treatment"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For sprains, use analgesic spray or gel to relieve pain. You may also need to use a urethral catheter to relieve retenti",
+      "source": {
+        "document": "blocks 107–110",
+        "span": "sprain treatment section"
+      }
+    },
+    {
+      "id": "b506eece-24e4-4fad-9a93-8cefeeb65418",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Exploratory laparotomy for unresolved cases.",
+          "exploratory laparotomy for unresolved cases.",
+          "what is Exploratory laparotomy for unresolved cases.",
+          "tell me about Exploratory laparotomy for unresolved cases.",
+          "explain Exploratory laparotomy for unresolved cases."
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 111",
+        "span": "block 111"
+      }
+    },
+    {
+      "id": "400f4ef6-a865-45c5-8054-b01135c62288",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "4",
+          "4",
+          "what is 4",
+          "tell me about 4",
+          "explain 4"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 112",
+        "span": "block 112"
+      }
+    },
+    {
+      "id": "57cb7e91-c097-42dd-9801-d11f8100898f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Basic Surgical, medical and other ancillary services",
+          "basic surgical, medical and other ancillary services",
+          "what is Basic Surgical, medical and other ancillary services",
+          "tell me about Basic Surgical, medical and other ancillary services",
+          "explain Basic Surgical, medical and other ancillary services"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 113",
+        "span": "block 113"
+      }
+    },
+    {
+      "id": "001607c9-d35b-4ef7-911c-f7bb7a4eb4bd",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "basic surgical services",
+          "what surgical services can I provide",
+          "minor surgical procedures",
+          "how to do suturing",
+          "incision and drainage procedure",
+          "can I do ear syringing",
+          "circumcision method",
+          "excision of in-growing toe nail",
+          "ear piercing safety"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "You can provide suturing of simple lacerations, incision and drainage, ear syringing, circumcision using plastibell, exc",
+      "source": {
+        "document": "blocks 114–114",
+        "span": "basic surgical services list"
+      }
+    },
+    {
+      "id": "60bb1c76-1609-4608-bf3f-5509b41ea846",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Medical Services  Malaria and other",
+          "medical services  malaria and other",
+          "what is Medical Services  Malaria and other",
+          "tell me about Medical Services  Malaria and other",
+          "explain Medical Services  Malaria and other"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 115",
+        "span": "block 115"
+      }
+    },
+    {
+      "id": "38fd9d86-0c53-4065-b5d7-8be0951b8ece",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "uncomplicated febrile illness e.g. typhoid fever",
+          "uncomplicated febrile illness e.g. typhoid fever",
+          "what is uncomplicated febrile illness e.g. typhoid fever",
+          "tell me about uncomplicated febrile illness e.g. typhoid fever",
+          "explain uncomplicated febrile illness e.g. typhoid fever"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 116",
+        "span": "block 116"
+      }
+    },
+    {
+      "id": "5e9302c0-ca70-454d-8546-195d376df745",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "uncomplicated febrile illness treatment",
+          "what is uncomplicated febrile illness",
+          "typhoid fever symptoms",
+          "pneumonia in children",
+          "mild anaemia treatment",
+          "worm infestation symptoms",
+          "simple skin diseases"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Uncomplicated febrile illnesses include typhoid fever, pneumonia, acute upper respiratory tract infection, mild anaemia,",
+      "source": {
+        "document": "blocks 117–118",
+        "span": "uncomplicated febrile illness section"
+      }
+    },
+    {
+      "id": "fa34e594-9813-48b8-b259-4bf7da9b2c66",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "vesicolor, m. furfur and tenia capitis",
+          "vesicolor, m. furfur and tenia capitis",
+          "what is vesicolor, m. furfur and tenia capitis",
+          "tell me about vesicolor, m. furfur and tenia capitis",
+          "explain vesicolor, m. furfur and tenia capitis"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Management of uncomplicated Hypertension\n\nManagement of uncomplicated Diabetes Mellitus\n\nAncillary Services  Pulse oxim",
+      "source": {
+        "document": "block 119",
+        "span": "block 119"
+      }
+    },
+    {
+      "id": "97a9fc74-1741-4bc4-8010-f3fe47ba2402",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "managing hypertension",
+          "uncomplicated diabetes care",
+          "how to treat high blood pressure",
+          "diabetes management tips",
+          "what to do for uncomplicated hypertension",
+          "uncomplicated diabetes treatment",
+          "high blood pressure management",
+          "diabetes care"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "management"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For uncomplicated hypertension and diabetes mellitus, management involves monitoring and maintaining healthy vital signs",
+      "source": {
+        "document": "blocks 120–123",
+        "span": "blocks 1-2"
+      }
+    },
+    {
+      "id": "1586f1ba-7c7e-4d40-a812-cbc3fd92a346",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Surgical Services  Consultation with a",
+          "surgical services  consultation with a",
+          "what is Surgical Services  Consultation with a",
+          "tell me about Surgical Services  Consultation with a",
+          "explain Surgical Services  Consultation with a"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 124",
+        "span": "block 124"
+      }
+    },
+    {
+      "id": "accf8ea8-1ab8-4f8a-92f8-88fbcc7b1a19",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "specialist.",
+          "specialist.",
+          "what is specialist.",
+          "tell me about specialist.",
+          "explain specialist."
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 125",
+        "span": "block 125"
+      }
+    },
+    {
+      "id": "81986975-edea-4495-9bb4-f5c35c250f6d",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "what surgical procedures can be done",
+          "list of surgeries for emergency cases",
+          "how to do emergency operations",
+          "surgical interventions for critical cases",
+          "wetin be surgical procedure for emergency",
+          "emergency surgical operations",
+          "list of emergency surgeries",
+          "surgical procedures in emergency situations"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 126–128",
+        "span": "surgical procedures"
+      }
+    },
+    {
+      "id": "05456e1c-5b30-49b3-8afe-d167a83ab2a1",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Medical Services  Management of",
+          "medical services  management of",
+          "what is Medical Services  Management of",
+          "tell me about Medical Services  Management of",
+          "explain Medical Services  Management of"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 129",
+        "span": "block 129"
+      }
+    },
+    {
+      "id": "3ea8ef6a-f663-4f06-a7bd-bfecc9fd757b",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "complicated Chronic Hypertension  Management of",
+          "complicated chronic hypertension  management of",
+          "what is complicated Chronic Hypertension  Management of",
+          "tell me about complicated Chronic Hypertension  Management of",
+          "explain complicated Chronic Hypertension  Management of"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 130",
+        "span": "block 130"
+      }
+    },
+    {
+      "id": "80c0a757-37ef-45d2-b24f-7c2828cfccfc",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "complicated Chronic Diabetes Mellitus",
+          "complicated chronic diabetes mellitus",
+          "what is complicated Chronic Diabetes Mellitus",
+          "tell me about complicated Chronic Diabetes Mellitus",
+          "explain complicated Chronic Diabetes Mellitus"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 131",
+        "span": "block 131"
+      }
+    },
+    {
+      "id": "b5e66411-c727-48e4-9f45-4c9a9f11b374",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "complicated diabetes management",
+          "chronic diabetes mellitus treatment",
+          "how to manage complicated diabetes",
+          "what are ancillary services for diabetes",
+          "complicated diabetes care",
+          "diabetes management in critical care",
+          "ancillary services for diabetes patients",
+          "critical care for diabetes"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For complicated Chronic Diabetes Mellitus, provide critical care in the ICU, and consider NG tube, urethral catheterizat",
+      "source": {
+        "document": "blocks 132–132",
+        "span": "complicated Chronic Diabetes Mellitus management"
+      }
+    },
+    {
+      "id": "66ad0582-f6c9-467a-91e2-f202cdcd8eec",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "days)",
+          "days)",
+          "what is days)",
+          "tell me about days)",
+          "explain days)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Oxygen therapy (max 3 days)\n\nDental Care  Dental Caries",
+      "source": {
+        "document": "block 133",
+        "span": "block 133"
+      }
+    },
+    {
+      "id": "af8f3630-c8ba-482b-9d3d-29813a7f7ddf",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "oxygen therapy duration",
+          "how long to give oxygen",
+          "oxygen treatment for how many days",
+          "max days for oxygen therapy",
+          "when to stop oxygen treatment"
+        ]
+      },
+      "aspects": [
+        "procedure"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Oxygen therapy should be given for a maximum of 3 days. This is the standard duration for oxygen treatment.",
+      "source": {
+        "document": "blocks 134–135",
+        "span": "oxygen therapy guidelines"
+      }
+    },
+    {
+      "id": "200080d4-fe4b-4e8b-b610-b7bc693452b9",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          " Amalgam filling  Scaling and polishing",
+          " amalgam filling  scaling and polishing",
+          "what is  Amalgam filling  Scaling and polishing",
+          "tell me about  Amalgam filling  Scaling and polishing",
+          "explain  Amalgam filling  Scaling and polishing"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 136",
+        "span": "block 136"
+      }
+    },
+    {
+      "id": "c28802e4-0b38-4f5f-9ace-751c3af2e848",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "(Max 1/year)",
+          "(max 1/year)",
+          "what is (Max 1/year)",
+          "tell me about (Max 1/year)",
+          "explain (Max 1/year)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 137",
+        "span": "block 137"
+      }
+    },
+    {
+      "id": "40f0dd8a-2dc4-46ed-a7cf-8388ab0e6f32",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what dental services are covered",
+          "how many times can I get refraction per year",
+          "is cataract surgery included",
+          "dental and eye care services",
+          "how often can I get spectacles",
+          "eye care benefits",
+          "dental benefits",
+          "is root canal treatment covered"
+        ]
+      },
+      "aspects": [
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Dental services include simple tooth extraction, surgical extraction, and root canal treatment, with a limit of one per ",
+      "source": {
+        "document": "blocks 138–140",
+        "span": "dental and ophthalmology services"
+      }
+    },
+    {
+      "id": "2e948eb9-03a5-4287-ac8b-cf9548eabfe6",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Laboratory Services and other investigations",
+          "laboratory services and other investigations",
+          "what is Laboratory Services and other investigations",
+          "tell me about Laboratory Services and other investigations",
+          "explain Laboratory Services and other investigations"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 141",
+        "span": "block 141"
+      }
+    },
+    {
+      "id": "a7a9beb4-6273-4a91-befd-6d0006dc1ecb",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "lab services for pregnant women",
+          "what investigations should I do",
+          "laboratory tests for pregnancy",
+          "blood tests for pregnant women",
+          "what is packed cell volume",
+          "HBsAg screening",
+          "urinalysis for pregnant women",
+          "blood group test",
+          "blood transfusion protocol"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For pregnant women, laboratory services include packed cell volume, MP RDT, blood group testing, urinalysis, and HBsAg &",
+      "source": {
+        "document": "blocks 142–145",
+        "span": "Laboratory Services section"
+      }
+    },
+    {
+      "id": "faf1e3fc-f69d-44c7-a40b-260ae5291dde",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "In patient services Admission",
+          "in patient services admission",
+          "what is In patient services Admission",
+          "tell me about In patient services Admission",
+          "explain In patient services Admission"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 146",
+        "span": "block 146"
+      }
+    },
+    {
+      "id": "821e6125-04b4-47af-99e6-b0371bec4433",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "pregnant women",
+          "pregnant women",
+          "what is pregnant women",
+          "tell me about pregnant women",
+          "explain pregnant women"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 147",
+        "span": "block 147"
+      }
+    },
+    {
+      "id": "1acfe2ed-5f64-411b-a368-490fde969620",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "investigations for pregnant women",
+          "what tests for pregnancy",
+          "antenatal investigations",
+          "tests for pregnant women in primary care",
+          "how long can patient stay in general ward",
+          "accommodation rules for general ward",
+          "primary care investigations for pregnancy"
+        ]
+      },
+      "aspects": [
+        "procedure",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For pregnant women, investigations include blood glucose tests, HIV screening, pregnancy test, VDRL for syphilis, and ob",
+      "source": {
+        "document": "blocks 148–156",
+        "span": "primary care investigations and general ward accommodation"
+      }
+    },
+    {
+      "id": "f9c40874-a715-4091-bc76-0aae0cc9e34e",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Rhesus negative blood (3 PINTS/YEAR) 50% co- payment",
+          "rhesus negative blood (3 pints/year) 50% co- payment",
+          "what is Rhesus negative blood (3 PINTS/YEAR) 50% co- payment",
+          "tell me about Rhesus negative blood (3 PINTS/YEAR) 50% co- payment",
+          "explain Rhesus negative blood (3 PINTS/YEAR) 50% co- payment"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Next 10 days will be subject to coinsurance of 50% by enrollee and subsequently entire cost is borne by enrollee",
+      "source": {
+        "document": "block 157",
+        "span": "block 157"
+      }
+    },
+    {
+      "id": "f346d984-5a5a-4118-9edb-a6d7a4337b3b",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "rhesus negative blood cost",
+          "how much for rhesus negative blood",
+          "blood transfusion payment plan",
+          "rhesus negative blood insurance coverage",
+          "what is coinsurance for blood",
+          "rhesus negative blood cost sharing",
+          "blood transfusion cost to patient",
+          "rhesus negative blood payment terms"
+        ]
+      },
+      "aspects": [
+        "coverage",
+        "cost",
+        "payment"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "For Rhesus negative blood, you are covered for 3 pints per year with a 50% co-payment. For the next 10 days, there's a 5",
+      "source": {
+        "document": "blocks 158–158",
+        "span": "Rhesus negative blood payment terms"
+      }
+    },
+    {
+      "id": "84c2eb9a-733a-4501-b85b-a5eaff226add",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "PARTIAL EXCLUSIONS",
+          "partial exclusions",
+          "what is PARTIAL EXCLUSIONS",
+          "tell me about PARTIAL EXCLUSIONS",
+          "explain PARTIAL EXCLUSIONS"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 159",
+        "span": "block 159"
+      }
+    },
+    {
+      "id": "3d8e7f6d-0ff7-4551-934f-39ecdd902f9a",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "1. A 60% coinsurance is also applicable to any pregnant woman who has delivered 4 live births, under the",
+          "1. a 60% coinsurance is also applicable to any pregnant woman who has delivered 4 live births, under the",
+          "what is 1. A 60% coinsurance is also applicable to any pregnant woman who has delivered 4 live births, under the",
+          "tell me about 1. A 60% coinsurance is also applicable to any pregnant woman who has delivered 4 live births, under the",
+          "explain 1. A 60% coinsurance is also applicable to any pregnant woman who has delivered 4 live births, under the"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 160",
+        "span": "block 160"
+      }
+    },
+    {
+      "id": "bd2b2282-201a-4ab8-8ddf-d12c0bfab8aa",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "scheme.",
+          "scheme.",
+          "what is scheme.",
+          "tell me about scheme.",
+          "explain scheme."
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 161",
+        "span": "block 161"
+      }
+    },
+    {
+      "id": "bcafab7d-7cc9-4c44-876b-e86fcf0ea851",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "benefit package details",
+          "what is covered under insurance",
+          "co-insurance for medical procedures",
+          "how much patient pays for treatment",
+          "insurance coverage for healthcare",
+          "partial exclusion in benefit package",
+          "co-payment for medical schemes",
+          "health insurance benefits"
+        ]
+      },
+      "aspects": [
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "The benefit package has certain procedures under partial exclusion, which means the patient has to pay 50% of the cost a",
+      "source": {
+        "document": "blocks 162–162",
+        "span": "section 2"
+      }
+    },
+    {
+      "id": "101d0146-3ad6-49b3-a717-ace9d8b4847b",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "by enrollee",
+          "by enrollee",
+          "what is by enrollee",
+          "tell me about by enrollee",
+          "explain by enrollee"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 163",
+        "span": "block 163"
+      }
+    },
+    {
+      "id": "4ea0604a-0f79-4884-a832-c47aa75dec18",
+      "type": "definition",
+      "trigger_phrases": {
+        "en": [
+          "what medicines are covered",
+          "benefit package details",
+          "generic medicines in EML",
+          "co insurance payment for medicines",
+          "what is covered by the package"
+        ]
+      },
+      "aspects": [
+        "coverage",
+        "definition"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "The benefit package currently only covers generic medicines listed in the Essential Medicines List (EML). For other medi",
+      "source": {
+        "document": "blocks 164–165",
+        "span": "section 3"
+      }
+    },
+    {
+      "id": "720f392f-65ed-473f-969f-c0307ba6c6c6",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "TOTAL EXCLUSIONS",
+          "total exclusions",
+          "what is TOTAL EXCLUSIONS",
+          "tell me about TOTAL EXCLUSIONS",
+          "explain TOTAL EXCLUSIONS"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 166",
+        "span": "block 166"
+      }
+    },
+    {
+      "id": "25b212ea-6226-4066-a68a-40f68a0b5c87",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what is not covered by O'HIS",
+          "exclusions under O'HIS",
+          "total exclusions list",
+          "what O'HIS does not pay for",
+          "O'HIS exclusions for C/S",
+          "congenital abnormalities not covered",
+          "hepatitis B and C exclusions",
+          "cancer diagnostics not covered"
+        ]
+      },
+      "aspects": [
+        "coverage",
+        "exclusions"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "The O'HIS has several exclusions, including C/S procedures after the fourth life birth, treatment of congenital abnormal",
+      "source": {
+        "document": "blocks 167–171",
+        "span": "sections 1-6"
+      }
+    },
+    {
+      "id": "8637ab38-a75d-4f7a-9c41-d31f0168c0cc",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "molecular testing and imaging",
+          "molecular testing and imaging",
+          "what is molecular testing and imaging",
+          "tell me about molecular testing and imaging",
+          "explain molecular testing and imaging"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 172",
+        "span": "block 172"
+      }
+    },
+    {
+      "id": "ed93b238-53e8-45a2-af4d-b23d60caccc5",
+      "type": "protocol",
+      "trigger_phrases": {
+        "en": [
+          "what services are covered",
+          "benefit package details",
+          "excluded services in health plan",
+          "how to get referred for treatment",
+          "what is not covered in health benefits"
+        ]
+      },
+      "aspects": [
+        "coverage",
+        "procedure",
+        "referral"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "The health benefit package covers secondary care services but excludes tertiary care, including surgeries not listed and",
+      "source": {
+        "document": "blocks 173–176",
+        "span": "sections 7-21"
+      }
+    },
+    {
+      "id": "08a30203-2971-4103-a1d3-07a135536102",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Anti-invectives’",
+          "anti-invectives’",
+          "what is Anti-invectives’",
+          "tell me about Anti-invectives’",
+          "explain Anti-invectives’"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 177",
+        "span": "block 177"
+      }
+    },
+    {
+      "id": "702af61c-5929-4de5-87d7-4e875eee13d8",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ciprofloxacin",
+          "ciprofloxacin",
+          "what is Ciprofloxacin",
+          "tell me about Ciprofloxacin",
+          "explain Ciprofloxacin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ciprofloxacin is a fluoroquinolone antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 178",
+        "span": "block 178"
+      }
+    },
+    {
+      "id": "755a91b4-29c8-4bc3-8f44-3fb9ae36d77e",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Doxycycline",
+          "doxycycline",
+          "what is Doxycycline",
+          "tell me about Doxycycline",
+          "explain Doxycycline"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Doxycycline is an antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 179",
+        "span": "block 179"
+      }
+    },
+    {
+      "id": "79d53ee2-db25-4755-ad79-a636fffb14f8",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Benzyl penicillin",
+          "benzyl penicillin",
+          "what is Benzyl penicillin",
+          "tell me about Benzyl penicillin",
+          "explain Benzyl penicillin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Benzyl penicillin is a type of antibiotic.",
+      "source": {
+        "document": "block 180",
+        "span": "block 180"
+      }
+    },
+    {
+      "id": "67e7e173-6494-403b-8698-05975c0f34fb",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Cotrimoxazole",
+          "cotrimoxazole",
+          "what is Cotrimoxazole",
+          "tell me about Cotrimoxazole",
+          "explain Cotrimoxazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Cotrimoxazole is an antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 181",
+        "span": "block 181"
+      }
+    },
+    {
+      "id": "d4a9f6d8-75aa-4641-966c-eb217485d298",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Erythromycin",
+          "erythromycin",
+          "what is Erythromycin",
+          "tell me about Erythromycin",
+          "explain Erythromycin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Erythromycin is a macrolide antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 182",
+        "span": "block 182"
+      }
+    },
+    {
+      "id": "b3d18206-1f0d-40c0-a0de-c9ce4ee6a2cb",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ampicillin + cloxacillin",
+          "ampicillin + cloxacillin",
+          "what is Ampicillin + cloxacillin",
+          "tell me about Ampicillin + cloxacillin",
+          "explain Ampicillin + cloxacillin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 183",
+        "span": "block 183"
+      }
+    },
+    {
+      "id": "77a19356-338f-4133-a4c8-29229ab163a4",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Co amoxiclav (unbranded)",
+          "co amoxiclav (unbranded)",
+          "what is Co amoxiclav (unbranded)",
+          "tell me about Co amoxiclav (unbranded)",
+          "explain Co amoxiclav (unbranded)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 184",
+        "span": "block 184"
+      }
+    },
+    {
+      "id": "cd98c620-e436-4ec8-a9c3-cc5e2611412b",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Gentamycin",
+          "gentamycin",
+          "what is Gentamycin",
+          "tell me about Gentamycin",
+          "explain Gentamycin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Gentamycin is an antibiotic.",
+      "source": {
+        "document": "block 185",
+        "span": "block 185"
+      }
+    },
+    {
+      "id": "443c7d05-1671-4a5d-b9af-58df91fc3268",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Metronidazole",
+          "metronidazole",
+          "what is Metronidazole",
+          "tell me about Metronidazole",
+          "explain Metronidazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Metronidazole is an antibiotic and antiprotozoal medication used to treat various infections caused by bacteria and prot",
+      "source": {
+        "document": "block 186",
+        "span": "block 186"
+      }
+    },
+    {
+      "id": "74619e31-9ce4-40d7-b432-a166a397aeb9",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Tetracycline",
+          "tetracycline",
+          "what is Tetracycline",
+          "tell me about Tetracycline",
+          "explain Tetracycline"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Tetracycline is an antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 187",
+        "span": "block 187"
+      }
+    },
+    {
+      "id": "bfba3c96-bfee-48fe-aca0-8e57848542f7",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Nystatin",
+          "nystatin",
+          "what is Nystatin",
+          "tell me about Nystatin",
+          "explain Nystatin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Nystatin is an antifungal medication.",
+      "source": {
+        "document": "block 188",
+        "span": "block 188"
+      }
+    },
+    {
+      "id": "a3813284-6fb8-4ef4-ac0c-5fdb77d704da",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Azithromycin",
+          "azithromycin",
+          "what is Azithromycin",
+          "tell me about Azithromycin",
+          "explain Azithromycin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Azithromycin is an antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 189",
+        "span": "block 189"
+      }
+    },
+    {
+      "id": "104279ab-45fa-4c18-adf5-8050f2f54c2f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Benzathine Penicillin",
+          "benzathine penicillin",
+          "what is Benzathine Penicillin",
+          "tell me about Benzathine Penicillin",
+          "explain Benzathine Penicillin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Benzathine penicillin is a type of antibiotic used to treat various bacterial infections.",
+      "source": {
+        "document": "block 190",
+        "span": "block 190"
+      }
+    },
+    {
+      "id": "9d3e5f5a-3077-441c-8430-383ae0686090",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ceftriaxone",
+          "ceftriaxone",
+          "what is Ceftriaxone",
+          "tell me about Ceftriaxone",
+          "explain Ceftriaxone"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ceftriaxone is a third-generation cephalosporin antibiotic.",
+      "source": {
+        "document": "block 191",
+        "span": "block 191"
+      }
+    },
+    {
+      "id": "1e34dd23-5aa0-434c-b74d-1ce0a4d9c1d1",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Cefuroxime",
+          "cefuroxime",
+          "what is Cefuroxime",
+          "tell me about Cefuroxime",
+          "explain Cefuroxime"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Cefuroxime is a second-generation cephalosporin antibiotic.",
+      "source": {
+        "document": "block 192",
+        "span": "block 192"
+      }
+    },
+    {
+      "id": "4ba175b8-766b-495d-85a5-c5e10b92573b",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Nitrofurantoin",
+          "nitrofurantoin",
+          "what is Nitrofurantoin",
+          "tell me about Nitrofurantoin",
+          "explain Nitrofurantoin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Nitrofurantoin is an antibiotic used to treat urinary tract infections.",
+      "source": {
+        "document": "block 193",
+        "span": "block 193"
+      }
+    },
+    {
+      "id": "914026a5-aa16-41e8-b344-2d96add75488",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ivermectin",
+          "ivermectin",
+          "what is Ivermectin",
+          "tell me about Ivermectin",
+          "explain Ivermectin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ivermectin is an antiparasitic medication.",
+      "source": {
+        "document": "block 194",
+        "span": "block 194"
+      }
+    },
+    {
+      "id": "39da9426-8375-40f2-8880-7e28bc615e9d",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Tinidazole",
+          "tinidazole",
+          "what is Tinidazole",
+          "tell me about Tinidazole",
+          "explain Tinidazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Tinidazole is an antiprotozoal and antibacterial medication used to treat various infections.",
+      "source": {
+        "document": "block 195",
+        "span": "block 195"
+      }
+    },
+    {
+      "id": "015de8ed-5e36-4986-8227-95bdf2f4d71c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Analgesics",
+          "analgesics",
+          "what is Analgesics",
+          "tell me about Analgesics",
+          "explain Analgesics"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Analgesics are medications used to relieve pain.",
+      "source": {
+        "document": "block 196",
+        "span": "block 196"
+      }
+    },
+    {
+      "id": "336aae08-5c45-49ec-be24-1d9919dbe66f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Paracetamol",
+          "paracetamol",
+          "what is Paracetamol",
+          "tell me about Paracetamol",
+          "explain Paracetamol"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Paracetamol is a common pain reliever used to treat mild to moderate pain and reduce fever.",
+      "source": {
+        "document": "block 197",
+        "span": "block 197"
+      }
+    },
+    {
+      "id": "bab6de80-daa4-4ae1-bdb0-e17cc1a85625",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ibuprofen",
+          "ibuprofen",
+          "what is Ibuprofen",
+          "tell me about Ibuprofen",
+          "explain Ibuprofen"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used to relieve pain, reduce inflammation, and lower fever.",
+      "source": {
+        "document": "block 198",
+        "span": "block 198"
+      }
+    },
+    {
+      "id": "c9b5aca8-9ca3-4597-8de5-26c238e51a1f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Diclofenac",
+          "diclofenac",
+          "what is Diclofenac",
+          "tell me about Diclofenac",
+          "explain Diclofenac"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Diclofenac is a nonsteroidal anti-inflammatory drug (NSAID) used to treat pain, inflammatory disorders, and dysmenorrhea",
+      "source": {
+        "document": "block 199",
+        "span": "block 199"
+      }
+    },
+    {
+      "id": "b967eca8-eb9f-4cea-8bc0-8bb88eca63f3",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Anti-helmintics",
+          "anti-helmintics",
+          "what is Anti-helmintics",
+          "tell me about Anti-helmintics",
+          "explain Anti-helmintics"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Anti-helmintics are a class of drugs used to treat infections caused by parasitic worms.",
+      "source": {
+        "document": "block 200",
+        "span": "block 200"
+      }
+    },
+    {
+      "id": "07e605f1-a443-4705-85bc-7944af617a45",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Levamisole",
+          "levamisole",
+          "what is Levamisole",
+          "tell me about Levamisole",
+          "explain Levamisole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Levamisole is an anthelminthic and immunomodulator drug.",
+      "source": {
+        "document": "block 201",
+        "span": "block 201"
+      }
+    },
+    {
+      "id": "1e0f2dbf-fe76-4121-9c23-e7dc80ef4faa",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Asthma Drugs",
+          "asthma drugs",
+          "what is Asthma Drugs",
+          "tell me about Asthma Drugs",
+          "explain Asthma Drugs"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Asthma drugs are medications used to treat and manage asthma, a chronic respiratory condition characterized by inflammat",
+      "source": {
+        "document": "block 202",
+        "span": "block 202"
+      }
+    },
+    {
+      "id": "9bd1ea6d-2323-4974-aaf7-1e971800b044",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Bethamethasone inhaler Salbutamol inhaler Salbutamol",
+          "bethamethasone inhaler salbutamol inhaler salbutamol",
+          "what is Bethamethasone inhaler Salbutamol inhaler Salbutamol",
+          "tell me about Bethamethasone inhaler Salbutamol inhaler Salbutamol",
+          "explain Bethamethasone inhaler Salbutamol inhaler Salbutamol"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 203",
+        "span": "block 203"
+      }
+    },
+    {
+      "id": "d27cf20e-4bcf-4e3b-8b99-ef0c6e1717c9",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Essential Drug List for Osun Health Plan",
+          "essential drug list for osun health plan",
+          "what is Essential Drug List for Osun Health Plan",
+          "tell me about Essential Drug List for Osun Health Plan",
+          "explain Essential Drug List for Osun Health Plan"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 204",
+        "span": "block 204"
+      }
+    },
+    {
+      "id": "30ae004b-3214-44a8-8294-fff4fed12685",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Anti malarias",
+          "anti malarias",
+          "what is Anti malarias",
+          "tell me about Anti malarias",
+          "explain Anti malarias"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 205",
+        "span": "block 205"
+      }
+    },
+    {
+      "id": "e9271285-1542-4eaa-9726-c79c829deb2f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Anti hypertensives",
+          "anti hypertensives",
+          "what is Anti hypertensives",
+          "tell me about Anti hypertensives",
+          "explain Anti hypertensives"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 206",
+        "span": "block 206"
+      }
+    },
+    {
+      "id": "61b42697-e534-421d-9922-69f4eaa3921d",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Arthemether inj",
+          "arthemether inj",
+          "what is Arthemether inj",
+          "tell me about Arthemether inj",
+          "explain Arthemether inj"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 207",
+        "span": "block 207"
+      }
+    },
+    {
+      "id": "5c286b9d-beb0-42c8-b860-b3fdb419e500",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Amiloride +HCT",
+          "amiloride +hct",
+          "what is Amiloride +HCT",
+          "tell me about Amiloride +HCT",
+          "explain Amiloride +HCT"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 208",
+        "span": "block 208"
+      }
+    },
+    {
+      "id": "acbd6019-1c0e-4257-bee5-35111b2477ad",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Artemisine Amodiaquine tablets/ susp",
+          "artemisine amodiaquine tablets/ susp",
+          "what is Artemisine Amodiaquine tablets/ susp",
+          "tell me about Artemisine Amodiaquine tablets/ susp",
+          "explain Artemisine Amodiaquine tablets/ susp"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 209",
+        "span": "block 209"
+      }
+    },
+    {
+      "id": "ca7d7299-3e34-4f17-b2aa-74b7b1bd3ce9",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Amlodipine",
+          "amlodipine",
+          "what is Amlodipine",
+          "tell me about Amlodipine",
+          "explain Amlodipine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Amlodipine is a medication used to treat high blood pressure and chest pain.",
+      "source": {
+        "document": "block 210",
+        "span": "block 210"
+      }
+    },
+    {
+      "id": "2f0f3a49-8f38-43ae-9d2c-48b673c60dca",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Methyldopa",
+          "methyldopa",
+          "what is Methyldopa",
+          "tell me about Methyldopa",
+          "explain Methyldopa"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Artemisine Lumefantrine tablets / susp",
+      "source": {
+        "document": "block 211",
+        "span": "block 211"
+      }
+    },
+    {
+      "id": "d423d071-dc5b-48bd-95ce-b6403b2a54e3",
+      "type": "drug_table",
+      "trigger_phrases": {
+        "en": [
+          "methyldopa dose",
+          "artemisinin-based combination therapy",
+          "lumefantrine dosage",
+          "methyldopa side effects",
+          "how to give lumefantrine",
+          "what is methyldopa used for",
+          "artemisinin lumefantrine tablets",
+          "methyldopa and lumefantrine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Methyldopa is used for hypertension. Artemisinin Lumefantrine is used for malaria treatment. However, the provided text ",
+      "source": {
+        "document": "blocks 212–212",
+        "span": "provided text"
+      }
+    },
+    {
+      "id": "2b7ab395-2237-42a3-bdbd-da467d2a84f8",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Nifedipine",
+          "nifedipine",
+          "what is Nifedipine",
+          "tell me about Nifedipine",
+          "explain Nifedipine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Nifedipine is a medication used to treat high blood pressure and control angina.",
+      "source": {
+        "document": "block 213",
+        "span": "block 213"
+      }
+    },
+    {
+      "id": "dfeb7a2f-5061-4043-8e14-f7e27809bc91",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Sulphadoxime Pyrimetamine (SP)",
+          "sulphadoxime pyrimetamine (sp)",
+          "what is Sulphadoxime Pyrimetamine (SP)",
+          "tell me about Sulphadoxime Pyrimetamine (SP)",
+          "explain Sulphadoxime Pyrimetamine (SP)"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 214",
+        "span": "block 214"
+      }
+    },
+    {
+      "id": "39a70ea1-ee67-4c2f-89f3-14f20b3a7dca",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Frusemide",
+          "frusemide",
+          "what is Frusemide",
+          "tell me about Frusemide",
+          "explain Frusemide"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Frusemide is a loop diuretic used to treat fluid build-up and swelling caused by congestive heart failure, liver cirrhos",
+      "source": {
+        "document": "block 215",
+        "span": "block 215"
+      }
+    },
+    {
+      "id": "0ba4f374-0f9d-48bd-9756-861c7093f2f6",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Propranonol",
+          "propranonol",
+          "what is Propranonol",
+          "tell me about Propranonol",
+          "explain Propranonol"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Propranolol is a medication used to treat various conditions, including high blood pressure, chest pain, and certain hea",
+      "source": {
+        "document": "block 216",
+        "span": "block 216"
+      }
+    },
+    {
+      "id": "609adad1-9fc4-4732-9409-50febc5dee27",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Artesunate inj",
+          "artesunate inj",
+          "what is Artesunate inj",
+          "tell me about Artesunate inj",
+          "explain Artesunate inj"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 217",
+        "span": "block 217"
+      }
+    },
+    {
+      "id": "a78f3c5a-c84b-486a-aa84-f8966cb375f5",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Atenolol",
+          "atenolol",
+          "what is Atenolol",
+          "tell me about Atenolol",
+          "explain Atenolol"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 218",
+        "span": "block 218"
+      }
+    },
+    {
+      "id": "954791fa-35a4-440c-84bd-fae556dd4525",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Haematinics",
+          "haematinics",
+          "what is Haematinics",
+          "tell me about Haematinics",
+          "explain Haematinics"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 219",
+        "span": "block 219"
+      }
+    },
+    {
+      "id": "cf8496ef-70be-4781-bf46-8541e8a84f02",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Anti-ulcer",
+          "anti-ulcer",
+          "what is Anti-ulcer",
+          "tell me about Anti-ulcer",
+          "explain Anti-ulcer"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 220",
+        "span": "block 220"
+      }
+    },
+    {
+      "id": "878633ef-b505-4bb6-aab2-05fb2a73b35f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Multivite",
+          "multivite",
+          "what is Multivite",
+          "tell me about Multivite",
+          "explain Multivite"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Multivite is a multivitamin supplement.",
+      "source": {
+        "document": "block 221",
+        "span": "block 221"
+      }
+    },
+    {
+      "id": "08307aa7-9464-4c68-8095-a2e9c067af11",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Mg trisilicate",
+          "mg trisilicate",
+          "what is Mg trisilicate",
+          "tell me about Mg trisilicate",
+          "explain Mg trisilicate"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 222",
+        "span": "block 222"
+      }
+    },
+    {
+      "id": "fd7281c1-d61e-47bf-b6f3-30428830fbb4",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Vit C",
+          "vit c",
+          "what is Vit C",
+          "tell me about Vit C",
+          "explain Vit C"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Vitamin C is a vital nutrient.",
+      "source": {
+        "document": "block 223",
+        "span": "block 223"
+      }
+    },
+    {
+      "id": "1d7a8510-147b-47aa-aab1-7630bd31e668",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Omeprazole",
+          "omeprazole",
+          "what is Omeprazole",
+          "tell me about Omeprazole",
+          "explain Omeprazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Omeprazole is a medication used to treat certain conditions where there is too much acid in the stomach.",
+      "source": {
+        "document": "block 224",
+        "span": "block 224"
+      }
+    },
+    {
+      "id": "29c79101-ee80-4361-ac8d-f75752b85866",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ferrous salts",
+          "ferrous salts",
+          "what is Ferrous salts",
+          "tell me about Ferrous salts",
+          "explain Ferrous salts"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ferrous salts are a type of iron supplement.",
+      "source": {
+        "document": "block 225",
+        "span": "block 225"
+      }
+    },
+    {
+      "id": "2e59f2d6-4df1-473a-91dc-4c50deea3a67",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Cimetidine",
+          "cimetidine",
+          "what is Cimetidine",
+          "tell me about Cimetidine",
+          "explain Cimetidine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Cimetidine is a histamine H2-receptor antagonist that inhibits stomach acid production.",
+      "source": {
+        "document": "block 226",
+        "span": "block 226"
+      }
+    },
+    {
+      "id": "48c1d05a-3c8f-49eb-9083-40c9ae517cab",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Folic acid",
+          "folic acid",
+          "what is Folic acid",
+          "tell me about Folic acid",
+          "explain Folic acid"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Folic acid is a B vitamin that is essential for cell growth and development.",
+      "source": {
+        "document": "block 227",
+        "span": "block 227"
+      }
+    },
+    {
+      "id": "a1f06d43-9d80-491a-bb7a-f8897e5ac237",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ranitidine",
+          "ranitidine",
+          "what is Ranitidine",
+          "tell me about Ranitidine",
+          "explain Ranitidine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ranitidine is a medication that reduces the production of stomach acid.",
+      "source": {
+        "document": "block 228",
+        "span": "block 228"
+      }
+    },
+    {
+      "id": "baa994f3-bb72-47bc-ac71-a9cc74ccc2bf",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Vit Bco",
+          "vit bco",
+          "what is Vit Bco",
+          "tell me about Vit Bco",
+          "explain Vit Bco"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 229",
+        "span": "block 229"
+      }
+    },
+    {
+      "id": "757acc94-3bff-41a2-bbf0-98031a934835",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Intravenous Fluids",
+          "intravenous fluids",
+          "what is Intravenous Fluids",
+          "tell me about Intravenous Fluids",
+          "explain Intravenous Fluids"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Intravenous fluids are solutions administered directly into the vein to provide hydration, electrolytes, and medications",
+      "source": {
+        "document": "block 230",
+        "span": "block 230"
+      }
+    },
+    {
+      "id": "203c836a-8c8f-44a8-92db-5f1ef2979b19",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Tuberculosis + HIV",
+          "tuberculosis + hiv",
+          "what is Tuberculosis + HIV",
+          "tell me about Tuberculosis + HIV",
+          "explain Tuberculosis + HIV"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 231",
+        "span": "block 231"
+      }
+    },
+    {
+      "id": "a32986a5-f1b8-4b22-b5b3-618931e31aee",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Darrows solution Sodium+ dextrose Dextrose + Water Mannitol Ringers lactate Normal Saline",
+          "darrows solution sodium+ dextrose dextrose + water mannitol ringers lactate normal saline",
+          "what is Darrows solution Sodium+ dextrose Dextrose + Water Mannitol Ringers lactate Normal Saline",
+          "tell me about Darrows solution Sodium+ dextrose Dextrose + Water Mannitol Ringers lactate Normal Saline",
+          "explain Darrows solution Sodium+ dextrose Dextrose + Water Mannitol Ringers lactate Normal Saline"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 232",
+        "span": "block 232"
+      }
+    },
+    {
+      "id": "a1f35a28-6304-459e-93cd-f7b357be6c8a",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "1st line anti TB medication 1st line anti retroviral medication (Ten/Lam/Efv )",
+          "1st line anti tb medication 1st line anti retroviral medication (ten/lam/efv )",
+          "what is 1st line anti TB medication 1st line anti retroviral medication (Ten/Lam/Efv )",
+          "tell me about 1st line anti TB medication 1st line anti retroviral medication (Ten/Lam/Efv )",
+          "explain 1st line anti TB medication 1st line anti retroviral medication (Ten/Lam/Efv )"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "block 233",
+        "span": "block 233"
+      }
+    },
+    {
+      "id": "ff1084bf-861c-4dae-be7d-91c9a693e85b",
+      "type": "drug_table",
+      "trigger_phrases": {
+        "en": [
+          "first line anti TB meds",
+          "first line anti retroviral",
+          "Ten/Lam/Efv dose",
+          "what is first line ARV",
+          "first line HAART",
+          "1st line anti TB treatment",
+          "first line ART regimen",
+          "Ten/Lam/Efv for HIV"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": null,
+      "source": {
+        "document": "blocks 234–234",
+        "span": "1st line treatment"
+      }
+    },
+    {
+      "id": "93d2b463-a98b-4af1-9608-41cbd2be84cc",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Other Drugs",
+          "other drugs",
+          "what is Other Drugs",
+          "tell me about Other Drugs",
+          "explain Other Drugs"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 235",
+        "span": "block 235"
+      }
+    },
+    {
+      "id": "323b5ee4-6982-40a6-ac8c-da528938a919",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Hydrocortisone",
+          "hydrocortisone",
+          "what is Hydrocortisone",
+          "tell me about Hydrocortisone",
+          "explain Hydrocortisone"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Hydrocortisone is a steroid medication that is used to treat a variety of conditions, including allergies, asthma, and s",
+      "source": {
+        "document": "block 236",
+        "span": "block 236"
+      }
+    },
+    {
+      "id": "46f106af-117c-4a7b-a826-ffdd49208cef",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Chorpheniramine",
+          "chorpheniramine",
+          "what is Chorpheniramine",
+          "tell me about Chorpheniramine",
+          "explain Chorpheniramine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Chorpheniramine is an antihistamine that is used to relieve symptoms of allergy, hay fever, and the common cold.",
+      "source": {
+        "document": "block 237",
+        "span": "block 237"
+      }
+    },
+    {
+      "id": "2bc47f74-eeb8-4316-883a-0ae4c63b6677",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Low osmolar ORS",
+          "low osmolar ors",
+          "what is Low osmolar ORS",
+          "tell me about Low osmolar ORS",
+          "explain Low osmolar ORS"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Low osmolar ORS is a type of oral rehydration solution that contains a reduced amount of osmolar substances, making it s",
+      "source": {
+        "document": "block 238",
+        "span": "block 238"
+      }
+    },
+    {
+      "id": "ea9ddb3b-494e-4420-9b5d-f8c360d3139a",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Zinc",
+          "zinc",
+          "what is Zinc",
+          "tell me about Zinc",
+          "explain Zinc"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Zinc is an essential mineral.",
+      "source": {
+        "document": "block 239",
+        "span": "block 239"
+      }
+    },
+    {
+      "id": "6b94dd95-1b41-406d-a27e-3076a4697b26",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Diazepam",
+          "diazepam",
+          "what is Diazepam",
+          "tell me about Diazepam",
+          "explain Diazepam"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Diazepam is a benzodiazepine used to treat anxiety disorders, alcohol withdrawal symptoms, and muscle spasms.",
+      "source": {
+        "document": "block 240",
+        "span": "block 240"
+      }
+    },
+    {
+      "id": "2768586e-3f8c-411e-9b6c-c2ccf94d3be7",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Metoclopramide",
+          "metoclopramide",
+          "what is Metoclopramide",
+          "tell me about Metoclopramide",
+          "explain Metoclopramide"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Metoclopramide is a medication used to treat nausea, vomiting, and gastroparesis.",
+      "source": {
+        "document": "block 241",
+        "span": "block 241"
+      }
+    },
+    {
+      "id": "77371523-5287-4d98-9a63-1e2949e7f441",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Hyosine-butylbromide",
+          "hyosine-butylbromide",
+          "what is Hyosine-butylbromide",
+          "tell me about Hyosine-butylbromide",
+          "explain Hyosine-butylbromide"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 242",
+        "span": "block 242"
+      }
+    },
+    {
+      "id": "24a64e06-a770-4dcd-8322-2010ea1f7126",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Bisacodyl",
+          "bisacodyl",
+          "what is Bisacodyl",
+          "tell me about Bisacodyl",
+          "explain Bisacodyl"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Bisacodyl is a stimulant laxative used to treat constipation.",
+      "source": {
+        "document": "block 243",
+        "span": "block 243"
+      }
+    },
+    {
+      "id": "cec3a36c-e1cc-4672-8e58-f7d78e13109c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Lidocaine",
+          "lidocaine",
+          "what is Lidocaine",
+          "tell me about Lidocaine",
+          "explain Lidocaine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Lidocaine is a local anesthetic and antiarrhythmic drug.",
+      "source": {
+        "document": "block 244",
+        "span": "block 244"
+      }
+    },
+    {
+      "id": "807dd779-9e44-49d2-bfad-7c6e7fe44f89",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Praziquantel",
+          "praziquantel",
+          "what is Praziquantel",
+          "tell me about Praziquantel",
+          "explain Praziquantel"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Praziquantel is an anthelmintic drug used to treat parasitic worm infections.",
+      "source": {
+        "document": "block 245",
+        "span": "block 245"
+      }
+    },
+    {
+      "id": "5989c6db-6c12-4a85-8f03-ae78ac16efb1",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Ketoconazole",
+          "ketoconazole",
+          "what is Ketoconazole",
+          "tell me about Ketoconazole",
+          "explain Ketoconazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Ketoconazole is an antifungal medication.",
+      "source": {
+        "document": "block 246",
+        "span": "block 246"
+      }
+    },
+    {
+      "id": "e106655b-a89a-439a-a25b-8db511aacb39",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Fluconazole",
+          "fluconazole",
+          "what is Fluconazole",
+          "tell me about Fluconazole",
+          "explain Fluconazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Fluconazole is an antifungal medication used to treat various fungal infections.",
+      "source": {
+        "document": "block 247",
+        "span": "block 247"
+      }
+    },
+    {
+      "id": "36c5072b-b81b-4934-9623-ad3c75718f97",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Lorazepam",
+          "lorazepam",
+          "what is Lorazepam",
+          "tell me about Lorazepam",
+          "explain Lorazepam"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Lorazepam is a medication used to treat anxiety disorders, insomnia, and seizures.",
+      "source": {
+        "document": "block 248",
+        "span": "block 248"
+      }
+    },
+    {
+      "id": "560a70c3-01bd-4af8-a98e-287f31b8e42e",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Dexamethasone",
+          "dexamethasone",
+          "what is Dexamethasone",
+          "tell me about Dexamethasone",
+          "explain Dexamethasone"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Dexamethasone is a corticosteroid used to treat various conditions such as inflammation, immune system disorders, and ca",
+      "source": {
+        "document": "block 249",
+        "span": "block 249"
+      }
+    },
+    {
+      "id": "00fa2d4a-b3da-4995-9cca-46dd3d6db44f",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Digoxin",
+          "digoxin",
+          "what is Digoxin",
+          "tell me about Digoxin",
+          "explain Digoxin"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Digoxin is a medication used to treat heart conditions such as atrial fibrillation and heart failure.",
+      "source": {
+        "document": "block 250",
+        "span": "block 250"
+      }
+    },
+    {
+      "id": "d66a702d-a321-4826-9bdd-abdcea45015c",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Lotions and Ointments",
+          "lotions and ointments",
+          "what is Lotions and Ointments",
+          "tell me about Lotions and Ointments",
+          "explain Lotions and Ointments"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 251",
+        "span": "block 251"
+      }
+    },
+    {
+      "id": "6eaaccb2-269d-4755-93b5-1f93725b1eda",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Gentian violet",
+          "gentian violet",
+          "what is Gentian violet",
+          "tell me about Gentian violet",
+          "explain Gentian violet"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Gentian violet is a synthetic, violet-colored dye used as a topical antiseptic.",
+      "source": {
+        "document": "block 252",
+        "span": "block 252"
+      }
+    },
+    {
+      "id": "832e9cf6-f9ab-41c9-9a02-de2e158336b7",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Calamine lotion",
+          "calamine lotion",
+          "what is Calamine lotion",
+          "tell me about Calamine lotion",
+          "explain Calamine lotion"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Calamine lotion is a topical medication used to relieve itching and skin irritation.",
+      "source": {
+        "document": "block 253",
+        "span": "block 253"
+      }
+    },
+    {
+      "id": "69de51cf-67bf-44e8-8e9b-ca9fd58ad982",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Benzyl benzoate emulsion",
+          "benzyl benzoate emulsion",
+          "what is Benzyl benzoate emulsion",
+          "tell me about Benzyl benzoate emulsion",
+          "explain Benzyl benzoate emulsion"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 254",
+        "span": "block 254"
+      }
+    },
+    {
+      "id": "c5ef7828-9e14-4b1e-ad23-5be4c8961083",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Clotrimazole",
+          "clotrimazole",
+          "what is Clotrimazole",
+          "tell me about Clotrimazole",
+          "explain Clotrimazole"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Clotrimazole is an antifungal medication.",
+      "source": {
+        "document": "block 255",
+        "span": "block 255"
+      }
+    },
+    {
+      "id": "dec1870b-7bb0-4194-a21f-470b997fbf24",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Silver sulphadizine",
+          "silver sulphadizine",
+          "what is Silver sulphadizine",
+          "tell me about Silver sulphadizine",
+          "explain Silver sulphadizine"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Silver sulphadizine is a topical cream used to prevent or treat infections on areas of burned skin.",
+      "source": {
+        "document": "block 256",
+        "span": "block 256"
+      }
+    },
+    {
+      "id": "3577c18b-9cc5-4ccb-b33b-aa8eaeeaa819",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Hypoglycemic",
+          "hypoglycemic",
+          "what is Hypoglycemic",
+          "tell me about Hypoglycemic",
+          "explain Hypoglycemic"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "Hypoglycemia, also known as low blood sugar, is a condition in which your blood sugar levels drop below normal.",
+      "source": {
+        "document": "block 257",
+        "span": "block 257"
+      }
+    },
+    {
+      "id": "6300888b-3cf9-4629-b51e-0fefafcb8b85",
+      "type": "faq",
+      "trigger_phrases": {
+        "en": [
+          "Metformin Gibenclamide Insulin inj",
+          "metformin gibenclamide insulin inj",
+          "what is Metformin Gibenclamide Insulin inj",
+          "tell me about Metformin Gibenclamide Insulin inj",
+          "explain Metformin Gibenclamide Insulin inj"
+        ]
+      },
+      "aspects": [
+        "definition",
+        "coverage"
+      ],
+      "content_keys": [
+        "primary_question",
+        "answer",
+        "answer_original",
+        "answer_direct",
+        "answer_formal",
+        "answer_reassuring",
+        "answer_urgent",
+        "question_variants",
+        "topics",
+        "related_questions",
+        "follow_up_prompts",
+        "conversational_openers",
+        "fallback_response",
+        "companion_note"
+      ],
+      "answer_preview": "",
+      "source": {
+        "document": "block 258",
+        "span": "block 258"
+      }
+    }
+  ]
+}

@@ -11,13 +11,34 @@
 #include <vector>
 #include <android/log.h>
 #include "llama.h"
-#include "common.h"
 
 #define TAG "EdgeBrainJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
 static int g_last_token_count = 0;
+
+// Inline helper functions (avoid depending on common lib)
+static void common_batch_clear(struct llama_batch & batch) {
+    batch.n_tokens = 0;
+}
+
+static void common_batch_add(
+        struct llama_batch & batch,
+              llama_token   id,
+                llama_pos   pos,
+    const std::vector<llama_seq_id> & seq_ids,
+                     bool   logits) {
+    batch.token   [batch.n_tokens] = id;
+    batch.pos     [batch.n_tokens] = pos;
+    batch.n_seq_id[batch.n_tokens] = seq_ids.size();
+    for (size_t i = 0; i < seq_ids.size(); ++i) {
+        batch.seq_id[batch.n_tokens][i] = seq_ids[i];
+    }
+    batch.logits  [batch.n_tokens] = logits;
+
+    batch.n_tokens++;
+}
 
 extern "C" {
 
@@ -116,8 +137,9 @@ Java_com_hiva_runtime_llm_EdgeBrainPlugin_nativeGenerate(
 
     // Tokenize prompt
     const int n_ctx = llama_n_ctx(ctx);
+    const llama_vocab* vocab = llama_model_get_vocab(model);
     std::vector<llama_token> tokens(n_ctx);
-    int n_tokens = llama_tokenize(model, prompt.c_str(), prompt.length(),
+    int n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(),
                                    tokens.data(), tokens.size(), true, true);
     if (n_tokens < 0) {
         LOGE("Tokenization failed");
@@ -127,13 +149,10 @@ Java_com_hiva_runtime_llm_EdgeBrainPlugin_nativeGenerate(
 
     LOGI("Prompt tokenized: %d tokens", n_tokens);
 
-    // Clear KV cache
-    llama_kv_cache_clear(ctx);
-
-    // Evaluate prompt
+    // Evaluate prompt (KV cache is auto-managed in new API)
     llama_batch batch = llama_batch_init(512, 0, 1);
     for (int i = 0; i < n_tokens; i++) {
-        llama_batch_add(batch, tokens[i], i, {0}, false);
+        common_batch_add(batch, tokens[i], i, {0}, false);
     }
     batch.logits[batch.n_tokens - 1] = true;
 
@@ -158,12 +177,12 @@ Java_com_hiva_runtime_llm_EdgeBrainPlugin_nativeGenerate(
     while (generated < maxTokens) {
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
-        if (llama_token_is_eog(model, new_token)) {
+        if (llama_vocab_is_eog(vocab, new_token)) {
             break;
         }
 
         char buf[256];
-        int len = llama_token_to_piece(model, new_token, buf, sizeof(buf), 0, true);
+        int len = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, true);
         if (len > 0) {
             output.append(buf, len);
         }
@@ -181,8 +200,8 @@ Java_com_hiva_runtime_llm_EdgeBrainPlugin_nativeGenerate(
         if (should_stop) break;
 
         // Prepare next token
-        llama_batch_clear(batch);
-        llama_batch_add(batch, new_token, cur_pos, {0}, true);
+        common_batch_clear(batch);
+        common_batch_add(batch, new_token, cur_pos, {0}, true);
         cur_pos++;
 
         if (llama_decode(ctx, batch) != 0) {
