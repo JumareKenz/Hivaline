@@ -57,7 +57,8 @@ export function getModelLoadTiming(): ModelLoadTiming {
 
 /** Synchronous gate used by the search layer before embedding a query. */
 export function isEmbeddingModelReady(): boolean {
-  return state.status === 'ready' || isModelLoaded();
+  // Check if ANY embedding model is loaded (MiniLM or bge-m3)
+  return state.status === 'ready' || isModelLoaded('minilm') || isModelLoaded('bge-m3');
 }
 
 export function subscribeModelState(fn: (s: ModelState) => void): () => void {
@@ -72,7 +73,8 @@ export function subscribeModelState(fn: (s: ModelState) => void): () => void {
  * Logs timing data for cold-start latency analysis on real devices.
  */
 export async function warmupEmbeddingModel(): Promise<void> {
-  if (state.status === 'ready' || isModelLoaded()) {
+  // Warmup MiniLM model (v2.2 default) - bge-m3 loads on-demand for v2.3 bundles
+  if (state.status === 'ready' || isModelLoaded('minilm')) {
     if (state.status !== 'ready') emit({ status: 'ready', progress: 100 });
     return;
   }
@@ -88,7 +90,7 @@ export async function warmupEmbeddingModel(): Promise<void> {
 
     try {
       let sawProgress = false;
-      await getEmbeddingModel((p: ModelProgress) => {
+      await getEmbeddingModel('minilm', (p: ModelProgress) => {
         if (p && p.status === 'progress' && typeof p.progress === 'number') {
           sawProgress = true;
           emit({ progress: Math.max(0, Math.min(100, Math.round(p.progress))) });

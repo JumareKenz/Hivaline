@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ARM Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: monospace; font-size: 11px; padding: 10px; background: #000; color: #0f0; }
+        #log { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h3>ARM Device Test - Auto-running...</h3>
+    <div id="log"></div>
+
+    <script type="module">
+        const log = (msg) => {
+            console.log(msg);
+            document.getElementById('log').innerHTML += msg + '\n';
+            // Also save to localStorage for retrieval via adb
+            const existing = localStorage.getItem('test_log') || '';
+            localStorage.setItem('test_log', existing + msg + '\n');
+        };
+
+        const testQueries = [
+            "How do I treat HIV?",
+            "Dosage for children 5-10kg",
+            "What are the symptoms of tuberculosis?",
+            "When should I refer a patient?",
+            "Malaria prophylaxis for pregnant women",
+            "Side effects of artemisinin",
+            "How to diagnose pneumonia",
+            "Treatment for severe malnutrition",
+            "Signs of dehydration",
+            "Vaccination schedule for infants"
+        ];
+
+        (async () => {
+            try {
+                localStorage.setItem('test_log', '');
+                localStorage.setItem('test_status', 'RUNNING');
+
+                log('=== ARM DEVICE TEST START ===');
+                log(`Time: ${new Date().toISOString()}`);
+                log(`UA: ${navigator.userAgent.substring(0, 100)}`);
+                log(`Cores: ${navigator.hardwareConcurrency}`);
+
+                log('\n1. Loading @xenova/transformers...');
+                const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+
+                env.allowRemoteModels = false;
+                env.allowLocalModels = true;
+                env.useBrowserCache = true;
+                env.localModelPath = '/public/models/';
+                log('OK - transformers loaded');
+
+                log('\n2. Loading bge-m3 q8...');
+                const loadStart = performance.now();
+                const model = await pipeline('feature-extraction', 'bge-m3', { quantized: true });
+                const loadTime = performance.now() - loadStart;
+                log(`OK - loaded in ${loadTime.toFixed(0)}ms (${(loadTime/1000).toFixed(1)}s)`);
+
+                log('\n3. Verifying output...');
+                const test = await model("test query", { pooling: 'cls', normalize: true });
+                log(`OK - dimensions: ${test.data.length}`);
+
+                log('\n4. Warm inference (10 queries)...');
+                const latencies = [];
+                for (let i = 0; i < testQueries.length; i++) {
+                    const start = performance.now();
+                    await model(testQueries[i], { pooling: 'cls', normalize: true });
+                    const lat = performance.now() - start;
+                    latencies.push(lat);
+                    log(`  Q${i+1}: ${lat.toFixed(1)}ms`);
+                }
+
+                const avg = latencies.reduce((a,b)=>a+b,0) / latencies.length;
+                const min = Math.min(...latencies);
+                const max = Math.max(...latencies);
+
+                log(`\n=== RESULTS ===`);
+                log(`Cold load: ${loadTime.toFixed(0)}ms`);
+                log(`Avg latency: ${avg.toFixed(1)}ms`);
+                log(`Min: ${min.toFixed(1)}ms, Max: ${max.toFixed(1)}ms`);
+                log(`vs MiniLM (10ms): ${(avg/10).toFixed(2)}x`);
+                log(`vs x86 emulator (90.9ms): ${(avg/90.9).toFixed(2)}x`);
+
+                const mem = performance.memory;
+                if (mem) {
+                    log(`Memory: ${Math.round(mem.usedJSHeapSize/1024/1024)}MB used`);
+                }
+
+                const results = {
+                    coldLoad: loadTime,
+                    avgLatency: avg,
+                    minLatency: min,
+                    maxLatency: max,
+                    vsMinilm: (avg/10).toFixed(2),
+                    vsEmulator: (avg/90.9).toFixed(2),
+                    memory: mem ? Math.round(mem.usedJSHeapSize/1024/1024) : null
+                };
+
+                localStorage.setItem('test_results', JSON.stringify(results, null, 2));
+                localStorage.setItem('test_status', 'COMPLETE');
+                log('\n=== TEST COMPLETE ===');
+
+            } catch (err) {
+                log(`\nERROR: ${err.message}`);
+                log(err.stack);
+                localStorage.setItem('test_status', 'FAILED');
+                localStorage.setItem('test_error', err.message);
+            }
+        })();
+    </script>
+</body>
+</html>

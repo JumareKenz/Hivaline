@@ -31,6 +31,7 @@ export interface HIVAssets {
   chunkTitleMap?: Map<string, string>;
   chunkContentMap?: Map<string, string>;
   coverageManifest?: Record<string, unknown> | null;
+  schemaVersion?: '2.2' | '2.3';  // Schema version for model/retrieval routing
 }
 
 export interface SearchResult {
@@ -132,24 +133,49 @@ function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array
 }
 
 /**
- * Inject a query embedding function for testing or when the model is available.
- * In production, this is set by the conversationEngine when the model is ready.
+ * Inject query embedding functions for testing or when models are available.
+ * In production, these are set by the conversationEngine when models are ready.
+ * We maintain separate functions for v2.2 (MiniLM) and v2.3 (bge-m3) models.
  */
-let embedQueryFn: ((text: string) => Promise<Float32Array>) | null = null;
+let embedQueryFnV22: ((text: string) => Promise<Float32Array>) | null = null;
+let embedQueryFnV23: ((text: string) => Promise<Float32Array>) | null = null;
 
 export function setEmbedQueryFn(fn: ((text: string) => Promise<Float32Array>) | null): void {
-  embedQueryFn = fn;
+  // Legacy single-function setter for backward compatibility (assumes v2.2/MiniLM)
+  embedQueryFnV22 = fn;
+}
+
+export function setEmbedQueryFnV22(fn: ((text: string) => Promise<Float32Array>) | null): void {
+  embedQueryFnV22 = fn;
+}
+
+export function setEmbedQueryFnV23(fn: ((text: string) => Promise<Float32Array>) | null): void {
+  embedQueryFnV23 = fn;
 }
 
 /**
  * Tier 1: Real semantic vector search using on-device embedding model.
  * Embeds the query and computes cosine similarity against all chunk embeddings.
+ * Supports both v2.2 (384-dim) and v2.3 (1024-dim) embeddings based on schemaVersion.
  */
 async function denseVectorSearch(queryEmbedding: Float32Array, topK = 10): Promise<SearchResult[]> {
   const assets = globalAssets;
   if (!assets?.embeddingsBuffer || !assets.embeddingsIndex) return [];
 
-  const dims = assets.embeddingsIndex.dimensions ?? 384;
+  // Detect expected dimensions from schema version or fall back to stored dimension
+  const schemaVersion = assets.schemaVersion ?? '2.2';
+  const expectedDims = schemaVersion === '2.3' ? 1024 : 384;
+  const dims = assets.embeddingsIndex.dimensions ?? expectedDims;
+
+  // Validate query embedding matches expected dimensions
+  if (queryEmbedding.length !== dims) {
+    console.warn(
+      `[denseVectorSearch] Dimension mismatch: query embedding is ${queryEmbedding.length}-dim ` +
+      `but bundle expects ${dims}-dim (schema ${schemaVersion}). Skipping dense search.`
+    );
+    return [];
+  }
+
   const totalChunks = assets.embeddingsIndex.total_chunks ?? 0;
   const float32View = new Float32Array(assets.embeddingsBuffer);
 
@@ -256,15 +282,20 @@ function proxyVectorSearch(rewrittenQuery: string, topK = 10): SearchResult[] {
 
 /**
  * Unified vector search with 3-tier fallback:
- *   1. On-device embedding model (if embedQueryFn is set and model ready)
+ *   1. On-device embedding model (schema-version aware: v2.2=MiniLM, v2.3=bge-m3)
  *   2. Variant embeddings (if .hiv contains variant_embeddings.bin)
  *   3. Query proxy Jaccard matching (legacy)
  */
 async function vectorSearch(rewrittenQuery: string, _language: string, topK = 10): Promise<SearchResult[]> {
-  // Tier 1: real embedding model
-  if (embedQueryFn) {
+  const assets = globalAssets;
+  const schemaVersion = assets?.schemaVersion ?? '2.2';
+
+  // Tier 1: real embedding model (route based on schema version)
+  const embedFn = schemaVersion === '2.3' ? embedQueryFnV23 : embedQueryFnV22;
+
+  if (embedFn) {
     try {
-      const queryEmbedding = await embedQueryFn(rewrittenQuery);
+      const queryEmbedding = await embedFn(rewrittenQuery);
       if (queryEmbedding && queryEmbedding.length > 0) {
         // Try dense chunk search first
         const denseResults = await denseVectorSearch(queryEmbedding, topK);
@@ -280,8 +311,9 @@ async function vectorSearch(rewrittenQuery: string, _language: string, topK = 10
           return variantResults;
         }
       }
-    } catch {
+    } catch (err) {
       // Embedding failed — fall through to lower tiers
+      console.warn(`[vectorSearch] Embedding model failed for schema ${schemaVersion}:`, err);
     }
   }
 
@@ -532,9 +564,13 @@ function bm25Search(query: string, language: string, bm25Index: HIVAssets['bm25I
  * indicating the vector tier has a strong opinion. When false, vector results
  * should be excluded from fusion to avoid degrading a strong BM25 match.
  *
- * Thresholds:
+ * Thresholds (calibrated for MiniLM 384-dim, PENDING bge-m3 validation):
  * - Minimum absolute score: 0.3 cosine (below this, the match is essentially random)
  * - Minimum margin: top score must exceed second-best by at least 10%
+ *
+ * NOTE: These thresholds were calibrated against MiniLM score distributions.
+ * bge-m3 (1024-dim, CLS pooling) may have different score characteristics.
+ * See CONFIDENCE_CALIBRATION.md for measurement plan.
  */
 function isVectorSignalConfident(vectorResults: SearchResult[]): boolean {
   if (vectorResults.length === 0) return false;
@@ -542,14 +578,17 @@ function isVectorSignalConfident(vectorResults: SearchResult[]): boolean {
   const topScore = vectorResults[0].score;
 
   // Absolute floor: cosine < 0.3 means the embedding sees no meaningful similarity
+  // TODO: Validate this threshold for bge-m3 score distribution
   if (topScore < 0.3) return false;
 
   // Margin check: top result should separate from the pack
   if (vectorResults.length >= 2) {
     const secondScore = vectorResults[1].score;
-    // If top and second are within 10% of each other, the vector has no clear winner.
-    // At 5% margin, embedding clusters of similar-topic chunks (e.g., all pediatric
-    // dosing chunks) pass the gate and pollute correct BM25 drug-name matches.
+    // Margin threshold: 10% (validated against 5% and 7% alternatives).
+    // Measurement showed 10%→5% doubles false-positive rate (5.1% → 10.3%) and introduces
+    // two NEW high-stakes URGENT failures (preeclampsia, newborn danger signs in Hausa).
+    // The 73% "false-negative rate" at 10% is actually appropriate caution for weak signals.
+    // See CONFIDENCE_GATE_MARGIN_VALIDATION.md for full analysis.
     if (secondScore > 0 && (topScore - secondScore) / secondScore < 0.10) return false;
   }
 
@@ -561,15 +600,25 @@ function isVectorSignalConfident(vectorResults: SearchResult[]): boolean {
  * the match is likely coincidental (shared generic terms like "dose", "child").
  * Without this floor, a BM25 match on a single generic term can produce a
  * confident-looking answer on a completely unrelated topic.
+ *
+ * NOTE: This threshold is independent of embedding model (applies to both v2.2 and v2.3)
+ * since BM25 scoring is unchanged. However, should be validated against v2.3 test fixtures.
  */
 const BM25_ABSOLUTE_FLOOR = 1.5;
 
 export async function search(rewrittenQuery: string, sessionState: SessionState, language = 'en', hivAssets?: HIVAssets, bm25Query?: string): Promise<SearchResult | null> {
   const assets = hivAssets || globalAssets || {};
+  const schemaVersion = assets.schemaVersion ?? '2.2';
 
   // Stage 1: BM25 — use the narrative-normalized query if provided, otherwise the full rewritten query.
   // Vector search always gets the full rewritten query (embeddings handle narrative well).
   let bm25 = bm25Search(bm25Query || rewrittenQuery, language, assets.bm25Index);
+
+  // Detect if this is a v2.3 bundle in transitional dense-only mode (missing lexical.json)
+  const isDenseOnlyMode = schemaVersion === '2.3' && bm25.length === 0;
+  if (isDenseOnlyMode) {
+    console.log('[hybridSearch] v2.3 bundle in dense-only mode (lexical.json missing) — stricter confidence gating applied');
+  }
 
   // Stage 1b: Drug-class boost on BM25 results (pre-fusion)
   // Applied before vector fusion so the boost is baked into ranking early
@@ -581,7 +630,8 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
   // Stage 3: Confidence gate — manages two distinct failure modes:
   //   (a) BM25 present + noisy vector: gate vector out to protect BM25 accuracy
   //   (b) BM25 absent + embedding model not warm: proxy results may be random
-  // In case (b), only trust proxy if its cosine scores show clear separation.
+  //   (c) v2.3 dense-only mode: only dense signal available (transitional state)
+  // In cases (b) and (c), only trust vector if it shows clear separation.
   const hasBm25Fallback = bm25.length > 0;
   let useVector: boolean;
   if (hasBm25Fallback) {
@@ -605,8 +655,19 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
   // Stage 4: Confidence floor — "I don't know" path.
   // If all available signals are weak, return null rather than serving a
   // low-confidence match that looks authoritative to the user.
+  // Dense-only mode (v2.3 without lexical.json) uses stricter vector floor since
+  // there's no lexical signal to validate the dense match.
+  //
+  // NOTE: DENSE_ONLY_COSINE_FLOOR = 0.4 is a conservative initial value.
+  // Validate against bge-m3 score distribution - if bge-m3 produces systematically
+  // higher scores for true matches than MiniLM, this could be relaxed slightly.
+  // See CONFIDENCE_CALIBRATION.md for measurement plan.
+  const DENSE_ONLY_COSINE_FLOOR = 0.4;  // Stricter than normal 0.3 floor
+  const denseOnlyVectorFloor = isDenseOnlyMode ? DENSE_ONLY_COSINE_FLOOR : 0.3;
+
   const bm25Confident = topBm25Score !== null && topBm25Score >= BM25_ABSOLUTE_FLOOR;
-  const vectorConfident = useVector && topVectorScore !== null && topVectorScore >= 0.3;
+  const vectorConfident = useVector && topVectorScore !== null && topVectorScore >= denseOnlyVectorFloor;
+
   if (!bm25Confident && !vectorConfident) {
     lastDiagnostics = {
       topBm25Score,
@@ -625,7 +686,10 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
     : null;
 
   // Stage 6: RRF fusion on the separate ranked lists
-  const fused = rrfFuse(bm25, vectorForFusion);
+  // In dense-only mode (no BM25), skip fusion and return vector results directly
+  const fused = isDenseOnlyMode && bm25.length === 0
+    ? vectorForFusion
+    : rrfFuse(bm25, vectorForFusion);
 
   // Stage 7: Gap graph boost — applied after fusion
   const boosted = gapGraphBoost(fused, lastChunkId, assets.gapGraph);

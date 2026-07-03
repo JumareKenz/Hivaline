@@ -41,6 +41,41 @@ export interface HivCapabilities {
 }
 
 /**
+ * Supported schema versions for embedding model and retrieval strategy selection.
+ */
+export type SchemaVersion = '2.2' | '2.3';
+
+/**
+ * Parse and validate schema_version from manifest.
+ * Falls back to manifest.version if schema_version is not explicitly set.
+ * Throws if version is unrecognized or missing.
+ */
+export function parseSchemaVersion(manifest: HIVManifest): SchemaVersion {
+  const rawVersion = manifest.schema_version ?? manifest.version;
+
+  if (!rawVersion || typeof rawVersion !== 'string') {
+    throw new Error(
+      `HIVLoader: manifest is missing version information. ` +
+      `Both schema_version and version fields are missing or invalid.`
+    );
+  }
+
+  // Normalize version string (strip 'v' prefix, take major.minor only)
+  const normalized = rawVersion.toLowerCase().replace(/^v/, '').split('.').slice(0, 2).join('.');
+
+  // Validate against known schema versions
+  if (normalized === '2.2') return '2.2';
+  if (normalized === '2.3') return '2.3';
+
+  // Unrecognized version - fail loudly with clear error
+  throw new Error(
+    `HIVLoader: Unrecognized schema version "${rawVersion}" (normalized: ${normalized}). ` +
+    `This runtime supports schema versions 2.2 and 2.3 only. ` +
+    `The bundle may have been compiled with a newer compiler version that is incompatible with this runtime.`
+  );
+}
+
+/**
  * Inspect a parsed HIVFile and return capability flags.
  * Logs a single structured warning if acronym/heading chunks are absent.
  *
@@ -76,7 +111,15 @@ export function detectCapabilities(hivFile: HIVFile): HivCapabilities {
     return meta?.is_heading_entry === true;
   });
 
-  const schemaVersion = hivFile.manifest.version ?? 'unknown';
+  // Parse and validate schema version - throws on unrecognized versions
+  let schemaVersion: string;
+  try {
+    schemaVersion = parseSchemaVersion(hivFile.manifest);
+  } catch (err) {
+    // Re-throw with module context if available
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${msg} [Module: ${hivFile.manifest.sha256?.slice(0, 8) ?? 'unknown'}]`);
+  }
 
   if (!hasAcronymChunks || !hasHeadingChunks) {
     // eslint-disable-next-line no-console
@@ -110,7 +153,11 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   }
 
   const { embeddings, meta: embeddingMeta, chunkIds } = parseEmbeddings(files);
-  const lexicalIndex = parseLexicalIndex(files);
+
+  // Parse lexical index with schema-aware warnings for missing files
+  const schemaVersion = parseSchemaVersion(manifest);
+  const lexicalIndex = parseLexicalIndex(files, schemaVersion, manifest.sha256?.slice(0, 8) ?? 'unknown');
+
   const sources = parseSources(files);
   const rules = parseRules(files);
   const i18n = parseI18n(files);
@@ -280,9 +327,27 @@ function parseEmbeddings(
   return { embeddings, meta: [], chunkIds };
 }
 
-function parseLexicalIndex(files: Record<string, Uint8Array>): HIVLexicalIndex | undefined {
+function parseLexicalIndex(
+  files: Record<string, Uint8Array>,
+  schemaVersion: SchemaVersion,
+  moduleId: string
+): HIVLexicalIndex | undefined {
   const raw = getFile(files, 'index/lexical.json');
-  if (!raw) return undefined;
+
+  if (!raw) {
+    // For v2.3 bundles, missing lexical.json is an expected transitional state
+    // (compiler stopped producing it for v2.3, pending revert). Log warning but don't fail.
+    if (schemaVersion === '2.3') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[HIVLoader] Module ${moduleId}: lexical.json missing in v2.3 bundle. ` +
+        `Falling back to dense-only search. This is expected during the v2.3 transition ` +
+        `period before the compiler-side revert lands.`
+      );
+    }
+    return undefined;
+  }
+
   try {
     return JSON.parse(strFromU8(raw)) as HIVLexicalIndex;
   } catch {

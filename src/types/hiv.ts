@@ -167,6 +167,7 @@ export interface RetrievalCapabilities {
 
 export interface HIVManifest {
   version: string;
+  schema_version?: string; // Explicit schema version (v2.2, v2.3, etc.) - compiler populates this
   sha256: string;
   size_kb: number;
   languages: string[];

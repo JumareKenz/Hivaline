@@ -29,7 +29,7 @@ function makeHIVFile(overrides?: Partial<{
   manifest: Record<string, unknown>;
 }>): HIVFile {
   return {
-    manifest: { version: '2.1.0', sha256: '', size_kb: 0, languages: ['en'], chunk_count: 0, created_at: '', search_config: { bm25_weight: 1, vector_weight: 1, fusion: 'RRF' as const, rrf_k: 60, type_boost: {} as Record<string, number> }, ...overrides?.manifest },
+    manifest: { version: '2.2.0', schema_version: '2.2', sha256: '', size_kb: 0, languages: ['en'], chunk_count: 0, created_at: '', search_config: { bm25_weight: 1, vector_weight: 1, fusion: 'RRF' as const, rrf_k: 60, type_boost: {} as Record<string, number> }, ...overrides?.manifest },
     chunks: (overrides?.chunks ?? []) as unknown as HIVFile['chunks'],
     embeddings: overrides?.embeddings ?? [],
     embeddingMeta: [],
@@ -129,9 +129,9 @@ describe('detectCapabilities', () => {
   });
 
   it('extracts schemaVersion from manifest.version', () => {
-    const hiv = makeHIVFile({ manifest: { version: '3.0.0' } });
+    const hiv = makeHIVFile({ manifest: { version: '2.3.0', schema_version: '2.3' } });
     const caps = detectCapabilities(hiv);
-    expect(caps.schemaVersion).toBe('3.0.0');
+    expect(caps.schemaVersion).toBe('2.3');
   });
 
   it('logs warning when acronym or heading chunks are missing', () => {

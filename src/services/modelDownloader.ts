@@ -79,6 +79,9 @@ async function getNetworkStatus(): Promise<{ connected: boolean; wifi: boolean }
 /**
  * Download model with progress tracking
  *
+ * Uses chunked writing to avoid memory issues with large files.
+ * Writes chunks directly to filesystem instead of loading entire file into memory.
+ *
  * @param onProgress - Callback for progress updates
  * @param wifiOnly - Only download on WiFi connection
  * @returns Result with success status and path
@@ -103,13 +106,41 @@ export async function downloadModel(
   downloadInProgress = true;
   currentController = new AbortController();
 
+  const finalPath = `${MODEL_CONFIG.path}/${MODEL_CONFIG.filename}`;
+  const tempPath = `${MODEL_CONFIG.path}/${MODEL_CONFIG.filename}.tmp`;
+
   try {
+    console.log('[ModelDownloader] Starting download:', MODEL_CONFIG.url);
+
     // Ensure directory exists
     await Filesystem.mkdir({
       path: MODEL_CONFIG.path,
       directory: Directory.Data,
       recursive: true,
     });
+
+    // Check if final file already exists
+    try {
+      const stat = await Filesystem.stat({
+        path: finalPath,
+        directory: Directory.Data,
+      });
+      console.log('[ModelDownloader] File already exists:', stat.size, 'bytes');
+
+      // Validate size
+      const sizeOk = stat.size > MODEL_CONFIG.expectedSizeBytes * 0.9 &&
+                     stat.size < MODEL_CONFIG.expectedSizeBytes * 1.1;
+
+      if (sizeOk) {
+        downloadInProgress = false;
+        return { success: true, path: finalPath };
+      } else {
+        console.log('[ModelDownloader] Existing file has wrong size, re-downloading');
+        await Filesystem.deleteFile({ path: finalPath, directory: Directory.Data });
+      }
+    } catch {
+      // File doesn't exist, continue with download
+    }
 
     // Download using fetch with progress tracking
     const response = await fetch(MODEL_CONFIG.url, {
@@ -128,48 +159,84 @@ export async function downloadModel(
     const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
     const totalBytes = contentLength || MODEL_CONFIG.expectedSizeBytes;
 
+    console.log('[ModelDownloader] Content length:', totalBytes, 'bytes');
+
     let bytesDownloaded = 0;
-    const chunks: Uint8Array[] = [];
     const startTime = Date.now();
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for writing
+    let buffer: Uint8Array[] = [];
+    let bufferSize = 0;
+
+    // Delete temp file if exists
+    try {
+      await Filesystem.deleteFile({ path: tempPath, directory: Directory.Data });
+    } catch {
+      // Ignore if doesn't exist
+    }
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
 
-      chunks.push(value);
-      bytesDownloaded += value.length;
+      if (value) {
+        buffer.push(value);
+        bufferSize += value.length;
+        bytesDownloaded += value.length;
 
-      // Calculate progress
-      if (onProgress) {
-        const elapsed = (Date.now() - startTime) / 1000; // seconds
-        const speedMBps = (bytesDownloaded / 1024 / 1024) / elapsed;
-        const remainingBytes = totalBytes - bytesDownloaded;
-        const estimatedSecondsRemaining = remainingBytes / (bytesDownloaded / elapsed);
+        // Calculate and report progress
+        if (onProgress) {
+          const elapsed = (Date.now() - startTime) / 1000; // seconds
+          const speedMBps = (bytesDownloaded / 1024 / 1024) / elapsed;
+          const remainingBytes = totalBytes - bytesDownloaded;
+          const estimatedSecondsRemaining = remainingBytes / (bytesDownloaded / elapsed);
 
-        onProgress({
-          bytesDownloaded,
-          totalBytes,
-          percentComplete: (bytesDownloaded / totalBytes) * 100,
-          speedMBps,
-          estimatedSecondsRemaining: Math.max(0, estimatedSecondsRemaining),
-        });
+          onProgress({
+            bytesDownloaded,
+            totalBytes,
+            percentComplete: (bytesDownloaded / totalBytes) * 100,
+            speedMBps,
+            estimatedSecondsRemaining: Math.max(0, estimatedSecondsRemaining),
+          });
+        }
+
+        // Write chunk when buffer reaches threshold or download complete
+        if (bufferSize >= CHUNK_SIZE || done) {
+          const combinedChunk = combineUint8Arrays(buffer);
+          const base64Chunk = arrayBufferToBase64(combinedChunk.buffer as ArrayBuffer);
+
+          await Filesystem.appendFile({
+            path: tempPath,
+            data: base64Chunk,
+            directory: Directory.Data,
+          });
+
+          console.log(`[ModelDownloader] Wrote chunk: ${bufferSize} bytes (${bytesDownloaded}/${totalBytes})`);
+
+          buffer = [];
+          bufferSize = 0;
+        }
       }
+
+      if (done) break;
     }
 
-    // Combine chunks into single blob
-    const blob = new Blob(chunks as BlobPart[]);
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64Data = arrayBufferToBase64(arrayBuffer);
+    // Rename temp file to final name
+    console.log('[ModelDownloader] Download complete, renaming temp file');
 
-    // Write to file
-    await Filesystem.writeFile({
-      path: `${MODEL_CONFIG.path}/${MODEL_CONFIG.filename}`,
-      data: base64Data,
+    // Delete final path if exists (shouldn't, but just in case)
+    try {
+      await Filesystem.deleteFile({ path: finalPath, directory: Directory.Data });
+    } catch {
+      // Ignore
+    }
+
+    // Rename temp to final
+    await Filesystem.rename({
+      from: tempPath,
+      to: finalPath,
       directory: Directory.Data,
     });
 
-    const finalPath = `${MODEL_CONFIG.path}/${MODEL_CONFIG.filename}`;
-    console.log(`[ModelDownloader] Model downloaded successfully: ${finalPath}`);
+    console.log('[ModelDownloader] Model downloaded successfully:', finalPath);
 
     downloadInProgress = false;
     currentController = null;
@@ -179,13 +246,33 @@ export async function downloadModel(
     downloadInProgress = false;
     currentController = null;
 
+    // Clean up temp file on error
+    try {
+      await Filesystem.deleteFile({ path: tempPath, directory: Directory.Data });
+    } catch {
+      // Ignore cleanup errors
+    }
+
     if (error.name === 'AbortError') {
+      console.log('[ModelDownloader] Download cancelled by user');
       return { success: false, error: 'Download cancelled by user' };
     }
 
     console.error('[ModelDownloader] Download failed:', error);
     return { success: false, error: error.message || 'Download failed' };
   }
+}
+
+// Helper: Combine multiple Uint8Arrays into one
+function combineUint8Arrays(arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
 }
 
 /**

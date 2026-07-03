@@ -20,7 +20,7 @@ import { STTLanguageSelector } from './STTLanguageSelector';
 import { sttService } from '@/services/sttService';
 import { checkForUpdate, downloadHIV, HivAuthError } from '@/services/updateService';
 import { getToken } from '@/services/authStorage';
-import { isModelDownloaded, downloadModel, type DownloadProgress } from '@/services/modelDownloader';
+import { isModelDownloaded, downloadModel, getModelInfo, deleteModel, type DownloadProgress } from '@/services/modelDownloader';
 import type { Language, InteractionMode } from '@/types/hiv';
 
 const SettingsScreen: React.FC = () => {
@@ -112,12 +112,18 @@ const SettingsScreen: React.FC = () => {
     localStorage.setItem(STT_LANG_STORAGE_KEY, code);
   }, []);
 
+  // Model diagnostics state
+  const [modelInfo, setModelInfo] = React.useState<{ exists: boolean; sizeMB?: number; path?: string } | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = React.useState(false);
+
   // Check model status on mount
   React.useEffect(() => {
     const checkModel = async () => {
       setCheckingModel(true);
       const downloaded = await isModelDownloaded();
+      const info = await getModelInfo();
       setModelDownloaded(downloaded);
+      setModelInfo(info);
       setCheckingModel(false);
     };
     checkModel();
@@ -129,18 +135,41 @@ const SettingsScreen: React.FC = () => {
     setModelProgress(null);
 
     const result = await downloadModel(
-      (progress) => setModelProgress(progress),
+      (progress) => {
+        console.log('[Settings] Download progress:', progress);
+        setModelProgress(progress);
+      },
       true // WiFi only
     );
+
+    console.log('[Settings] Download result:', result);
 
     if (result.success) {
       setModelDownloaded(true);
       setDownloadingModel(false);
       setModelProgress(null);
+      // Refresh model info
+      const info = await getModelInfo();
+      setModelInfo(info);
     } else {
       setModelError(result.error || 'Download failed');
       setDownloadingModel(false);
       setTimeout(() => setModelError(null), 5000);
+    }
+  }, []);
+
+  const handleDeleteModel = useCallback(async () => {
+    if (!confirm('Delete translation model? This will free up 890 MB but disable translation.')) {
+      return;
+    }
+
+    const deleted = await deleteModel();
+    if (deleted) {
+      setModelDownloaded(false);
+      setModelInfo({ exists: false });
+    } else {
+      setModelError('Failed to delete model');
+      setTimeout(() => setModelError(null), 3000);
     }
   }, []);
 
@@ -285,6 +314,52 @@ const SettingsScreen: React.FC = () => {
                 {modelError}
               </div>
             )}
+
+            {/* Diagnostics section */}
+            <div className="pt-2 border-t border-border-subtle">
+              <button
+                onClick={() => setShowDiagnostics(!showDiagnostics)}
+                className="text-xs font-body text-n-500 hover:text-n-700 dark:hover:text-n-300 transition-colors"
+              >
+                {showDiagnostics ? 'Hide' : 'Show'} diagnostics
+              </button>
+
+              {showDiagnostics && modelInfo && (
+                <div className="mt-3 p-3 rounded-lg bg-n-50 dark:bg-n-900 space-y-2">
+                  <div className="flex justify-between text-xs font-mono">
+                    <span className="text-n-500">File exists:</span>
+                    <span className={modelInfo.exists ? 'text-success' : 'text-error'}>
+                      {modelInfo.exists ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  {modelInfo.exists && modelInfo.sizeMB && (
+                    <>
+                      <div className="flex justify-between text-xs font-mono">
+                        <span className="text-n-500">Size:</span>
+                        <span className="text-n-800 dark:text-n-200">
+                          {modelInfo.sizeMB.toFixed(1)} MB
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs font-mono">
+                        <span className="text-n-500">Expected:</span>
+                        <span className="text-n-800 dark:text-n-200">892 MB</span>
+                      </div>
+                      {modelInfo.path && (
+                        <div className="text-xs font-mono text-n-500 break-all">
+                          {modelInfo.path}
+                        </div>
+                      )}
+                      <button
+                        onClick={handleDeleteModel}
+                        className="w-full mt-2 px-3 py-2 rounded-lg bg-error/10 text-error text-xs font-body font-medium hover:bg-error/20 transition-colors"
+                      >
+                        Delete Model
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
