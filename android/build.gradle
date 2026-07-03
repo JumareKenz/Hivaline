@@ -1,7 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.9.24'
+    ext.kotlin_version = '2.1.0'
 
     repositories {
         google()
@@ -24,7 +24,12 @@ allprojects {
         google()
         mavenCentral()
     }
-    // Force Java 17 source/target for all modules (Capacitor generates Java 21 but we use JDK 17)
+    // Force Java 17 toolchain and source/target for all modules (Capacitor generates Java 21 but we use JDK 17)
+    tasks.withType(JavaCompile).configureEach {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
     afterEvaluate {
         if (it.hasProperty('android')) {
             android {
@@ -32,6 +37,12 @@ allprojects {
                     sourceCompatibility JavaVersion.VERSION_17
                     targetCompatibility JavaVersion.VERSION_17
                 }
+            }
+        }
+        // Force Kotlin to also target JVM 17 to match Java compiler
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
             }
         }
     }
