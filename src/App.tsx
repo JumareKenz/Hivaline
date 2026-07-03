@@ -1,6 +1,8 @@
 /**
  * App.tsx — Root component
  * Wraps the app in AuthProvider, ThemeProvider, and MobileShell
+ *
+ * Note: Model download is triggered manually from Settings > Intelligence
  */
 
 import React, { useState, useEffect } from 'react';

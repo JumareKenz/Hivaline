@@ -20,6 +20,7 @@ import { STTLanguageSelector } from './STTLanguageSelector';
 import { sttService } from '@/services/sttService';
 import { checkForUpdate, downloadHIV, HivAuthError } from '@/services/updateService';
 import { getToken } from '@/services/authStorage';
+import { isModelDownloaded, downloadModel, type DownloadProgress } from '@/services/modelDownloader';
 import type { Language, InteractionMode } from '@/types/hiv';
 
 const SettingsScreen: React.FC = () => {
@@ -40,6 +41,13 @@ const SettingsScreen: React.FC = () => {
 
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string>('');
+
+  // Intelligence model state
+  const [modelDownloaded, setModelDownloaded] = useState<boolean>(false);
+  const [checkingModel, setCheckingModel] = useState<boolean>(true);
+  const [downloadingModel, setDownloadingModel] = useState<boolean>(false);
+  const [modelProgress, setModelProgress] = useState<DownloadProgress | null>(null);
+  const [modelError, setModelError] = useState<string | null>(null);
 
   const user = authState.user;
 
@@ -102,6 +110,38 @@ const SettingsScreen: React.FC = () => {
   const handleSttLangChange = useCallback((code: string) => {
     setSttLang(code);
     localStorage.setItem(STT_LANG_STORAGE_KEY, code);
+  }, []);
+
+  // Check model status on mount
+  React.useEffect(() => {
+    const checkModel = async () => {
+      setCheckingModel(true);
+      const downloaded = await isModelDownloaded();
+      setModelDownloaded(downloaded);
+      setCheckingModel(false);
+    };
+    checkModel();
+  }, []);
+
+  const handleEnableIntelligence = useCallback(async () => {
+    setDownloadingModel(true);
+    setModelError(null);
+    setModelProgress(null);
+
+    const result = await downloadModel(
+      (progress) => setModelProgress(progress),
+      true // WiFi only
+    );
+
+    if (result.success) {
+      setModelDownloaded(true);
+      setDownloadingModel(false);
+      setModelProgress(null);
+    } else {
+      setModelError(result.error || 'Download failed');
+      setDownloadingModel(false);
+      setTimeout(() => setModelError(null), 5000);
+    }
   }, []);
 
   return (
@@ -169,6 +209,82 @@ const SettingsScreen: React.FC = () => {
               Choose the language HIVA listens for when you speak. Requires a compatible speech recognition engine on your device.
             </p>
             <STTLanguageSelector value={sttLang} onChange={handleSttLangChange} />
+          </div>
+        </section>
+
+        {/* Intelligence / Translation */}
+        <section>
+          <h3 className="text-xs font-body font-medium text-n-500 uppercase tracking-widest mb-3 px-1">
+            Intelligence
+          </h3>
+          <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-body font-medium text-n-800 dark:text-n-200">
+                  Translation Model
+                </span>
+                <span className={clsx(
+                  'text-xs font-mono px-2 py-1 rounded',
+                  modelDownloaded
+                    ? 'bg-success/10 text-success'
+                    : 'bg-n-100 dark:bg-n-800 text-n-500'
+                )}>
+                  {checkingModel ? 'Checking...' : modelDownloaded ? 'Installed' : 'Not installed'}
+                </span>
+              </div>
+              <p className="text-xs font-body text-n-500 leading-relaxed">
+                {modelDownloaded
+                  ? 'Translation enabled for Hausa, Yoruba, Igbo queries. Model size: 890 MB.'
+                  : 'Download the AI model to enable translation for Nigerian languages (Hausa, Yoruba, Igbo).'}
+              </p>
+            </div>
+
+            {!modelDownloaded && !downloadingModel && (
+              <button
+                onClick={handleEnableIntelligence}
+                disabled={checkingModel}
+                className={clsx(
+                  'w-full px-4 py-3 rounded-lg font-body font-medium text-sm transition-all',
+                  'bg-primary hover:bg-primary-dark text-white',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'flex items-center justify-center gap-2'
+                )}
+              >
+                <ChevronRight size={16} />
+                Enable Intelligence (890 MB)
+              </button>
+            )}
+
+            {downloadingModel && modelProgress && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-body text-n-600 dark:text-n-400">
+                  <span>Downloading...</span>
+                  <span className="font-mono">{modelProgress.percentComplete.toFixed(1)}%</span>
+                </div>
+                <div className="w-full h-2 bg-n-100 dark:bg-n-800 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${modelProgress.percentComplete}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs font-body text-n-500">
+                  <span>
+                    {Math.round(modelProgress.bytesDownloaded / (1024 * 1024))} / {Math.round(modelProgress.totalBytes / (1024 * 1024))} MB
+                  </span>
+                  <span>
+                    {modelProgress.speedMBps.toFixed(1)} MB/s
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {modelError && (
+              <div className="p-3 rounded-lg bg-error/10 text-error text-sm font-body">
+                {modelError}
+              </div>
+            )}
           </div>
         </section>
 

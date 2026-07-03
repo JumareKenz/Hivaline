@@ -143,3 +143,29 @@ Object.defineProperty(window, 'webkitSpeechRecognition', {
   value: MockSpeechRecognition,
   writable: true,
 });
+
+// Mock @capacitor/filesystem (used by modelDownloader)
+vi.mock('@capacitor/filesystem', () => ({
+  Filesystem: {
+    stat: vi.fn(),
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+    deleteFile: vi.fn(),
+    mkdir: vi.fn(),
+    readdir: vi.fn(),
+  },
+  Directory: {
+    Data: 'DATA',
+    Documents: 'DOCUMENTS',
+    Cache: 'CACHE',
+  },
+}));
+
+// Mock @capacitor/network (used by modelDownloader)
+vi.mock('@capacitor/network', () => ({
+  Network: {
+    getStatus: vi.fn().mockResolvedValue({ connected: true, connectionType: 'wifi' }),
+    addListener: vi.fn(),
+    removeAllListeners: vi.fn(),
+  },
+}));

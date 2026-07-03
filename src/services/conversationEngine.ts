@@ -24,7 +24,7 @@ import SessionState from '@/engine/sessionState';
 import { classifyIntent, probeSentiment, detectGaps, detectCorrection } from '@/engine/intentEngine';
 import { hasClinicalPresence } from '@/engine/fuzzyNormalizer';
 import { rewriteQuery } from '@/engine/queryRewriter';
-import { search, initSearch, setEmbedQueryFn, getLastVectorTier, getLastSearchDiagnostics, type HIVAssets } from '@/engine/hybridSearch';
+import { search, initSearch, setEmbedQueryFnV22, setEmbedQueryFnV23, getLastVectorTier, getLastSearchDiagnostics, type HIVAssets } from '@/engine/hybridSearch';
 import {
   selectAnswerContent,
   computePatientDose,
@@ -53,6 +53,7 @@ import { reportError } from '@/services/telemetry';
 import { logQuery } from '@/services/queryLogger';
 import { isEmbeddingModelReady } from '@/services/modelManager';
 import { embedQuery } from '@/services/embeddingModel';
+import { prepareQueryForEmbedding, type TranslationResult } from '@/services/queryTranslator';
 
 export type { ConversationState, ConversationTurn, ConversationSlots, IntentType, EngineResponse };
 export type { CognitiveStateObject };
@@ -83,9 +84,16 @@ export class ConversationEngine {
       (hivFile.rules?.opener_matrix as Record<string, string>) ||
       {};
 
-    // Wire up on-device embedding model for semantic vector search
+    // Wire up on-device embedding models for semantic vector search
+    // Support both v2.2 (MiniLM) and v2.3 (bge-m3) for dual-path compatibility
+    const schemaVersion = this.hivAssets.schemaVersion ?? '2.2';
     if (isEmbeddingModelReady()) {
-      setEmbedQueryFn(embedQuery);
+      // v2.2 bundles use MiniLM
+      setEmbedQueryFnV22((text: string) => embedQuery(text, 'minilm'));
+      // v2.3 bundles use bge-m3
+      setEmbedQueryFnV23((text: string) => embedQuery(text, 'bge-m3'));
+
+      console.log(`[ConversationEngine] Schema version ${schemaVersion} detected, embedding models configured`);
     }
 
     // Warn if critical engine features are missing
@@ -116,9 +124,11 @@ export class ConversationEngine {
     };
 
     // ─── Layer 2: Request ───
+    let translationResult: TranslationResult | null = null;
     const request: CognitiveStateObject['request'] = {
       rawInput: userMessage,
       translatedInput: undefined,
+      translation: undefined,
     };
 
     // Increment turn count immediately for greeting/intent logic
@@ -263,16 +273,32 @@ export class ConversationEngine {
       };
     }
 
-    // Rewrite query using new engine
-    const rewritten = rewriteQuery(userMessage, newIntent, this.sessionState);
+    // ─── TRANSLATION LAYER (for Hausa/Yoruba/Igbo/Pidgin queries) ───
+    // Translate non-English queries to English BEFORE embedding to improve
+    // retrieval accuracy. This addresses the Hausa 50% → 75%+ performance gap.
+    // Translation only happens for detected non-English queries (~500ms latency).
+    translationResult = await prepareQueryForEmbedding(userMessage);
+    const queryForSearch = translationResult.translatedQuery || userMessage;
+
+    // Store translation metadata in request layer
+    request.translation = {
+      language: translationResult.language,
+      translatedQuery: translationResult.translatedQuery,
+      latencyMs: translationResult.latencyMs,
+      error: translationResult.error,
+    };
+
+    // Rewrite query using new engine (now uses translated query if available)
+    const rewritten = rewriteQuery(queryForSearch, newIntent, this.sessionState);
     request.translatedInput = rewritten.rewritten;
 
     // Hybrid search (new engine — async for dense variant embedding).
     initSearch(this.hivAssets);
 
-    // Lazily wire the embedding model if it became ready after construction
+    // Lazily wire embedding models if they became ready after construction
     if (isEmbeddingModelReady()) {
-      setEmbedQueryFn(embedQuery);
+      setEmbedQueryFnV22((text: string) => embedQuery(text, 'minilm'));
+      setEmbedQueryFnV23((text: string) => embedQuery(text, 'bge-m3'));
     }
 
     let searchResult: Awaited<ReturnType<typeof search>> = null;
@@ -768,6 +794,10 @@ export class ConversationEngine {
       (hivFile.rules?.coverage_manifest as HIVAssets['coverageManifest']) ||
       ({} as HIVAssets['coverageManifest']);
 
+    // Parse schema version for embedding model selection
+    const schemaVersionRaw = hivFile.manifest.schema_version ?? hivFile.manifest.version ?? '2.2';
+    const schemaVersion = (schemaVersionRaw.toLowerCase().replace(/^v/, '').startsWith('2.3') ? '2.3' : '2.2') as '2.2' | '2.3';
+
     return {
       embeddingsBuffer,
       embeddingsIndex: {
@@ -783,7 +813,8 @@ export class ConversationEngine {
       variantEmbeddings: hivFile.variantEmbeddings ?? null,
       variantEmbeddingsIndex: hivFile.variantEmbeddingsIndex ?? null,
       variantCount: hivFile.variantCount ?? 0,
-      embeddingDims: hivFile.embeddingDims ?? 384,
+      embeddingDims: hivFile.embeddingDims ?? (schemaVersion === '2.3' ? 1024 : 384),
+      schemaVersion,
       chunkTitleMap: new Map(hivFile.chunks.map(c => [c.id, c.display_title || ''])),
       chunkContentMap: new Map(hivFile.chunks.map(c => {
         const title = c.display_title || '';

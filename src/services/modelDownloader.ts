@@ -157,7 +157,7 @@ export async function downloadModel(
     }
 
     // Combine chunks into single blob
-    const blob = new Blob(chunks);
+    const blob = new Blob(chunks as BlobPart[]);
     const arrayBuffer = await blob.arrayBuffer();
     const base64Data = arrayBufferToBase64(arrayBuffer);
 

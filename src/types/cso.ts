@@ -29,6 +29,13 @@ export interface RequestLayer {
   rawInput: string;
   /** Translated input if the query was transformed for retrieval purposes. */
   translatedInput: string | undefined;
+  /** Translation metadata (language detected, latency, errors) if translation was attempted. */
+  translation?: {
+    language: 'en' | 'ha' | 'yo' | 'ig' | 'pid' | 'unknown';
+    translatedQuery: string | null;
+    latencyMs: number;
+    error: string | null;
+  };
 }
 
 /* ─── Layer 3: Intent ─── */

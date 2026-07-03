@@ -109,7 +109,7 @@ export const ModelDownloadModal: React.FC<ModelDownloadModalProps> = ({
               <IonLabel>WiFi only</IonLabel>
               <IonToggle
                 checked={wifiOnly}
-                onIonChange={(e) => setWifiOnly(e.detail.checked)}
+                onIonChange={(e: CustomEvent) => setWifiOnly(e.detail.checked)}
               />
             </IonItem>
 

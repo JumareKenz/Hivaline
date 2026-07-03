@@ -59,5 +59,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/__tests__/setup.ts',
+    alias: {
+      '@capacitor/core': path.resolve(__dirname, './src/__mocks__/@capacitor/core.ts'),
+      '@capacitor/filesystem': path.resolve(__dirname, './src/__mocks__/@capacitor/filesystem.ts'),
+      '@capacitor/network': path.resolve(__dirname, './src/__mocks__/@capacitor/network.ts'),
+    },
   },
 });
