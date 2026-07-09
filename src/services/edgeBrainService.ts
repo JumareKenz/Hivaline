@@ -12,7 +12,6 @@
  */
 
 import { registerPlugin } from '@capacitor/core';
-import { isModelDownloaded, isLeapModelDownloaded } from './modelDownloader';
 
 export interface EdgeBrainPlugin {
   loadModel(): Promise<{ success: boolean; loadTimeMs: number }>;
@@ -127,18 +126,8 @@ export async function loadEdgeBrain(): Promise<void> {
     return;
   }
 
-  // Check if the appropriate model file is present.
-  // LEAP backend reads models/lfm25/model.gguf; Qwen reads models/edge-brain/model.gguf.
-  // The BUILD_CONFIG flag is only available at Kotlin compile time, so we check both
-  // paths and accept whichever is present — the Kotlin side enforces which one it
-  // actually loads; this gate only prevents calling loadModel() with nothing on disk.
-  const [qwenReady, leapReady] = await Promise.all([isModelDownloaded(), isLeapModelDownloaded()]);
-  if (!qwenReady && !leapReady) {
-    const error = 'Model not downloaded. Please download the model first.';
-    emit({ status: 'error', error });
-    throw new Error(error);
-  }
-
+  // Native loadModel() handles asset-to-filesDir copy on first launch.
+  // No JS-side file check needed — the native layer is authoritative.
   emit({ status: 'loading', error: null });
 
   try {
@@ -194,7 +183,7 @@ export async function generateGrounded(
   const result = await EdgeBrain.generate({
     // Full ChatML prompt — used by the Qwen/JNI path (ignored by LEAP path)
     prompt,
-    maxTokens: options?.maxTokens ?? 256,
+    maxTokens: options?.maxTokens ?? 512,
     temperature: options?.temperature ?? 0.1,
     topP: options?.topP ?? 0.9,
     repeatPenalty: options?.repeatPenalty ?? 1.1,
@@ -204,18 +193,14 @@ export async function generateGrounded(
     userContent,
   });
 
-  // Step C — secondary groundedness signal (LEAP path only).
-  // Log disagreements between the model's self-report and what the primary
-  // term-match check will independently evaluate. These logs are a data-quality
-  // signal for monitoring; they do not change control flow here.
-  if (result.groundednessSignal !== undefined && evidence.length > 0) {
-    const modelClaimsInsufficient = result.groundednessSignal === 'INSUFFICIENT';
-    const outputIsInsufficient = result.text.trim() === 'INSUFFICIENT_EVIDENCE';
-    if (modelClaimsInsufficient !== outputIsInsufficient) {
-      // eslint-disable-next-line no-console
-      console.warn('[EdgeBrain] GROUNDING_DISAGREE: schema signal=', result.groundednessSignal,
-        'but answerText sentinel=', outputIsInsufficient);
+  // HARD SAFETY GATE: groundednessSignal === INSUFFICIENT forces output to
+  // INSUFFICIENT_EVIDENCE regardless of what the model actually generated.
+  // This prevents ungrounded hallucinations from ever reaching the user.
+  if (result.groundednessSignal === 'INSUFFICIENT') {
+    if (result.text.trim() !== 'INSUFFICIENT_EVIDENCE') {
+      console.warn('[EdgeBrain] GROUNDING_OVERRIDE: forcing INSUFFICIENT_EVIDENCE (model output was:', result.text.substring(0, 50), ')');
     }
+    result.text = 'INSUFFICIENT_EVIDENCE';
   }
 
   return result;
@@ -276,7 +261,7 @@ CRITICAL RULES:
 5. Be direct and specific — no hedging or unnecessary caveats.
 6. List the source chunk IDs from the Evidence that support your answer.
 
-Respond ONLY with a JSON object matching this schema exactly:
+Respond ONLY with a raw JSON object. Do NOT wrap in markdown or code fences. Do NOT start with backticks. Start your response directly with { and end with }.
 {"answer_text": string, "source_chunk_ids": [string], "groundedness_signal": "GROUNDED"|"PARTIAL"|"INSUFFICIENT"}`;
 
   const userContent = `Evidence:\n${evidence}\n\nQuery: ${query}`;

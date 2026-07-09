@@ -14,7 +14,6 @@
  * search degrades to BM25. A later reconnect can retry via warmupEmbeddingModel().
  */
 
-import { getEmbeddingModel, isModelLoaded, type ModelProgress } from './embeddingModel';
 
 export type ModelStatus = 'idle' | 'downloading' | 'ready' | 'unavailable';
 
@@ -32,7 +31,6 @@ export interface ModelLoadTiming {
 }
 
 let state: ModelState = { status: 'idle', progress: 0 };
-let warmupPromise: Promise<void> | null = null;
 const listeners = new Set<(s: ModelState) => void>();
 
 const timing: ModelLoadTiming = {
@@ -41,11 +39,6 @@ const timing: ModelLoadTiming = {
   coldStartMs: null,
   source: 'unknown',
 };
-
-function emit(next: Partial<ModelState>): void {
-  state = { ...state, ...next };
-  for (const fn of listeners) fn(state);
-}
 
 export function getModelState(): ModelState {
   return state;
@@ -57,8 +50,9 @@ export function getModelLoadTiming(): ModelLoadTiming {
 
 /** Synchronous gate used by the search layer before embedding a query. */
 export function isEmbeddingModelReady(): boolean {
-  // Check if ANY embedding model is loaded (MiniLM or bge-m3)
-  return state.status === 'ready' || isModelLoaded('minilm') || isModelLoaded('bge-m3');
+  // NativeRetriever owns all embedding — JS WebView embedding path is removed.
+  // Only report ready if our own state machine says so (never call the removed stubs).
+  return state.status === 'ready';
 }
 
 export function subscribeModelState(fn: (s: ModelState) => void): () => void {
@@ -68,66 +62,16 @@ export function subscribeModelState(fn: (s: ModelState) => void): () => void {
 }
 
 /**
- * Download/load the embedding model in the background (idempotent).
- * Safe to call repeatedly — e.g. on .hiv load and again on network reconnect.
- * Logs timing data for cold-start latency analysis on real devices.
+ * No-op: JS WebView embedding path removed. All embedding now via NativeRetriever.
+ * Kept so call sites don't need to be updated.
  */
 export async function warmupEmbeddingModel(): Promise<void> {
-  // Warmup MiniLM model (v2.2 default) - bge-m3 loads on-demand for v2.3 bundles
-  if (state.status === 'ready' || isModelLoaded('minilm')) {
-    if (state.status !== 'ready') emit({ status: 'ready', progress: 100 });
-    return;
-  }
-  if (warmupPromise) return warmupPromise;
-
-  warmupPromise = (async () => {
-    timing.warmupStartedAt = performance.now();
-    timing.source = 'unknown';
-    emit({ status: 'downloading', progress: state.progress });
-
-    // eslint-disable-next-line no-console
-    console.log('[modelManager] warmup started at', Math.round(timing.warmupStartedAt), 'ms after page load');
-
-    try {
-      let sawProgress = false;
-      await getEmbeddingModel('minilm', (p: ModelProgress) => {
-        if (p && p.status === 'progress' && typeof p.progress === 'number') {
-          sawProgress = true;
-          emit({ progress: Math.max(0, Math.min(100, Math.round(p.progress))) });
-        }
-        if (p && p.status === 'done') {
-          timing.source = sawProgress ? 'download' : 'cache';
-        }
-      });
-
-      timing.readyAt = performance.now();
-      timing.coldStartMs = Math.round(timing.readyAt - (timing.warmupStartedAt ?? timing.readyAt));
-      if (timing.source === 'unknown') {
-        timing.source = 'cache';
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(
-        `[modelManager] model READY in ${timing.coldStartMs}ms (source: ${timing.source})`,
-      );
-
-      emit({ status: 'ready', progress: 100 });
-    } catch {
-      const elapsed = Math.round(performance.now() - (timing.warmupStartedAt ?? 0));
-      // eslint-disable-next-line no-console
-      console.warn(`[modelManager] warmup FAILED after ${elapsed}ms — degrading to BM25`);
-      emit({ status: 'unavailable', progress: 0 });
-      warmupPromise = null;
-    }
-  })();
-
-  return warmupPromise;
+  // NativeRetriever handles its own lifecycle — nothing to warm up here.
 }
 
 /** Test helper: reset module state. */
 export function __resetModelManager(): void {
   state = { status: 'idle', progress: 0 };
-  warmupPromise = null;
   timing.warmupStartedAt = null;
   timing.readyAt = null;
   timing.coldStartMs = null;
