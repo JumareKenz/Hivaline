@@ -1,7 +1,11 @@
 /**
  * sttService.ts — Web Speech API Speech-to-Text engine
  *
- * Accurate, professional, effective, non-failing.
+ * Native STT deferred: moonshine-voice SDK requires Android 14+ (API 35),
+ * but project targets Android 12+ (API 31) for low-end device compatibility.
+ * Future: Manual ONNX Runtime integration for offline STT.
+ *
+ * Current: Web Speech Recognition API (network-dependent)
  * Gracefully degrades when SpeechRecognition is unavailable.
  */
 
@@ -172,16 +176,6 @@ class STTService {
     }
   }
 
-  stop(): void {
-    if (this.recognition) {
-      try {
-        this.recognition.stop();
-      } catch {
-        /* Ignore: may throw if not started */
-      }
-    }
-  }
-
   abort(): void {
     if (this.recognition) {
       try {
@@ -222,6 +216,16 @@ class STTService {
 
   private notify(state: STTState): void {
     this.listeners.forEach((l) => l(state, this.finalTranscript, this.error));
+  }
+
+  stop(): void {
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+      } catch {
+        /* Ignore: may throw if not started */
+      }
+    }
   }
 }
 

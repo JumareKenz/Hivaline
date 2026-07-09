@@ -31,7 +31,7 @@ export interface HIVAssets {
   chunkTitleMap?: Map<string, string>;
   chunkContentMap?: Map<string, string>;
   coverageManifest?: Record<string, unknown> | null;
-  schemaVersion?: '2.2' | '2.3';  // Schema version for model/retrieval routing
+  schemaVersion?: '3.0';  // Schema version (only 3.0 supported, v2.2/v2.3 removed)
 }
 
 export interface SearchResult {
@@ -133,24 +133,23 @@ function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array
 }
 
 /**
- * Inject query embedding functions for testing or when models are available.
- * In production, these are set by the conversationEngine when models are ready.
- * We maintain separate functions for v2.2 (MiniLM) and v2.3 (bge-m3) models.
+ * REMOVED: Legacy JS embedding functions deleted.
+ * All embedding now via NativeRetriever (ObjectBox + EmbeddingGemma 256-dim).
+ * These stubs remain for 1-release compatibility only.
  */
 let embedQueryFnV22: ((text: string) => Promise<Float32Array>) | null = null;
 let embedQueryFnV23: ((text: string) => Promise<Float32Array>) | null = null;
 
-export function setEmbedQueryFn(fn: ((text: string) => Promise<Float32Array>) | null): void {
-  // Legacy single-function setter for backward compatibility (assumes v2.2/MiniLM)
-  embedQueryFnV22 = fn;
+export function setEmbedQueryFn(_fn: ((text: string) => Promise<Float32Array>) | null): void {
+  console.warn('[hybridSearch] setEmbedQueryFn is deprecated. Use NativeRetriever.');
 }
 
-export function setEmbedQueryFnV22(fn: ((text: string) => Promise<Float32Array>) | null): void {
-  embedQueryFnV22 = fn;
+export function setEmbedQueryFnV22(_fn: ((text: string) => Promise<Float32Array>) | null): void {
+  console.warn('[hybridSearch] setEmbedQueryFnV22 is deprecated. Use NativeRetriever.');
 }
 
-export function setEmbedQueryFnV23(fn: ((text: string) => Promise<Float32Array>) | null): void {
-  embedQueryFnV23 = fn;
+export function setEmbedQueryFnV23(_fn: ((text: string) => Promise<Float32Array>) | null): void {
+  console.warn('[hybridSearch] setEmbedQueryFnV23 is deprecated. Use NativeRetriever.');
 }
 
 /**

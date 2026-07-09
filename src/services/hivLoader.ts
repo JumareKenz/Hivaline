@@ -43,12 +43,14 @@ export interface HivCapabilities {
 /**
  * Supported schema versions for embedding model and retrieval strategy selection.
  */
-export type SchemaVersion = '2.2' | '2.3';
+export type SchemaVersion = '3.0';
 
 /**
  * Parse and validate schema_version from manifest.
  * Falls back to manifest.version if schema_version is not explicitly set.
  * Throws if version is unrecognized or missing.
+ *
+ * REMOVED: v2.2/v2.3 support deleted. Only schema 3.0 bundles supported.
  */
 export function parseSchemaVersion(manifest: HIVManifest): SchemaVersion {
   const rawVersion = manifest.schema_version ?? manifest.version;
@@ -63,15 +65,14 @@ export function parseSchemaVersion(manifest: HIVManifest): SchemaVersion {
   // Normalize version string (strip 'v' prefix, take major.minor only)
   const normalized = rawVersion.toLowerCase().replace(/^v/, '').split('.').slice(0, 2).join('.');
 
-  // Validate against known schema versions
-  if (normalized === '2.2') return '2.2';
-  if (normalized === '2.3') return '2.3';
+  // Only schema 3.0 supported
+  if (normalized === '3.0') return '3.0';
 
-  // Unrecognized version - fail loudly with clear error
+  // v2.2/v2.3 removed - fail loudly
   throw new Error(
-    `HIVLoader: Unrecognized schema version "${rawVersion}" (normalized: ${normalized}). ` +
-    `This runtime supports schema versions 2.2 and 2.3 only. ` +
-    `The bundle may have been compiled with a newer compiler version that is incompatible with this runtime.`
+    `HIVLoader: Schema version "${rawVersion}" (normalized: ${normalized}) is not supported. ` +
+    `This runtime requires schema version 3.0+ bundles (EmbeddingGemma-300M + ObjectBox). ` +
+    `Legacy v2.2/v2.3 bundles are no longer compatible. Update your bundle to schema 3.0.`
   );
 }
 
@@ -147,9 +148,11 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   const manifest = parseManifest(files);
   const chunks = parseChunks(files);
 
-  // If manifest claims chunks exist but none passed validation, the file is effectively empty
+  // If manifest claims chunks exist but none passed validation, log and continue —
+  // the diagnostic log in parseChunks will show exactly why they were rejected.
   if (manifest.chunk_count > 0 && chunks.length === 0) {
-    throw new Error('.hiv file contains no valid chunks — all entries have empty content');
+    // eslint-disable-next-line no-console
+    console.error('[HIVLoader] 0 chunks loaded from', manifest.chunk_count, 'expected — schema mismatch. Check console for first rejected chunk.');
   }
 
   const { embeddings, meta: embeddingMeta, chunkIds } = parseEmbeddings(files);
@@ -184,6 +187,27 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
     /* No SQLite database found, using JSON fallback */
   }
 
+  // If chunks.jsonl was absent or empty but the SQLite DB has chunks, populate
+  // from DB. New bundle format (v2026.07+) ships chunks only in data/data.db.
+  let finalChunks = chunks;
+  if (finalChunks.length === 0 && db) {
+    try {
+      const results = db.exec('SELECT content_json FROM chunks LIMIT 5000');
+      if (results.length > 0 && results[0].values.length > 0) {
+        finalChunks = results[0].values
+          .map((row) => {
+            try { return JSON.parse(row[0] as string) as HIVChunk; } catch { return null; }
+          })
+          .filter((c): c is HIVChunk => c !== null && !!c.id && !!c.type);
+        // eslint-disable-next-line no-console
+        console.log('[HIVLoader] Loaded', finalChunks.length, 'chunks from SQLite DB');
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[HIVLoader] SQLite chunk load failed:', e);
+    }
+  }
+
   // Merge gap_graph and coverage_manifest into rules for backward compatibility
   if (gapGraph && Object.keys(gapGraph).length > 0) {
     rules.gap_graph = gapGraph;
@@ -194,7 +218,7 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
 
   return {
     manifest,
-    chunks,
+    chunks: finalChunks,
     embeddings,
     embeddingMeta,
     embeddingChunkIds: chunkIds,
@@ -239,7 +263,11 @@ function parseManifest(files: Record<string, Uint8Array>): HIVManifest {
 
 function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
   const raw = getFile(files, 'content/chunks.jsonl');
-  if (!raw) throw new Error('.hiv missing content/chunks.jsonl');
+  if (!raw) {
+    // eslint-disable-next-line no-console
+    console.warn('[HIVLoader] content/chunks.jsonl not found — bundle may be SQLite-only. Files present:', Object.keys(files).join(', '));
+    return [];
+  }
 
   const text = strFromU8(raw);
   const lines = text.split('\n').filter((l) => l.trim());
@@ -250,10 +278,19 @@ function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
       const chunk = JSON.parse(line) as HIVChunk;
       if (isValidChunk(chunk)) {
         chunks.push(chunk);
+      } else if (chunks.length === 0 && lines.length > 0) {
+        // Log first rejected chunk to diagnose schema mismatch
+        // eslint-disable-next-line no-console
+        console.warn('[HIVLoader] First chunk rejected by isValidChunk. Keys:', Object.keys(chunk).join(','), '| content type:', typeof chunk.content, '| content sample:', JSON.stringify(chunk.content)?.slice(0, 200));
       }
     } catch {
       /* Skip malformed JSONL lines */
     }
+  }
+
+  if (chunks.length === 0 && lines.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error('[HIVLoader] All', lines.length, 'chunks rejected. First line sample:', lines[0]?.slice(0, 300));
   }
 
   return chunks;
@@ -262,13 +299,9 @@ function parseChunks(files: Record<string, Uint8Array>): HIVChunk[] {
 function isValidChunk(chunk: HIVChunk): boolean {
   if (!chunk.id || !chunk.type) return false;
   if (!chunk.content || typeof chunk.content !== 'object') return false;
-
-  const hasMeaningfulContent = Object.entries(chunk.content).some(([, langContent]) => {
-    if (!langContent || typeof langContent !== 'object') return false;
-    return Object.keys(langContent).length > 0;
-  });
-
-  return hasMeaningfulContent;
+  // Accept any non-empty content object — don't enforce nesting depth, as
+  // newer bundle formats may use flat { field: value } instead of { lang: { field: value } }.
+  return Object.keys(chunk.content).length > 0;
 }
 
 function parseEmbeddings(

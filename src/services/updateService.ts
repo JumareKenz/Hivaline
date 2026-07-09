@@ -223,7 +223,9 @@ export async function loadStoredHIV(): Promise<HIVFile | null> {
     }
     const file = await parseHIVFile(arrayBuffer);
     return file;
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[loadStoredHIV] parseHIVFile threw:', err instanceof Error ? err.message : String(err));
     return null;
   }
 }

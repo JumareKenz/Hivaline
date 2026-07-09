@@ -16,7 +16,7 @@
  * Falls back to original query if translation fails (better than blocking).
  */
 
-import { generateGrounded, isEdgeBrainReady, loadEdgeBrain } from './edgeBrainService';
+import { translateQuery, isEdgeBrainReady, loadEdgeBrain } from './edgeBrainService';
 import { reportError } from './telemetry';
 
 export type QueryLanguage = 'en' | 'ha' | 'yo' | 'ig' | 'pid' | 'unknown';
@@ -106,17 +106,7 @@ export async function translateToEnglish(
       await loadEdgeBrain();
     }
 
-    // Generate translation using EdgeBrain
-    // Note: Using generateGrounded with empty evidence as a workaround
-    // TODO: Create dedicated translation API in EdgeBrain
-    const result = await generateGrounded('', query, {
-      maxTokens: 128,
-      temperature: 0.1, // Low temperature for deterministic translation
-      topP: 0.9,
-      stopSequences: ['\n\n', '<|im_end|>', 'Query:', 'Translation:'],
-    });
-
-    const translation = result.text.trim();
+    const translation = await translateQuery(query, detectedLanguage, 128, 0.1);
 
     // Validation: translation should be non-empty and different from original
     if (!translation || translation === query) {
@@ -151,20 +141,6 @@ export async function translateToEnglish(
     };
   }
 }
-
-/**
- * Translation prompt structure (for reference):
- *
- * Currently using generateGrounded() which doesn't accept custom prompts.
- * When we implement dedicated translation API in EdgeBrain, use this structure:
- *
- * <|im_start|>system
- * You are a medical translation assistant translating from {sourceLang} to English.
- * Output ONLY the English translation, preserve medical terms, no explanations.
- * <|im_end|>
- * <|im_start|>assistant
- * Translation:
- */
 
 /**
  * Main entry point: detect language and translate if needed.

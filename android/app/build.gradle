@@ -1,9 +1,15 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+apply plugin: 'kotlinx-serialization'
+apply plugin: 'io.objectbox'
 
 android {
     namespace = "com.hiva.runtime"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     signingConfigs {
         debug {
@@ -21,6 +27,21 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Feature flag: set to "true" to activate the LEAP/LFM2.5-350M backend.
+        // Keep false until Step D parallel-run validation has passed.
+        // Rollback = rebuild with "false". No partial state on switch — LEAP and
+        // JNI paths use separate model file directories.
+        buildConfigField "boolean", "USE_LEAP_BACKEND", "true"
+        // Feature flag: NativeRetriever (ObjectBox + EmbeddingGemma) is now DEFAULT.
+        // Set to "false" ONLY as emergency rollback lever (1 release cycle only).
+        // Flag will be removed entirely in next release - no legacy fallback.
+        buildConfigField "boolean", "USE_NATIVE_RETRIEVER", "true"
+
+        // Bundle LFM2.5 model in APK (219MB) - instant availability, no download
+        // EmbeddingGemma (300MB) remains on-demand to reduce install size
+        buildConfigField "boolean", "BUNDLE_LFM25_MODEL", "true"
+
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -58,6 +79,24 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
+    packagingOptions {
+        // Handle ONNX Runtime duplication: both onnxruntime-android and sherpa-onnx bundle libonnxruntime.so
+        // Pick first occurrence (from onnxruntime-android:1.27.0)
+        pickFirst 'lib/arm64-v8a/libonnxruntime.so'
+        pickFirst 'lib/armeabi-v7a/libonnxruntime.so'
+        pickFirst 'lib/x86/libonnxruntime.so'
+        pickFirst 'lib/x86_64/libonnxruntime.so'
+    }
+
+    sourceSets {
+        main {
+            // Bundle LFM2.5 model (219MB) in APK assets
+            // Path: android/app/src/main/assets/models/lfm25/model.gguf
+            // Will be copied to app storage on first run if not already present
+            assets.srcDirs += ['src/main/assets']
+        }
+    }
 }
 
 repositories {
@@ -72,6 +111,15 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3"
+    implementation "ai.liquid.leap:leap-sdk:0.6.0"
+    // ONNX Runtime 1.27.0 for NativeRetriever (EmbeddingGemma)
+    implementation "com.microsoft.onnxruntime:onnxruntime-android:1.27.0"
+    implementation "com.microsoft.onnxruntime:onnxruntime-extensions-android:0.13.0"
+    // Speech I/O: sherpa-onnx for TTS (PocketTTS) - also bundles ONNX Runtime 1.27.0
+    // Native STT deferred: moonshine-voice requires API 35, project targets API 31
+    // Duplicate libonnxruntime.so handled by packagingOptions.pickFirst above
+    implementation files('libs/sherpa-onnx-1.13.4.aar')
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

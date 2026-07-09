@@ -20,6 +20,21 @@ const MODEL_CONFIG = {
   path: 'models/edge-brain',
 };
 
+// LEAP / LFM2.5-350M model configuration (USE_LEAP_BACKEND=true path)
+// FIXED: Using LFM2.5 Q4_K_M with embedded chat template (quantized from F16 fix)
+const LEAP_MODEL_CONFIG = {
+  url: 'https://huggingface.co/Kenzlejaze/hiva-medichat-v2-gguf/resolve/main/lfm25_350m_medichat_v2_merged.Q4_K_M.gguf',
+  filename: 'model.gguf',
+  expectedSizeMB: 219,
+  expectedSizeBytes: 229_311_776,
+  path: 'models/lfm25',
+};
+// NOTE: Model was re-converted with chat template embedded in GGUF metadata (2026-07-09)
+// Previous version crashed at common_chat_templates_init() due to missing chat template
+
+let leapDownloadInProgress = false;
+let leapController: AbortController | null = null;
+
 export interface DownloadProgress {
   bytesDownloaded: number;
   totalBytes: number;
@@ -112,12 +127,12 @@ export async function downloadModel(
   try {
     console.log('[ModelDownloader] Starting download:', MODEL_CONFIG.url);
 
-    // Ensure directory exists
-    await Filesystem.mkdir({
-      path: MODEL_CONFIG.path,
-      directory: Directory.Data,
-      recursive: true,
-    });
+    // Ensure directory exists — ignore error if it already exists (OS-PLUG-FILE-0010)
+    try {
+      await Filesystem.mkdir({ path: MODEL_CONFIG.path, directory: Directory.Data, recursive: true });
+    } catch (e: any) {
+      if (!e?.message?.includes('already exists')) throw e;
+    }
 
     // Check if final file already exists
     try {
@@ -273,6 +288,233 @@ function combineUint8Arrays(arrays: Uint8Array[]): Uint8Array {
     offset += arr.length;
   }
   return result;
+}
+
+/**
+ * Check if LEAP/LFM2.5-350M model is downloaded and complete.
+ * Auto-cleans corrupt files (wrong size).
+ */
+export async function isLeapModelDownloaded(): Promise<boolean> {
+  try {
+    const result = await Filesystem.stat({
+      path: `${LEAP_MODEL_CONFIG.path}/${LEAP_MODEL_CONFIG.filename}`,
+      directory: Directory.Data,
+    });
+    const sizeOk = result.size > LEAP_MODEL_CONFIG.expectedSizeBytes * 0.9 &&
+                   result.size < LEAP_MODEL_CONFIG.expectedSizeBytes * 1.1;
+
+    // Auto-cleanup corrupt model
+    if (!sizeOk) {
+      console.log(`[LEAP Download] isLeapModelDownloaded: corrupt model detected (${result.size} bytes). Auto-deleting.`);
+      try {
+        await Filesystem.deleteFile({
+          path: `${LEAP_MODEL_CONFIG.path}/${LEAP_MODEL_CONFIG.filename}`,
+          directory: Directory.Data,
+        });
+      } catch (e) {
+        console.warn('[LEAP Download] Failed to auto-delete corrupt model:', e);
+      }
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Download the LEAP/LFM2.5-350M model with progress tracking.
+ * Writes to models/lfm25/model.gguf in Directory.Data (= context.filesDir on Android).
+ */
+export async function downloadLeapModel(
+  onProgress?: (progress: DownloadProgress) => void,
+  wifiOnly: boolean = true,
+): Promise<ModelDownloadResult> {
+  if (leapDownloadInProgress) {
+    return { success: false, error: 'Download already in progress' };
+  }
+
+  const network = await getNetworkStatus();
+  if (!network.connected) {
+    return { success: false, error: 'No internet connection' };
+  }
+  if (wifiOnly && !network.wifi) {
+    return { success: false, error: 'WiFi required. Please connect to WiFi and try again.' };
+  }
+
+  leapDownloadInProgress = true;
+  leapController = new AbortController();
+
+  const finalPath = `${LEAP_MODEL_CONFIG.path}/${LEAP_MODEL_CONFIG.filename}`;
+  const tempPath = `${LEAP_MODEL_CONFIG.path}/${LEAP_MODEL_CONFIG.filename}.tmp`;
+  let currentDownloadedBytes = 0;  // Track for error logging
+
+  try {
+    // Ignore error if directory already exists (OS-PLUG-FILE-0010)
+    try {
+      await Filesystem.mkdir({ path: LEAP_MODEL_CONFIG.path, directory: Directory.Data, recursive: true });
+    } catch (e: any) {
+      if (!e?.message?.includes('already exists')) throw e;
+    }
+
+    try {
+      const stat = await Filesystem.stat({ path: finalPath, directory: Directory.Data });
+      const sizeOk = stat.size > LEAP_MODEL_CONFIG.expectedSizeBytes * 0.9 &&
+                     stat.size < LEAP_MODEL_CONFIG.expectedSizeBytes * 1.1;
+      if (sizeOk) {
+        leapDownloadInProgress = false;
+        return { success: true, path: finalPath };
+      }
+      // Corrupt/incomplete model detected - auto-cleanup
+      console.log(`[LEAP Download] Corrupt model detected (${stat.size} bytes, expected ${LEAP_MODEL_CONFIG.expectedSizeBytes}). Auto-deleting.`);
+      await Filesystem.deleteFile({ path: finalPath, directory: Directory.Data });
+    } catch {
+      // File doesn't exist yet
+    }
+
+
+    // Check if we can resume from existing .tmp file
+    let resumeFromBytes = 0;
+    try {
+      const tmpStat = await Filesystem.stat({ path: tempPath, directory: Directory.Data });
+
+      // Validate .tmp file isn't corrupt (oversized = previous corruption bug)
+      if (tmpStat.size > LEAP_MODEL_CONFIG.expectedSizeBytes * 1.05) {
+        console.log(`[LEAP Download] Corrupt .tmp detected (${tmpStat.size} bytes > expected ${LEAP_MODEL_CONFIG.expectedSizeBytes}). Deleting.`);
+        await Filesystem.deleteFile({ path: tempPath, directory: Directory.Data });
+        resumeFromBytes = 0;
+      } else {
+        resumeFromBytes = tmpStat.size;
+        console.log(`[LEAP Download] Resuming from ${resumeFromBytes} bytes (${(resumeFromBytes / 1024 / 1024).toFixed(1)} MB)`);
+      }
+    } catch {
+      // No existing .tmp file, start fresh
+    }
+
+    // Use Range header to resume download
+    const headers: Record<string, string> = {};
+    if (resumeFromBytes > 0) {
+      headers['Range'] = `bytes=${resumeFromBytes}-`;
+    }
+
+    const response = await fetch(LEAP_MODEL_CONFIG.url, { signal: leapController.signal, headers });
+    if (!response.ok && response.status !== 206) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // If we requested Range but server returned 200 (full file), it doesn't support resume
+    // Delete the .tmp file and start fresh to avoid corruption
+    if (resumeFromBytes > 0 && response.status === 200) {
+      console.log('[LEAP Download] Server does not support resume (HTTP 200), starting fresh');
+      try { await Filesystem.deleteFile({ path: tempPath, directory: Directory.Data }); } catch { /* ignore */ }
+      resumeFromBytes = 0;
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Response body is not readable');
+
+    const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
+    const totalBytes = (response.status === 206 ? resumeFromBytes : 0) + contentLength || LEAP_MODEL_CONFIG.expectedSizeBytes;
+
+    let bytesDownloaded = (response.status === 206 ? resumeFromBytes : 0);
+    currentDownloadedBytes = resumeFromBytes;  // Update for error logging
+    const startTime = Date.now();
+    const CHUNK_SIZE = 5 * 1024 * 1024;
+    let buffer: Uint8Array[] = [];
+    let bufferSize = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (value) {
+        buffer.push(value);
+        bufferSize += value.length;
+        bytesDownloaded += value.length;
+        currentDownloadedBytes = bytesDownloaded;
+
+        if (onProgress) {
+          const elapsed = (Date.now() - startTime) / 1000;
+          const speedMBps = (bytesDownloaded / 1024 / 1024) / elapsed;
+          onProgress({
+            bytesDownloaded,
+            totalBytes,
+            percentComplete: (bytesDownloaded / totalBytes) * 100,
+            speedMBps,
+            estimatedSecondsRemaining: Math.max(0, (totalBytes - bytesDownloaded) / (bytesDownloaded / elapsed)),
+          });
+        }
+
+        if (bufferSize >= CHUNK_SIZE) {
+          const combined = combineUint8Arrays(buffer);
+          await Filesystem.appendFile({
+            path: tempPath,
+            data: arrayBufferToBase64(combined.buffer as ArrayBuffer),
+            directory: Directory.Data,
+          });
+          console.log(`[LEAP Download] Wrote chunk: ${bufferSize} bytes (total: ${bytesDownloaded}/${totalBytes}, ${((bytesDownloaded/totalBytes)*100).toFixed(1)}%)`);
+          buffer = [];
+          bufferSize = 0;
+        }
+      }
+      if (done) {
+        // Flush any remaining buffered data
+        if (bufferSize > 0) {
+          const combined = combineUint8Arrays(buffer);
+          await Filesystem.appendFile({
+            path: tempPath,
+            data: arrayBufferToBase64(combined.buffer as ArrayBuffer),
+            directory: Directory.Data,
+          });
+          console.log(`[LEAP Download] Wrote final chunk: ${bufferSize} bytes (total: ${bytesDownloaded}/${totalBytes})`);
+          buffer = [];
+          bufferSize = 0;
+        }
+        console.log(`[LEAP Download] Stream done. bytesDownloaded=${bytesDownloaded}, totalBytes=${totalBytes}`);
+        break;
+      }
+    }
+
+    // Verify final file size before renaming
+    const tmpStat = await Filesystem.stat({ path: tempPath, directory: Directory.Data });
+    console.log(`[LEAP Download] Complete. Final .tmp size: ${tmpStat.size} bytes (expected: ${totalBytes})`);
+
+    if (tmpStat.size < totalBytes * 0.98) {
+      throw new Error(`Download incomplete: ${tmpStat.size} bytes received, expected ${totalBytes} bytes`);
+    }
+
+    try { await Filesystem.deleteFile({ path: finalPath, directory: Directory.Data }); } catch { /* ignore */ }
+    await Filesystem.rename({ from: tempPath, to: finalPath, directory: Directory.Data });
+
+    console.log(`[LEAP Download] Model downloaded successfully: ${finalPath}`);
+    leapDownloadInProgress = false;
+    leapController = null;
+    return { success: true, path: finalPath };
+  } catch (error: any) {
+    leapDownloadInProgress = false;
+    leapController = null;
+
+    // Only delete .tmp file on explicit abort (user cancellation)
+    // For network errors, keep the file to allow resume on next attempt
+    if (error.name === 'AbortError') {
+      try { await Filesystem.deleteFile({ path: tempPath, directory: Directory.Data }); } catch { /* ignore */ }
+      return { success: false, error: 'Download cancelled by user' };
+    }
+
+    // For other errors, log but keep .tmp file for resume
+    console.log(`[LEAP Download] Error (will retry from ${currentDownloadedBytes} bytes): ${error.message}`);
+    return { success: false, error: error.message || 'Download failed' };
+  }
+}
+
+/**
+ * Cancel ongoing LEAP model download.
+ */
+export function cancelLeapDownload(): void {
+  if (leapController) {
+    leapController.abort();
+    leapController = null;
+  }
+  leapDownloadInProgress = false;
 }
 
 /**

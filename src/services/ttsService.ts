@@ -1,9 +1,12 @@
 /**
- * ttsService.ts — Web Speech API Text-to-Speech engine
+ * ttsService.ts — Unified Text-to-Speech engine
  *
- * Accurate, professional, effective, non-failing.
- * Gracefully degrades when SpeechSynthesis is unavailable.
+ * Primary: Native Android TTS (PocketTTS via sherpa-onnx) for offline operation
+ * Fallback: Web Speech API when native unavailable
+ * Gracefully degrades when neither is available.
  */
+
+import { nativeTTSService } from './nativeTTSService';
 
 export interface TTSVoice {
   uri: string;
@@ -34,6 +37,12 @@ class TTSService {
   private voicesLoaded = false;
 
   constructor() {
+    // Native TTS temporarily disabled: debugging crash during initialization
+    // nativeTTSService.init().catch((err) => {
+    //   console.warn('[TTSService] Native TTS init failed:', err);
+    // });
+
+    // Initialize Web Speech API fallback
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       this.error = 'Speech synthesis not supported';
       return;
@@ -145,8 +154,20 @@ class TTSService {
   }
 
   speak(text: string, retries = 3): void {
-    if (!this.synth || !this.enabled) return;
+    if (!this.enabled) return;
     if (!text) return;
+
+    const cleaned = this.cleanText(text);
+    if (!cleaned) return;
+
+    // Native TTS temporarily disabled: debugging crash during initialization
+    // if (nativeTTSService.isAvailable()) {
+    //   this.speakNative(cleaned);
+    //   return;
+    // }
+
+    // Fallback to Web Speech API
+    if (!this.synth) return;
 
     if (!this.voicesLoaded || this.voices.length === 0) {
       if (retries > 0) {
@@ -154,9 +175,6 @@ class TTSService {
       }
       return;
     }
-
-    const cleaned = this.cleanText(text);
-    if (!cleaned) return;
 
     this.cancel();
 
@@ -198,6 +216,40 @@ class TTSService {
       this.error = e instanceof Error ? e.message : 'Speech synthesis failed';
       this.notify();
     }
+  }
+
+  private speakNative(text: string): void {
+    this.isSpeaking = true;
+    this.error = null;
+    this.notify();
+
+    nativeTTSService
+      .synthesize(text)
+      .then((audioBuffer) => {
+        if (!audioBuffer) {
+          throw new Error('No audio returned from native TTS');
+        }
+
+        // Play via Web Audio API
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+
+        source.onended = () => {
+          this.isSpeaking = false;
+          this.notify();
+          audioContext.close();
+        };
+
+        source.start(0);
+      })
+      .catch((err) => {
+        console.error('[TTSService] Native TTS failed, no fallback:', err);
+        this.isSpeaking = false;
+        this.error = err instanceof Error ? err.message : 'Speech synthesis failed';
+        this.notify();
+      });
   }
 
   cancel(): void {

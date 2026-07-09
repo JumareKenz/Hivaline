@@ -7,6 +7,9 @@ import type { HIVFile, HIVChunk } from '@/types/hiv';
 import { loadStoredHIV, checkForUpdate, downloadHIV } from '@/services/updateService';
 import { getToken } from '@/services/authStorage';
 import { warmupEmbeddingModel } from '@/services/modelManager';
+import { loadEdgeBrain, isEdgeBrainReady } from '@/services/edgeBrainService';
+import { isLeapModelDownloaded, downloadLeapModel } from '@/services/modelDownloader';
+import { isEmbeddingModelDownloaded, downloadEmbeddingModel } from '@/services/nativeRetrieverService';
 
 interface HIVFileState {
   file: HIVFile | null;
@@ -80,6 +83,40 @@ export const HIVFileProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     reload();
     warmupEmbeddingModel();
+    // Load the on-device LLM in the background so it's ready before the first
+    // chat query. isEdgeBrainReady() is the gate in conversationEngine — if this
+    // hasn't run by query time, the engine silently falls back to retrieval-only.
+    // Auto-download and load the LFM2.5 model if missing, then load into LEAP.
+    // Runs entirely in the background — never blocks the UI.
+    // On a fresh install after a signing-key change, this recovers the model
+    // automatically without requiring the user to visit Settings.
+    (async () => {
+      try {
+        const leapReady = await isLeapModelDownloaded();
+        if (!leapReady) {
+          // Download silently in background — WiFi only
+          await downloadLeapModel(undefined, true);
+        }
+        const brainReady = await isEdgeBrainReady();
+        if (!brainReady) {
+          await loadEdgeBrain().catch(() => { /* still missing after download — silent */ });
+        }
+      } catch {
+        /* offline or download failed — will retry next launch */
+      }
+    })();
+
+    // Auto-download EmbeddingGemma-300M ONNX (q8) model if missing.
+    (async () => {
+      try {
+        const info = await isEmbeddingModelDownloaded();
+        if (!info.downloaded) {
+          await downloadEmbeddingModel();
+        }
+      } catch {
+        /* offline — will retry next launch */
+      }
+    })();
 
     const handleDownloaded = () => {
       reload();

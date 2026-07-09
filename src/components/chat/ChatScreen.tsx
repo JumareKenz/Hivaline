@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useHIVFile } from '@/hooks/useHIVFile';
 import { useConversation } from '@/hooks/useConversation';
@@ -24,6 +24,27 @@ import { MessageFeedback } from './MessageFeedback';
 import { submitFeedback } from '@/services/telemetry';
 import type { ChatMessage } from '@/types/hiv';
 import { formatDate } from '@/utils/formatters';
+
+const CHAT_HISTORY_KEY = 'hiva_chat_history';
+const HISTORY_MAX = 100; // messages to keep
+
+function saveHistory(msgs: ChatMessage[]): void {
+  try {
+    const tail = msgs.slice(-HISTORY_MAX);
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(tail));
+  } catch { /* storage full — silent */ }
+}
+
+function loadHistory(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
+    return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp as string) })) as ChatMessage[];
+  } catch {
+    return [];
+  }
+}
 
 const SUGGESTIONS = [
   'What can you do?',
@@ -54,7 +75,7 @@ const ChatScreen: React.FC = () => {
   const { isEnabled: ttsEnabled, isAvailable: ttsAvailable, speak: ttsSpeak, cancel: ttsCancel, toggleEnabled: toggleTTS } = useTTS();
   const model = useEmbeddingModel();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadHistory());
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [typingText, setTypingText] = useState('');
@@ -82,6 +103,11 @@ const ChatScreen: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
+
+  // Persist conversation history across sessions
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(messages);
+  }, [messages]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
@@ -203,6 +229,11 @@ const ChatScreen: React.FC = () => {
 
   const hasMessages = messages.length > 0;
 
+  const handleClearHistory = useCallback(() => {
+    setMessages([]);
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+  }, []);
+
   const handleVoiceDismiss = useCallback(() => {
     setShowVoiceToast(false);
     voice.reset();
@@ -250,6 +281,16 @@ const ChatScreen: React.FC = () => {
         subtitle="Clinical AI · Always available"
         rightElement={
           <div className="flex items-center gap-2">
+            {hasMessages && (
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                aria-label="Clear conversation"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-n-100 text-n-500 hover:bg-n-200 dark:bg-n-800 dark:text-n-400 dark:hover:bg-n-700 transition-colors duration-150"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             {ttsAvailable && (
               <button
                 type="button"
