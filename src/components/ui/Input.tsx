@@ -60,7 +60,7 @@ const Input: React.FC<InputProps> = ({
           'font-body text-base text-n-900 dark:text-n-100',
           'placeholder:text-n-400 dark:placeholder:text-n-600',
           'transition-all duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-accent-600/30 focus:border-accent-600',
+          'focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500',
           hasError
             ? 'border-error focus:ring-error/30 focus:border-error'
             : 'border-border-subtle hover:border-n-300 dark:hover:border-n-600',

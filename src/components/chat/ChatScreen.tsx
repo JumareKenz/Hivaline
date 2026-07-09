@@ -268,17 +268,17 @@ const ChatScreen: React.FC = () => {
       )}
 
       {model.status === 'downloading' && (
-        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-accent-600/10 border border-accent-600/20 flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full border-2 border-accent-600 border-t-transparent animate-spin flex-shrink-0" />
-          <span className="text-accent-600 text-xs leading-relaxed">
+        <div className="mx-4 mt-3 p-2.5 rounded-xl bg-accent-500/10 border border-accent-500/20 flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full border-2 border-accent-500 border-t-transparent animate-spin flex-shrink-0" />
+          <span className="text-accent-500 text-xs leading-relaxed">
             Downloading intelligence model… {model.progress > 0 ? `${model.progress}%` : ''} You can keep asking questions — answers improve once it&apos;s ready.
           </span>
         </div>
       )}
 
       <TopBar
-        title="HIVA"
-        subtitle="Clinical AI · Always available"
+        title="HIVA Medichat"
+        subtitle="Trusted Intelligence · Always available"
         rightElement={
           <div className="flex items-center gap-2">
             {hasMessages && (
@@ -301,7 +301,7 @@ const ChatScreen: React.FC = () => {
                   'flex items-center justify-center w-9 h-9 rounded-lg',
                   'transition-colors duration-150',
                   ttsEnabled
-                    ? 'bg-accent-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'bg-n-100 text-n-500 hover:bg-n-200 dark:bg-n-800 dark:text-n-400 dark:hover:bg-n-700'
                 )}
               >
@@ -335,7 +335,7 @@ const ChatScreen: React.FC = () => {
                 {getGreeting()}, {userName} 👋
               </h2>
               <p className="font-body text-sm text-n-500 dark:text-n-400 max-w-xs mb-6">
-                I&apos;m HIVA, your offline clinical assistant. What&apos;s on your mind today?
+                I&apos;m HIVA Medichat, your offline clinical assistant. What&apos;s on your mind today?
               </p>
 
               <SuggestionChips suggestions={SUGGESTIONS} onSelect={handleSuggestion} />

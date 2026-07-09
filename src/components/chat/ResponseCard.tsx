@@ -17,7 +17,7 @@ const ResponseCard: React.FC<ResponseCardProps> = ({ message }) => {
   return (
     <div className="space-y-3">
       {/* Header chip */}
-      <span className="inline-block px-2 py-1 rounded-md bg-accent-50 dark:bg-accent-800/30 text-accent-600 dark:text-accent-100 text-xs font-display font-semibold">
+      <span className="inline-block px-2 py-1 rounded-md bg-accent-50 dark:bg-accent-800/30 text-accent-500 dark:text-accent-100 text-xs font-display font-semibold">
         {topic}
       </span>
 

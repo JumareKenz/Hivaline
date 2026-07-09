@@ -22,7 +22,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         className={clsx(
           'max-w-[85%]',
           isUser
-            ? 'bg-accent-600 text-white rounded-2xl rounded-br-md'
+            ? 'bg-accent-500 text-white rounded-2xl rounded-br-md'
             : 'bg-surface border border-border-subtle rounded-2xl rounded-bl-md shadow-sm',
           'px-4 py-3'
         )}

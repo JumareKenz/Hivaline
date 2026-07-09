@@ -19,7 +19,7 @@ const RecordingWaveform: React.FC<RecordingWaveformProps> = ({ isRecording, clas
         <span
           key={i}
           className={clsx(
-            'w-0.5 rounded-full bg-accent-600',
+            'w-0.5 rounded-full bg-accent-500',
             'transition-all duration-150',
             isRecording && 'animate-pulse'
           )}

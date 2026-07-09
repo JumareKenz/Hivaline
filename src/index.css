@@ -5,32 +5,41 @@
 /* ─── CSS VARIABLES ─── */
 
 :root {
-  /* Accent — Teal */
-  --accent-50: #eaf6f1;
-  --accent-100: #d4ede5;
-  --accent-500: #1a7056;
-  --accent-600: #155D46;
-  --accent-700: #114a38;
-  --accent-800: #0e3d2f;
+  /* Accent — HIVA Blue */
+  --accent-50: #e6f0ff;
+  --accent-100: #cce0ff;
+  --accent-200: #99c2ff;
+  --accent-300: #66a3ff;
+  --accent-400: #3385ff;
+  --accent-500: #0066FF;
+  --accent-600: #0052cc;
+  --accent-700: #003d99;
+  --accent-800: #002966;
+  --accent-900: #001433;
 
-  /* Brand Tan */
-  --brand-tan: #C9A96E;
-  --brand-tan-muted: rgba(201, 169, 110, 0.15);
-  --brand-tan-subtle: rgba(201, 169, 110, 0.08);
+  /* Brand Teal */
+  --brand-teal: #00C9A7;
+  --brand-teal-light: #33D4B9;
+  --brand-teal-muted: rgba(0, 201, 167, 0.15);
+  --brand-teal-subtle: rgba(0, 201, 167, 0.08);
 
-  /* Warm Stone Neutrals */
+  /* Brand Navy */
+  --brand-navy: #0D1B2A;
+  --brand-navy-light: #1B2D44;
+
+  /* Cool Slate Neutrals */
   --n-0: #ffffff;
-  --n-50: #fafaf9;
-  --n-100: #f5f5f4;
-  --n-200: #e7e5e4;
-  --n-300: #d6d3d1;
-  --n-400: #a8a29e;
-  --n-500: #78716c;
-  --n-600: #57534e;
-  --n-700: #44403c;
-  --n-800: #292524;
-  --n-900: #1c1917;
-  --n-950: #0c0a09;
+  --n-50: #f8fafc;
+  --n-100: #f1f5f9;
+  --n-200: #e2e8f0;
+  --n-300: #cbd5e1;
+  --n-400: #94a3b8;
+  --n-500: #64748b;
+  --n-600: #475569;
+  --n-700: #334155;
+  --n-800: #1e293b;
+  --n-900: #0f172a;
+  --n-950: #020617;
 
   /* Semantic */
   --color-success: #10b981;
@@ -55,10 +64,10 @@
   --border-subtle: var(--n-200);
   --border-default: var(--n-300);
 
-  /* Elevation Shadows (warm-tinted blacks) */
-  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 1px rgba(28, 25, 23, 0.02);
-  --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.06), 0 2px 4px -2px rgba(28, 25, 23, 0.04);
-  --shadow-lg: 0 12px 16px -4px rgba(28, 25, 23, 0.08), 0 4px 6px -2px rgba(28, 25, 23, 0.03);
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 16px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03);
 
   /* Transitions */
   --transition-fast: 120ms ease;
@@ -98,7 +107,7 @@
 
 @layer base {
   html {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Manrope', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color var(--transition-base), color var(--transition-base);
@@ -127,12 +136,12 @@
 
   /* Focus visible ring */
   *:focus-visible {
-    outline: 2px solid var(--accent-600);
+    outline: 2px solid var(--accent-500);
     outline-offset: 2px;
   }
 }
 
-/* ─── NOISE TEXTURE UTILITY ─── */
+/* ─── UTILITY CLASSES ─── */
 
 @layer utilities {
   .noise-overlay {
@@ -142,7 +151,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    opacity: 0.03;
+    opacity: 0.02;
     pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     background-repeat: repeat;
@@ -150,12 +159,23 @@
   }
 
   .glass {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
 
   .dark .glass {
-    background: rgba(28, 25, 23, 0.75);
+    background: rgba(15, 23, 42, 0.8);
+  }
+
+  .gradient-brand {
+    background: linear-gradient(135deg, #0066FF 0%, #00C9A7 100%);
+  }
+
+  .gradient-brand-text {
+    background: linear-gradient(135deg, #0066FF 0%, #00C9A7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

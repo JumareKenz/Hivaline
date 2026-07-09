@@ -1,5 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#155D46"/>
-  <circle cx="256" cy="256" r="170" fill="none" stroke="white" stroke-width="32"/>
-  <path d="M256 128v256M128 256h256" stroke="white" stroke-width="32" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D1B2A"/>
+      <stop offset="100%" stop-color="#1B2D44"/>
+    </linearGradient>
+    <linearGradient id="icon-grad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#0066FF"/>
+      <stop offset="100%" stop-color="#00C9A7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg-grad)"/>
+  <!-- HIVA infinity symbol -->
+  <path d="M128 256c0-53 35-96 80-96s61 35 53 70c-8 35 8 70 53 70s80-43 80-96c0 53-35 96-80 96s-61-35-53-70c8-35-8-70-53-70S128 203 128 256z" stroke="url(#icon-grad)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>

@@ -42,7 +42,7 @@ const TTSSettings: React.FC = () => {
             className={clsx(
               'w-10 h-10 rounded-full flex items-center justify-center',
               isEnabled
-                ? 'bg-accent-600/10 text-accent-600'
+                ? 'bg-accent-500/10 text-accent-500'
                 : 'bg-n-100 dark:bg-n-800 text-n-400'
             )}
           >
@@ -87,13 +87,13 @@ const TTSSettings: React.FC = () => {
                   'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left',
                   'text-sm font-body transition-colors duration-150',
                   selectedVoiceURI === voice.uri
-                    ? 'bg-accent-600/10 text-accent-700 dark:text-accent-400'
+                    ? 'bg-accent-500/10 text-accent-700 dark:text-accent-400'
                     : 'hover:bg-n-50 dark:hover:bg-n-800 text-n-700 dark:text-n-300'
                 )}
               >
                 <span className="truncate">{voice.name}</span>
                 {selectedVoiceURI === voice.uri && (
-                  <Check className="w-4 h-4 text-accent-600 flex-shrink-0 ml-2" />
+                  <Check className="w-4 h-4 text-accent-500 flex-shrink-0 ml-2" />
                 )}
               </button>
             ))}

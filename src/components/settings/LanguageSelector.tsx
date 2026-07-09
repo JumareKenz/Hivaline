@@ -40,12 +40,12 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({ value, onChange }) 
               'font-body font-medium text-[15px]',
               'transition-colors duration-150',
               isSelected
-                ? 'bg-accent-50 dark:bg-accent-900/20 text-accent-600'
+                ? 'bg-accent-50 dark:bg-accent-900/20 text-accent-500'
                 : 'text-n-800 dark:text-n-100 hover:bg-n-50 dark:hover:bg-n-800'
             )}
           >
             <span>{lang.label}</span>
-            {isSelected && <Check className="w-5 h-5 text-accent-600" />}
+            {isSelected && <Check className="w-5 h-5 text-accent-500" />}
           </button>
         );
       })}

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HIVA launcher icon foreground — H-in-circle mark
+  HIVA Medichat launcher icon foreground — infinity/butterfly mark
   Viewport 108×108, safe zone is the inner 72×72 (18dp inset each side).
-  All artwork kept inside the safe zone so adaptive icon cropping works correctly.
+  All artwork kept inside the safe zone for adaptive icon cropping.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -10,48 +10,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer solid ring (HIVA dark green #155D46) -->
+    <!-- HIVA infinity symbol — left lobe (blue) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M54,18 m-34,0 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0"
-        android:strokeColor="#155D46"
-        android:strokeWidth="3.5" />
-
-    <!-- Inner accent ring (brand tan #C9A96E) -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54,18 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0"
-        android:strokeColor="#C9A96E"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round" />
-
-    <!-- H left vertical stroke -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M40,32 L40,76"
-        android:strokeColor="#155D46"
+        android:pathData="M27,54 C27,43 34,35 43,35 C52,35 56,42 54,49 C52,56 56,63 65,63 C74,63 81,55 81,44"
+        android:strokeColor="#0066FF"
         android:strokeWidth="5.5"
-        android:strokeLineCap="round" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
-    <!-- H right vertical stroke -->
+    <!-- HIVA infinity symbol — right lobe (teal) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M68,32 L68,76"
-        android:strokeColor="#155D46"
+        android:pathData="M81,44 C81,55 74,63 65,63 C56,63 52,56 54,49 C56,42 52,35 43,35 C34,35 27,43 27,54"
+        android:strokeColor="#00C9A7"
         android:strokeWidth="5.5"
-        android:strokeLineCap="round" />
-
-    <!-- H crossbar -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M40,54 L68,54"
-        android:strokeColor="#155D46"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round" />
-
-    <!-- Center accent dot (brand tan) -->
-    <path
-        android:fillColor="#C9A96E"
-        android:pathData="M54,49 a5,5 0 1,0 0.001,0 Z" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
 </vector>

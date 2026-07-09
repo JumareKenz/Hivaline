@@ -45,9 +45,9 @@ const Button: React.FC<ButtonProps> = ({
         size === 'md' && 'h-11 px-4 text-sm',
         size === 'lg' && 'h-14 px-6 text-base',
         fullWidth && 'w-full',
-        variant === 'primary' && 'bg-accent-600 text-white hover:bg-accent-500',
+        variant === 'primary' && 'bg-accent-500 text-white hover:bg-accent-400',
         variant === 'secondary' && 'bg-surface border border-border-subtle text-n-800 dark:text-n-100 hover:bg-n-50 dark:hover:bg-n-700',
-        variant === 'ghost' && 'bg-transparent text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-800/20',
+        variant === 'ghost' && 'bg-transparent text-accent-500 hover:bg-accent-50 dark:hover:bg-accent-800/20',
         variant === 'danger' && 'bg-error text-white hover:bg-error/90',
       )}
     >

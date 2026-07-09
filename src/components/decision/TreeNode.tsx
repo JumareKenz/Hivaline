@@ -82,7 +82,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({ node, onSelect }) => {
           <button
             type="button"
             onClick={handleViewDrug}
-            className="w-full h-12 rounded-xl bg-accent-50 dark:bg-accent-900/30 border border-accent-200 dark:border-accent-700 text-accent-600 dark:text-accent-400 font-body font-semibold flex items-center justify-center gap-2 hover:bg-accent-100 dark:hover:bg-accent-900/50 transition-colors"
+            className="w-full h-12 rounded-xl bg-accent-50 dark:bg-accent-900/30 border border-accent-200 dark:border-accent-700 text-accent-500 dark:text-accent-400 font-body font-semibold flex items-center justify-center gap-2 hover:bg-accent-100 dark:hover:bg-accent-900/50 transition-colors"
           >
             <Pill className="w-4 h-4" />
             View drug table

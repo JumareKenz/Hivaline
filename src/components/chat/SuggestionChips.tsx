@@ -25,11 +25,11 @@ const SuggestionChips: React.FC<SuggestionChipsProps> = ({ suggestions, onSelect
             onClick={() => handleSelect(suggestion)}
             className={clsx(
               'px-4 h-8 rounded-full',
-              'bg-brand-tan-subtle border border-brand-tan-muted',
-              'text-brand-tan font-body font-medium text-[13px]',
+              'bg-brand-teal-subtle border border-brand-teal-muted',
+              'text-accent-500 font-body font-medium text-[13px]',
               'whitespace-nowrap',
               'transition-all duration-150',
-              'hover:bg-brand-tan-muted active:scale-95'
+              'hover:bg-brand-teal-muted active:scale-95'
             )}
           >
             {suggestion}

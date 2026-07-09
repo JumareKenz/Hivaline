@@ -34,7 +34,7 @@ const STTLanguageSelector: React.FC<STTLanguageSelectorProps> = ({ value, onChan
               'font-body font-medium text-[15px]',
               'transition-colors duration-150',
               isSelected
-                ? 'bg-accent-50 dark:bg-accent-900/20 text-accent-600'
+                ? 'bg-accent-50 dark:bg-accent-900/20 text-accent-500'
                 : 'text-n-800 dark:text-n-100 hover:bg-n-50 dark:hover:bg-n-800'
             )}
           >
@@ -45,8 +45,8 @@ const STTLanguageSelector: React.FC<STTLanguageSelectorProps> = ({ value, onChan
             <div className="flex items-center gap-2">
               {isSelected && (
                 <>
-                  <Mic className="w-4 h-4 text-accent-600" />
-                  <Check className="w-5 h-5 text-accent-600" />
+                  <Mic className="w-4 h-4 text-accent-500" />
+                  <Check className="w-5 h-5 text-accent-500" />
                 </>
               )}
             </div>

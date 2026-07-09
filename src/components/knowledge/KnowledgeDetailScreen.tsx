@@ -39,7 +39,7 @@ const KnowledgeDetailScreen: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {/* Gradient header */}
-        <div className="relative px-4 pt-6 pb-8 bg-gradient-to-br from-accent-600 to-accent-500">
+        <div className="relative px-4 pt-6 pb-8" style={{ background: 'linear-gradient(135deg, #0D1B2A 0%, #1B2D44 60%, #0052cc 100%)' }}>
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -69,7 +69,7 @@ const KnowledgeDetailScreen: React.FC = () => {
                   key={topic}
                   className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-0"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-600 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-500 flex-shrink-0" />
                   <span className="font-body text-sm text-n-800 dark:text-n-100">{topic}</span>
                 </div>
               ))}
@@ -90,7 +90,7 @@ const KnowledgeDetailScreen: React.FC = () => {
           <button
             type="button"
             onClick={handleAskHiva}
-            className="w-full h-14 rounded-xl bg-accent-700 text-white font-display font-semibold flex items-center justify-center gap-2 hover:bg-accent-600 active:scale-[0.98] transition-all"
+            className="w-full h-14 rounded-xl bg-accent-500 text-white font-display font-semibold flex items-center justify-center gap-2 hover:bg-accent-400 active:scale-[0.98] transition-all"
           >
             Ask HIVA about {artifact.title}
             <ArrowRight className="w-4 h-4" />

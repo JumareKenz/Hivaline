@@ -47,7 +47,7 @@ const AppearanceSettings: React.FC<AppearanceSettingsProps> = ({ interactionMode
                 'flex-1 h-10 rounded-lg text-xs font-body font-medium',
                 'transition-all duration-150',
                 interactionMode === mode.value
-                  ? 'bg-accent-600 text-white'
+                  ? 'bg-accent-500 text-white'
                   : 'bg-n-100 dark:bg-n-800 text-n-600 dark:text-n-400 hover:bg-n-200 dark:hover:bg-n-700'
               )}
             >

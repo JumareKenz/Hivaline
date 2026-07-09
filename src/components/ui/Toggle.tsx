@@ -36,7 +36,7 @@ const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, id, disabled 
       <span
         className={clsx(
           'relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
-          checked ? 'bg-accent-600' : 'bg-n-300 dark:bg-n-600'
+          checked ? 'bg-accent-500' : 'bg-n-300 dark:bg-n-600'
         )}
       >
         <span

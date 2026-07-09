@@ -36,7 +36,7 @@ const VoiceToast: React.FC<VoiceToastProps> = ({ state, error, onDismiss }) => {
   const config: Record<VoiceState, { icon: React.ReactNode; text: string; color: string }> = {
     idle: { icon: <Mic className="w-4 h-4" />, text: 'Ready', color: 'bg-n-100 text-n-600' },
     recording: { icon: <Mic className="w-4 h-4" />, text: 'Recording...', color: 'bg-error/10 text-error' },
-    processing: { icon: <Loader2 className="w-4 h-4 animate-spin" />, text: 'Processing...', color: 'bg-accent-50 text-accent-600' },
+    processing: { icon: <Loader2 className="w-4 h-4 animate-spin" />, text: 'Processing...', color: 'bg-accent-50 text-accent-500' },
     playing: { icon: <CheckCircle2 className="w-4 h-4" />, text: 'Playing response', color: 'bg-success/10 text-success' },
     error: { icon: <AlertCircle className="w-4 h-4" />, text: displayError ?? 'Voice error', color: 'bg-error/10 text-error' },
   };

@@ -104,7 +104,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             'flex items-center justify-center w-10 h-10 rounded-full',
             'transition-all duration-200',
             canSend
-              ? 'bg-accent-600 text-white hover:bg-accent-500 active:scale-95'
+              ? 'bg-accent-500 text-white hover:bg-accent-400 active:scale-95'
               : 'bg-n-200 dark:bg-n-700 text-n-400 cursor-not-allowed'
           )}
         >

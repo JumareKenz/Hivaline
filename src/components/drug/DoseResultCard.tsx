@@ -40,7 +40,7 @@ const DoseResultCard: React.FC<DoseResultCardProps> = ({ drugId, weightKg }) => 
         </p>
         <p className={clsx(
           'font-display font-bold text-3xl mb-1',
-          dose !== 'N/A' ? 'text-accent-600' : 'text-error'
+          dose !== 'N/A' ? 'text-accent-500' : 'text-error'
         )}>
           {dose}
         </p>

@@ -43,7 +43,7 @@ const DrugTableCard: React.FC<DrugTableCardProps> = ({ drugId }) => {
       <button
         type="button"
         onClick={handleViewTable}
-        className="inline-flex items-center gap-1.5 text-sm font-body font-semibold text-accent-600 hover:text-accent-500 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-body font-semibold text-accent-500 hover:text-accent-400 transition-colors"
       >
         View dosing table
         <ArrowRight className="w-4 h-4" />

@@ -12,7 +12,7 @@ const TypingIndicator: React.FC = () => {
         <span
           key={i}
           className={clsx(
-            'w-2 h-2 rounded-full bg-accent-600',
+            'w-2 h-2 rounded-full bg-accent-500',
             'animate-pulse-dot'
           )}
           style={{ animationDelay: `${i * 120}ms` }}

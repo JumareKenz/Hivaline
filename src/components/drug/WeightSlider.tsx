@@ -29,7 +29,7 @@ const WeightSlider: React.FC<WeightSliderProps> = ({ value, onChange }) => {
     <div className="flex flex-col items-center space-y-4">
       {/* Weight display */}
       <div className="text-center">
-        <span className="font-display font-bold text-5xl text-accent-600 tabular-nums">
+        <span className="font-display font-bold text-5xl text-accent-500 tabular-nums">
           {value}
         </span>
         <span className="font-display font-medium text-xl text-n-500 ml-1">kg</span>
@@ -63,7 +63,7 @@ const WeightSlider: React.FC<WeightSliderProps> = ({ value, onChange }) => {
               '[&::-webkit-slider-thumb]:bg-white',
               '[&::-webkit-slider-thumb]:shadow-md',
               '[&::-webkit-slider-thumb]:border-2',
-              '[&::-webkit-slider-thumb]:border-accent-600',
+              '[&::-webkit-slider-thumb]:border-accent-500',
               '[&::-webkit-slider-thumb]:cursor-pointer',
               '[&::-moz-range-thumb]:w-6',
               '[&::-moz-range-thumb]:h-6',
@@ -71,12 +71,12 @@ const WeightSlider: React.FC<WeightSliderProps> = ({ value, onChange }) => {
               '[&::-moz-range-thumb]:bg-white',
               '[&::-moz-range-thumb]:shadow-md',
               '[&::-moz-range-thumb]:border-2',
-              '[&::-moz-range-thumb]:border-accent-600',
+              '[&::-moz-range-thumb]:border-accent-500',
               '[&::-moz-range-thumb]:cursor-pointer',
               '[&::-moz-range-thumb]:border-none'
             )}
             style={{
-              background: `linear-gradient(to right, #155D46 0%, #155D46 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e7e5e4 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e7e5e4 100%)`
+              background: `linear-gradient(to right, #0066FF 0%, #0066FF ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 100%)`
             }}
           />
         </div>

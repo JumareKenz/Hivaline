@@ -34,7 +34,6 @@ const LoginScreen: React.FC = () => {
   const handleSubmit = useCallback(async () => {
     setError(null);
 
-    // Cooldown guard — block after 3 consecutive failures
     const now = Date.now();
     if (cooldownUntil > now) {
       const secs = Math.ceil((cooldownUntil - now) / 1000);
@@ -42,7 +41,6 @@ const LoginScreen: React.FC = () => {
       return;
     }
 
-    // Client-side format guard — access key must match last 4 of server code
     if (!SERVER_CODE_RE.test(serverCode)) {
       setError('Invalid code format');
       return;
@@ -75,21 +73,24 @@ const LoginScreen: React.FC = () => {
   }, [serverCode, accessKey, login, navigate, failCount, cooldownUntil]);
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full px-4 noise-overlay bg-gradient-to-b from-accent-600 to-accent-800">
+    <div
+      className="relative flex flex-col items-center justify-center h-full px-4 noise-overlay"
+      style={{ background: 'linear-gradient(160deg, #0D1B2A 0%, #1B2D44 40%, #0D1B2A 100%)' }}
+    >
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
-        <HivaLogo size={64} className="mb-4" />
+        <HivaLogo size={72} className="mb-4" />
         <h1 className="font-display font-bold text-4xl text-white tracking-tight">
           HIVA
         </h1>
-        <p className="font-mono text-[11px] text-brand-tan tracking-[0.15em] mt-1 uppercase">
-          Clinical AI · Offline Ready
+        <p className="font-body text-sm text-brand-teal tracking-wide mt-1">
+          Medichat
         </p>
       </div>
 
       {/* Form */}
       <div className="w-full max-w-sm space-y-4">
-        <p className="text-center text-[11px] font-body text-white/70 uppercase tracking-widest">
+        <p className="text-center text-[11px] font-body text-white/60 uppercase tracking-widest">
           Enter code from your supervisor
         </p>
 
@@ -97,7 +98,7 @@ const LoginScreen: React.FC = () => {
           label="Server Code"
           value={serverCode}
           onChange={setServerCode}
-          placeholder="HIVA–XXXX"
+          placeholder="HIVA-XXXX"
           autoCapitalize
           error={serverCodeError}
         />
@@ -128,7 +129,7 @@ const LoginScreen: React.FC = () => {
             'transition-all duration-300',
             isSuccess
               ? 'bg-success text-white'
-              : 'bg-white text-accent-600 hover:bg-n-50 active:scale-[0.97]',
+              : 'gradient-brand text-white hover:opacity-90 active:scale-[0.97]',
             (isLoading || isSuccess) && 'opacity-90 cursor-not-allowed'
           )}
         >
@@ -153,8 +154,8 @@ const LoginScreen: React.FC = () => {
 
       {/* Footer */}
       <div className="absolute bottom-8 text-center">
-        <p className="text-[10px] font-body text-white/50">
-          v{APP_VERSION} · HIVA Certified · Offline Ready
+        <p className="text-[10px] font-body text-white/40">
+          v{APP_VERSION} · HIVA Medichat · Offline Ready
         </p>
       </div>
     </div>

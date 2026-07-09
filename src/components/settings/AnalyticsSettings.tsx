@@ -74,11 +74,14 @@ export const AnalyticsSettings: React.FC = () => {
 
   const handleAcceptConsent = useCallback(async () => {
     try {
+      console.log('[AnalyticsSettings] Enabling chat collection...');
       await enableChatCollection();
+      console.log('[AnalyticsSettings] Chat collection enabled successfully');
       setShowConsentDialog(false);
       await loadData();
     } catch (err) {
       console.error('[AnalyticsSettings] Failed to enable chat collection:', err);
+      alert(`Failed to enable: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }, [loadData]);
 
@@ -200,7 +203,7 @@ export const AnalyticsSettings: React.FC = () => {
               </span>
               <button
                 onClick={() => setShowDetails(!showDetails)}
-                className="text-xs font-body text-accent-600 hover:text-accent-500 transition-colors"
+                className="text-xs font-body text-accent-500 hover:text-accent-500 transition-colors"
               >
                 {showDetails ? 'Hide' : 'Show'} details
               </button>
@@ -256,7 +259,7 @@ export const AnalyticsSettings: React.FC = () => {
                   disabled={syncing || syncStatus.is_syncing}
                   className={clsx(
                     'w-full mt-2 px-3 py-2 rounded-lg text-xs font-body font-medium transition-colors',
-                    'bg-accent-600 hover:bg-accent-500 text-white',
+                    'bg-accent-500 hover:bg-accent-500 text-white',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
                 >
@@ -335,7 +338,7 @@ export const AnalyticsSettings: React.FC = () => {
               </button>
               <button
                 onClick={handleAcceptConsent}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-accent-600 text-white font-body font-medium text-sm hover:bg-accent-500 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-lg bg-accent-500 text-white font-body font-medium text-sm hover:bg-accent-500 transition-colors"
               >
                 Enable
               </button>

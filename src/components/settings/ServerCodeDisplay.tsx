@@ -52,7 +52,7 @@ const ServerCodeDisplay: React.FC<ServerCodeDisplayProps> = ({ onUpdate, onSync 
           <button
             type="button"
             onClick={onSync}
-            className="flex-1 h-10 rounded-lg bg-accent-600 text-white font-body font-medium text-sm hover:bg-accent-500 transition-colors inline-flex items-center justify-center gap-1.5"
+            className="flex-1 h-10 rounded-lg bg-accent-500 text-white font-body font-medium text-sm hover:bg-accent-500 transition-colors inline-flex items-center justify-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Sync Now

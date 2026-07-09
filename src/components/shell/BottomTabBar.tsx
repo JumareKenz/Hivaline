@@ -44,7 +44,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab }) => {
                 'flex flex-col items-center justify-center',
                 'w-20 h-full gap-1',
                 'transition-colors duration-200',
-                isActive ? 'text-accent-600' : 'text-n-400 dark:text-n-500'
+                isActive ? 'text-accent-500' : 'text-n-400 dark:text-n-500'
               )}
             >
               <Icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
@@ -55,7 +55,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab }) => {
                 {tab.label}
               </span>
               {isActive && (
-                <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-accent-600" />
+                <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-accent-500" />
               )}
             </button>
           );

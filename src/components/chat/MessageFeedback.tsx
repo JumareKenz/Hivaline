@@ -32,7 +32,7 @@ const MessageFeedback: React.FC<MessageFeedbackProps> = ({ rated, onRate }) => {
           aria-label={dir === 'up' ? 'Mark answer helpful' : 'Mark answer not helpful'}
           className={clsx(
             'flex items-center justify-center w-6 h-6 rounded-md',
-            'text-n-400 hover:text-accent-600 hover:bg-accent-600/10',
+            'text-n-400 hover:text-accent-500 hover:bg-accent-500/10',
             'dark:text-n-500 dark:hover:text-accent-100',
             'transition-colors duration-150'
           )}

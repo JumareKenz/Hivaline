@@ -47,7 +47,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <button
             type="button"
             onClick={this.handleRestart}
-            className="px-6 py-3 bg-accent-600 text-white font-body font-semibold rounded-xl active:scale-[0.97] transition-transform"
+            className="px-6 py-3 bg-accent-500 text-white font-body font-semibold rounded-xl active:scale-[0.97] transition-transform"
           >
             Restart HIVA
           </button>

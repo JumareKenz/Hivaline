@@ -38,7 +38,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({ artifact, onClick }) => {
             <h3 className="font-display font-semibold text-sm text-n-900 dark:text-n-100 truncate">
               {artifact.title}
             </h3>
-            <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md bg-accent-600 text-white text-[10px] font-mono font-medium">
+            <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md bg-accent-500 text-white text-[10px] font-mono font-medium">
               {artifact.year}
             </span>
           </div>
@@ -51,7 +51,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({ artifact, onClick }) => {
             {artifact.topics.slice(0, 3).map((topic) => (
               <span
                 key={topic}
-                className="px-2 py-0.5 rounded-full bg-brand-tan-subtle text-brand-tan text-[11px] font-body font-medium"
+                className="px-2 py-0.5 rounded-full bg-brand-teal-subtle text-accent-500 text-[11px] font-body font-medium"
               >
                 {topic}
               </span>

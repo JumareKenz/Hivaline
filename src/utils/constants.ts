@@ -3,7 +3,7 @@
  */
 
 export const APP_VERSION = '2.0.1';
-export const APP_NAME = 'HIVALINE';
+export const APP_NAME = 'HIVA Medichat';
 
 export const MIN_TOUCH_TARGET = 44;
 

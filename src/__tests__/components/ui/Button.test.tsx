@@ -46,13 +46,13 @@ describe('Button', () => {
 
   it('renders different variants', () => {
     const { rerender } = render(<Button variant="primary">Primary</Button>);
-    expect(screen.getByRole('button').className).toContain('bg-accent-600');
+    expect(screen.getByRole('button').className).toContain('bg-accent-500');
     
     rerender(<Button variant="secondary">Secondary</Button>);
     expect(screen.getByRole('button').className).toContain('border');
     
     rerender(<Button variant="ghost">Ghost</Button>);
-    expect(screen.getByRole('button').className).toContain('text-accent-600');
+    expect(screen.getByRole('button').className).toContain('text-accent-500');
     
     rerender(<Button variant="danger">Danger</Button>);
     expect(screen.getByRole('button').className).toContain('bg-error');

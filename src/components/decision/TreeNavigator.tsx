@@ -19,7 +19,7 @@ const TreeNavigator: React.FC<TreeNavigatorProps> = ({ tree, history }) => {
       {/* Progress bar */}
       <div className="w-full h-1 bg-n-200 dark:bg-n-700 rounded-full overflow-hidden">
         <div
-          className="h-full bg-accent-600 rounded-full transition-all duration-500 ease-smooth"
+          className="h-full bg-accent-500 rounded-full transition-all duration-500 ease-smooth"
           style={{ width: `${progress}%` }}
         />
       </div>
