@@ -13,6 +13,8 @@ import { HIVFileProvider } from '@/context/HIVFileContext';
 import { Router } from '@/router/Router';
 import { MobileShell } from '@/components/shell/MobileShell';
 import SplashScreen from '@/components/ui/SplashScreen';
+import { initAnalytics } from '@/services/analyticsService';
+import { initSync } from '@/services/analyticsSyncService';
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -22,6 +24,16 @@ const App: React.FC = () => {
     if (prefersReducedMotion) {
       setShowSplash(false);
     }
+
+    // Initialize analytics system (fails silently if error)
+    initAnalytics().catch((err) => {
+      console.warn('[App] Analytics init failed:', err);
+    });
+
+    // Start background sync (fails silently if error)
+    initSync().catch((err) => {
+      console.warn('[App] Sync init failed:', err);
+    });
   }, []);
 
   const handleSplashComplete = () => {

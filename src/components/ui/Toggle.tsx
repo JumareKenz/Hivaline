@@ -9,12 +9,16 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
+  id?: string;
+  disabled?: boolean;
 }
 
-const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label }) => {
+const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label, id, disabled = false }) => {
   const handleToggle = useCallback(() => {
-    onChange(!checked);
-  }, [checked, onChange]);
+    if (!disabled) {
+      onChange(!checked);
+    }
+  }, [checked, onChange, disabled]);
 
   return (
     <button
@@ -22,7 +26,12 @@ const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label }) => {
       role="switch"
       aria-checked={checked}
       onClick={handleToggle}
-      className="inline-flex items-center gap-3"
+      id={id}
+      disabled={disabled}
+      className={clsx(
+        'inline-flex items-center gap-3',
+        disabled && 'opacity-50 cursor-not-allowed'
+      )}
     >
       <span
         className={clsx(

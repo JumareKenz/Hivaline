@@ -17,10 +17,18 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { ServerCodeDisplay } from './ServerCodeDisplay';
 import { TTSSettings } from './TTSSettings';
 import { STTLanguageSelector } from './STTLanguageSelector';
+import { AnalyticsSettings } from './AnalyticsSettings';
 import { sttService } from '@/services/sttService';
 import { checkForUpdate, downloadHIV, HivAuthError } from '@/services/updateService';
 import { getToken } from '@/services/authStorage';
-import { isModelDownloaded, downloadModel, getModelInfo, deleteModel, type DownloadProgress } from '@/services/modelDownloader';
+import {
+  isModelDownloaded, downloadModel, getModelInfo, deleteModel,
+  isLeapModelDownloaded, downloadLeapModel, cancelLeapDownload,
+  type DownloadProgress,
+} from '@/services/modelDownloader';
+import {
+  isEmbeddingModelDownloaded, downloadEmbeddingModel,
+} from '@/services/nativeRetrieverService';
 import type { Language, InteractionMode } from '@/types/hiv';
 
 const SettingsScreen: React.FC = () => {
@@ -42,12 +50,26 @@ const SettingsScreen: React.FC = () => {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string>('');
 
-  // Intelligence model state
+  // Intelligence model state (Qwen / legacy path)
   const [modelDownloaded, setModelDownloaded] = useState<boolean>(false);
   const [checkingModel, setCheckingModel] = useState<boolean>(true);
   const [downloadingModel, setDownloadingModel] = useState<boolean>(false);
   const [modelProgress, setModelProgress] = useState<DownloadProgress | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
+
+  // LEAP / LFM2.5-350M model state
+  const [leapDownloaded, setLeapDownloaded] = useState<boolean>(false);
+  const [checkingLeap, setCheckingLeap] = useState<boolean>(true);
+  const [downloadingLeap, setDownloadingLeap] = useState<boolean>(false);
+  const [leapProgress, setLeapProgress] = useState<DownloadProgress | null>(null);
+  const [leapError, setLeapError] = useState<string | null>(null);
+
+  // EmbeddingGemma model state (for NativeRetriever)
+  const [embedModelDownloaded, setEmbedModelDownloaded] = useState<boolean>(false);
+  const [checkingEmbedModel, setCheckingEmbedModel] = useState<boolean>(true);
+  const [downloadingEmbedModel, setDownloadingEmbedModel] = useState<boolean>(false);
+  const [embedModelProgress, setEmbedModelProgress] = useState<DownloadProgress | null>(null);
+  const [embedModelError, setEmbedModelError] = useState<string | null>(null);
 
   const user = authState.user;
 
@@ -126,8 +148,27 @@ const SettingsScreen: React.FC = () => {
       setModelInfo(info);
       setCheckingModel(false);
     };
+    const checkLeap = async () => {
+      setCheckingLeap(true);
+      setLeapDownloaded(await isLeapModelDownloaded());
+      setCheckingLeap(false);
+    };
+    const checkEmbedModel = async () => {
+      setCheckingEmbedModel(true);
+      const info = await isEmbeddingModelDownloaded();
+      setEmbedModelDownloaded(info.downloaded);
+      setCheckingEmbedModel(false);
+
+      // Auto-download EmbeddingGemma on first launch if not present
+      if (!info.downloaded) {
+        console.log('[EmbeddingGemma] Not found, starting auto-download...');
+        handleDownloadEmbedModel();
+      }
+    };
     checkModel();
-  }, []);
+    checkLeap();
+    checkEmbedModel();
+  }, [handleDownloadEmbedModel]);
 
   const handleEnableIntelligence = useCallback(async () => {
     setDownloadingModel(true);
@@ -156,6 +197,46 @@ const SettingsScreen: React.FC = () => {
       setDownloadingModel(false);
       setTimeout(() => setModelError(null), 5000);
     }
+  }, []);
+
+  const handleDownloadLeap = useCallback(async () => {
+    setDownloadingLeap(true);
+    setLeapError(null);
+    setLeapProgress(null);
+    const result = await downloadLeapModel((p) => setLeapProgress(p), true);
+    if (result.success) {
+      setLeapDownloaded(true);
+    } else {
+      setLeapError(result.error || 'Download failed');
+      setTimeout(() => setLeapError(null), 5000);
+    }
+    setDownloadingLeap(false);
+    setLeapProgress(null);
+  }, []);
+
+  const handleCancelLeap = useCallback(() => {
+    cancelLeapDownload();
+    setDownloadingLeap(false);
+    setLeapProgress(null);
+  }, []);
+
+  const handleDownloadEmbedModel = useCallback(async () => {
+    setDownloadingEmbedModel(true);
+    setEmbedModelError(null);
+    try {
+      // Use HuggingFace URL for EmbeddingGemma
+      const result = await downloadEmbeddingModel('https://huggingface.co/Kenzlejaze/hiva-models/resolve/main');
+      if (result.success) {
+        setEmbedModelDownloaded(true);
+      } else {
+        setEmbedModelError('Download failed');
+        setTimeout(() => setEmbedModelError(null), 5000);
+      }
+    } catch (err) {
+      setEmbedModelError(err instanceof Error ? err.message : 'Download failed');
+      setTimeout(() => setEmbedModelError(null), 5000);
+    }
+    setDownloadingEmbedModel(false);
   }, []);
 
   const handleDeleteModel = useCallback(async () => {
@@ -241,79 +322,151 @@ const SettingsScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* Intelligence / Translation */}
+        {/* AI Models */}
         <section>
           <h3 className="text-xs font-body font-medium text-n-500 uppercase tracking-widest mb-3 px-1">
-            Intelligence
+            AI Models
           </h3>
           <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-3">
+            {/* HIVA Model (bundled in APK, always active) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-body font-medium text-n-800 dark:text-n-200">
-                  Translation Model
+                  HIVA Model
                 </span>
-                <span className={clsx(
-                  'text-xs font-mono px-2 py-1 rounded',
-                  modelDownloaded
-                    ? 'bg-success/10 text-success'
-                    : 'bg-n-100 dark:bg-n-800 text-n-500'
-                )}>
-                  {checkingModel ? 'Checking...' : modelDownloaded ? 'Installed' : 'Not installed'}
+                <span className="text-xs font-mono px-2 py-1 rounded bg-success/10 text-success">
+                  Active
                 </span>
               </div>
               <p className="text-xs font-body text-n-500 leading-relaxed">
-                {modelDownloaded
-                  ? 'Translation enabled for Hausa, Yoruba, Igbo queries. Model size: 890 MB.'
-                  : 'Download the AI model to enable translation for Nigerian languages (Hausa, Yoruba, Igbo).'}
+                Clinical AI model for on-device medical guidance. Bundled with the app (219 MB).
               </p>
             </div>
 
-            {!modelDownloaded && !downloadingModel && (
-              <button
-                onClick={handleEnableIntelligence}
-                disabled={checkingModel}
-                className={clsx(
-                  'w-full px-4 py-3 rounded-lg font-body font-medium text-sm transition-all',
-                  'bg-primary hover:bg-primary-dark text-white',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                  'flex items-center justify-center gap-2'
-                )}
-              >
-                <ChevronRight size={16} />
-                Enable Intelligence (890 MB)
-              </button>
-            )}
+            {/* EmbeddingGemma model (for NativeRetriever HNSW search) */}
+            <div className="pt-3 border-t border-border-subtle space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-body font-medium text-n-800 dark:text-n-200">
+                  Retrieval Model
+                </span>
+                <span className={clsx(
+                  'text-xs font-mono px-2 py-1 rounded',
+                  embedModelDownloaded
+                    ? 'bg-success/10 text-success'
+                    : 'bg-n-100 dark:bg-n-800 text-n-500'
+                )}>
+                  {checkingEmbedModel ? 'Checking...' : embedModelDownloaded ? 'Installed' : 'Not installed'}
+                </span>
+              </div>
+              <p className="text-xs font-body text-n-500 leading-relaxed">
+                {embedModelDownloaded
+                  ? 'EmbeddingGemma-300M installed for semantic search (300 MB).'
+                  : 'Download EmbeddingGemma for enhanced search and retrieval (300 MB).'}
+              </p>
 
-            {downloadingModel && modelProgress && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-body text-n-600 dark:text-n-400">
+              {!embedModelDownloaded && !downloadingEmbedModel && (
+                <button
+                  onClick={handleDownloadEmbedModel}
+                  disabled={checkingEmbedModel}
+                  className={clsx(
+                    'w-full px-4 py-3 rounded-lg font-body font-medium text-sm transition-all',
+                    'bg-primary hover:bg-primary-dark text-white',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                    'flex items-center justify-center gap-2'
+                  )}
+                >
+                  <ChevronRight size={16} />
+                  Download Retrieval Model (300 MB)
+                </button>
+              )}
+
+              {downloadingEmbedModel && embedModelProgress && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-body text-n-600 dark:text-n-400">
+                    <span>Downloading...</span>
+                    <span className="font-mono">{embedModelProgress.percentComplete.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-n-100 dark:bg-n-800 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-primary"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${embedModelProgress.percentComplete}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-body text-n-500">
+                    <span>
+                      {Math.round(embedModelProgress.bytesDownloaded / (1024 * 1024))} / {Math.round(embedModelProgress.totalBytes / (1024 * 1024))} MB
+                      </span>
+                      <span>{leapProgress.speedMBps.toFixed(1)} MB/s</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleCancelLeap}
+                    className="w-full px-3 py-2 rounded-lg bg-n-100 dark:bg-n-800 text-n-600 dark:text-n-400 text-xs font-body hover:bg-n-200 dark:hover:bg-n-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {leapError && (
+                <div className="p-3 rounded-lg bg-error/10 text-error text-sm font-body">
+                  {leapError}
+                </div>
+              )}
+            </div>
+
+            {/* EmbeddingGemma model (for NativeRetriever HNSW search) */}
+            <div className="pt-3 border-t border-border-subtle space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-body font-medium text-n-800 dark:text-n-200">
+                  Embedding Model
+                </span>
+                <span className={clsx(
+                  'text-xs font-mono px-2 py-1 rounded',
+                  embedModelDownloaded
+                    ? 'bg-success/10 text-success'
+                    : 'bg-n-100 dark:bg-n-800 text-n-500'
+                )}>
+                  {checkingEmbedModel ? 'Checking...' : embedModelDownloaded ? 'Installed' : 'Not installed'}
+                </span>
+              </div>
+              <p className="text-xs font-body text-n-500 leading-relaxed">
+                {embedModelDownloaded
+                  ? 'EmbeddingGemma-300M installed (on-device semantic search).'
+                  : 'Download EmbeddingGemma-300M for native on-device retrieval (~350 MB).'}
+              </p>
+
+              {!embedModelDownloaded && !downloadingEmbedModel && (
+                <button
+                  onClick={handleDownloadEmbedModel}
+                  disabled={checkingEmbedModel}
+                  className={clsx(
+                    'w-full px-4 py-3 rounded-lg font-body font-medium text-sm transition-all',
+                    'bg-primary hover:bg-primary-dark text-white',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                    'flex items-center justify-center gap-2'
+                  )}
+                >
+                  <ChevronRight size={16} />
+                  Download EmbeddingGemma (~350 MB)
+                </button>
+              )}
+
+              {downloadingEmbedModel && (
+                <div className="flex items-center gap-2 text-xs font-body text-n-500">
+                  <span className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin flex-shrink-0" />
                   <span>Downloading...</span>
-                  <span className="font-mono">{modelProgress.percentComplete.toFixed(1)}%</span>
                 </div>
-                <div className="w-full h-2 bg-n-100 dark:bg-n-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-primary"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${modelProgress.percentComplete}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs font-body text-n-500">
-                  <span>
-                    {Math.round(modelProgress.bytesDownloaded / (1024 * 1024))} / {Math.round(modelProgress.totalBytes / (1024 * 1024))} MB
-                  </span>
-                  <span>
-                    {modelProgress.speedMBps.toFixed(1)} MB/s
-                  </span>
-                </div>
-              </div>
-            )}
+              )}
 
-            {modelError && (
-              <div className="p-3 rounded-lg bg-error/10 text-error text-sm font-body">
-                {modelError}
-              </div>
-            )}
+              {embedModelError && (
+                <div className="p-3 rounded-lg bg-error/10 text-error text-sm font-body">
+                  {embedModelError}
+                </div>
+              )}
+            </div>
 
             {/* Diagnostics section */}
             <div className="pt-2 border-t border-border-subtle">
@@ -439,6 +592,14 @@ const SettingsScreen: React.FC = () => {
               {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
             </button>
           </div>
+        </section>
+
+        {/* Analytics & Privacy */}
+        <section>
+          <h3 className="text-xs font-body font-medium text-n-500 uppercase tracking-widest mb-3 px-1">
+            Analytics & Privacy
+          </h3>
+          <AnalyticsSettings />
         </section>
 
         {/* App Info */}

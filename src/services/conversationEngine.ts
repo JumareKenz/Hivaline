@@ -49,11 +49,13 @@ import { generateHivReport } from '@/engine/debugReport';
 import { computeConfidenceTier, VERIFICATION_NOTICE, type RawConfidenceSignals } from '@/engine/confidenceScoring';
 import { shouldInvokeGeneration } from '@/engine/generationRouter';
 import { generateGrounded, checkGrounding, isEdgeBrainReady } from '@/services/edgeBrainService';
+import { nativeSearch, isNativeRetrieverReady } from '@/services/nativeRetrieverService';
 import { reportError } from '@/services/telemetry';
 import { logQuery } from '@/services/queryLogger';
 import { isEmbeddingModelReady } from '@/services/modelManager';
 import { embedQuery } from '@/services/embeddingModel';
 import { prepareQueryForEmbedding, type TranslationResult } from '@/services/queryTranslator';
+import { trackQuery, recordMessage, recordTopic } from '@/services/analyticsService';
 
 export type { ConversationState, ConversationTurn, ConversationSlots, IntentType, EngineResponse };
 export type { CognitiveStateObject };
@@ -115,6 +117,8 @@ export class ConversationEngine {
   }
 
   async respond(userMessage: string): Promise<EngineResponse> {
+    const queryStartTime = performance.now();
+
     // ─── Layer 1: Identity ───
     const identity: CognitiveStateObject['identity'] = {
       role: 'chew',
@@ -218,6 +222,24 @@ export class ConversationEngine {
     const appFaqMatch = getAppFaqResponse(userMessage);
     if (appFaqMatch) {
       this._lastCSO = buildEarlyCSO(appFaqMatch.response, 'greeting', appFaqMatch.followUps);
+
+      // Track analytics for FAQ response
+      try {
+        const responseTimeMs = Math.round(performance.now() - queryStartTime);
+        trackQuery({
+          query: userMessage,
+          category: 'out_of_scope',
+          intent: 'general_inquiry',
+          languageMode: this.detectLanguageMode(userMessage),
+          isFollowup: false,
+          followupCount: 0,
+          resultCount: 1,
+          hasReferralTrigger: false,
+          confidenceTier: 'high',
+          responseTimeMs,
+        }).catch(() => {});
+      } catch {}
+
       return {
         message: appFaqMatch.response,
         type: 'greeting',
@@ -292,7 +314,34 @@ export class ConversationEngine {
     const rewritten = rewriteQuery(queryForSearch, newIntent, this.sessionState);
     request.translatedInput = rewritten.rewritten;
 
-    // Hybrid search (new engine — async for dense variant embedding).
+    // ─── Native retrieval path (ObjectBox + EmbeddingGemma HNSW) ───
+    // When the NativeRetriever plugin is ready, use it in place of hybridSearch.
+    // The native path embeds the query on-device with EmbeddingGemma and runs
+    // HNSW nearest-neighbor search in ObjectBox. It returns rawText directly,
+    // which is passed to generateGrounded as evidence without further extraction.
+    // Falls back to hybridSearch if native retriever is not ready.
+    let nativeRawText: string | null = null;
+    let nativeChunkId: string | null = null;
+
+    if (await isNativeRetrieverReady()) {
+      try {
+        const nativeResults = await nativeSearch(rewritten.rewritten, 5);
+        if (nativeResults.length > 0) {
+          // Use top result; concatenate top-3 raw texts as evidence for richer context
+          nativeChunkId = nativeResults[0].chunkId;
+          nativeRawText = nativeResults
+            .slice(0, 3)
+            .map((r) => r.rawText)
+            .filter(Boolean)
+            .join('\n\n---\n\n');
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[HIVA] NativeRetriever search failed, falling back to hybridSearch:', err);
+      }
+    }
+
+    // Hybrid search (JS fallback — runs when native retriever is not ready).
     initSearch(this.hivAssets);
 
     // Lazily wire embedding models if they became ready after construction
@@ -302,27 +351,34 @@ export class ConversationEngine {
     }
 
     let searchResult: Awaited<ReturnType<typeof search>> = null;
-    try {
-      searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets, rewritten.bm25Query || undefined);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      // eslint-disable-next-line no-console
-      console.warn('[HIVA][telemetry]', JSON.stringify({
-        event: 'engine_search_failed',
-        message: errMsg,
-        ts: Date.now(),
-      }));
-      void reportError('engine_search_failed', errMsg);
-      const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
-      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], {
-        confidenceGateFired: false,
-      }, { confidenceTier: 'LOW' });
-      return {
-        message: fallback,
-        type: 'fallback',
-        chunkId: null,
-        suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
-      };
+
+    // If native retriever found a result, skip the JS search and synthesize a
+    // searchResult-shaped object so the rest of the pipeline is unchanged.
+    if (nativeChunkId) {
+      searchResult = { chunkId: nativeChunkId, score: 1.0 };
+    } else {
+      try {
+        searchResult = await search(rewritten.rewritten, this.sessionState, 'en', this.hivAssets, rewritten.bm25Query || undefined);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-console
+        console.warn('[HIVA][telemetry]', JSON.stringify({
+          event: 'engine_search_failed',
+          message: errMsg,
+          ts: Date.now(),
+        }));
+        void reportError('engine_search_failed', errMsg);
+        const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+        this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], {
+          confidenceGateFired: false,
+        }, { confidenceTier: 'LOW' });
+        return {
+          message: fallback,
+          type: 'fallback',
+          chunkId: null,
+          suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+        };
+      }
     }
 
     if (searchResult === null) {
@@ -506,11 +562,15 @@ export class ConversationEngine {
 
       if (brainReady) {
         try {
+          // When the native retriever ran, use its rawText as evidence — it's
+          // already the flat plain-text form ObjectBox stored. Fall back to the
+          // genDecision evidence (extracted from chunk.content.en) otherwise.
+          const evidence = nativeRawText ?? genDecision.evidence;
           // Invoke Edge Brain for grounded generation
-          const genResult = await generateGrounded(genDecision.evidence, userMessage);
+          const genResult = await generateGrounded(evidence, userMessage);
 
           // Post-generation grounding check
-          const groundingCheck = checkGrounding(genResult.text, genDecision.evidence);
+          const groundingCheck = checkGrounding(genResult.text, evidence);
 
           if (!groundingCheck.grounded) {
             // Grounding check failed — force LOW tier and log the mismatch
@@ -695,6 +755,53 @@ export class ConversationEngine {
       responseType: mappedIntent,
     });
 
+    // Track anonymous analytics (safe to call, fails silently)
+    const queryEndTime = performance.now();
+    const responseTimeMs = Math.round(queryEndTime - queryStartTime);
+
+    try {
+      // Determine language mode based on query content
+      const languageMode = this.detectLanguageMode(userMessage);
+
+      // Extract category from chunk or topic
+      const category = this.extractCategory(chunk, topic);
+
+      // Map intent to analytics intent type
+      const analyticsIntent = this.mapToAnalyticsIntent(mappedIntent);
+
+      // Check if response has referral trigger
+      const hasReferralTrigger = message.toLowerCase().includes('refer') || escalationFlag;
+
+      // Track query metadata (NO full query text stored)
+      trackQuery({
+        query: userMessage,  // Only used for word count
+        category,
+        intent: analyticsIntent,
+        languageMode,
+        isFollowup: this.sessionState.turnBuffer.length > 1,
+        followupCount: this.sessionState.turnBuffer.length,
+        resultCount: 1,
+        hasReferralTrigger,
+        confidenceTier: confidenceTier.toLowerCase() as 'high' | 'medium' | 'low',
+        responseTimeMs,
+      }).catch((err) => {
+        // Silent fail - never block main flow
+        console.warn('[ConversationEngine] Analytics tracking failed:', err);
+      });
+
+      // Record message for session collection (consent-gated)
+      recordMessage('user', userMessage);
+      recordMessage('assistant', message);
+
+      // Record topic for session metadata
+      if (topic) {
+        recordTopic(topic);
+      }
+    } catch (err) {
+      // Analytics should never break the main app
+      console.warn('[ConversationEngine] Analytics error:', err);
+    }
+
     return {
       message,
       type: mappedIntent,
@@ -794,9 +901,8 @@ export class ConversationEngine {
       (hivFile.rules?.coverage_manifest as HIVAssets['coverageManifest']) ||
       ({} as HIVAssets['coverageManifest']);
 
-    // Parse schema version for embedding model selection
-    const schemaVersionRaw = hivFile.manifest.schema_version ?? hivFile.manifest.version ?? '2.2';
-    const schemaVersion = (schemaVersionRaw.toLowerCase().replace(/^v/, '').startsWith('2.3') ? '2.3' : '2.2') as '2.2' | '2.3';
+    // Schema version - only 3.0 supported now (v2.2/v2.3 removed)
+    const schemaVersion: '3.0' = '3.0';
 
     return {
       embeddingsBuffer,
@@ -813,7 +919,7 @@ export class ConversationEngine {
       variantEmbeddings: hivFile.variantEmbeddings ?? null,
       variantEmbeddingsIndex: hivFile.variantEmbeddingsIndex ?? null,
       variantCount: hivFile.variantCount ?? 0,
-      embeddingDims: hivFile.embeddingDims ?? (schemaVersion === '2.3' ? 1024 : 384),
+      embeddingDims: hivFile.embeddingDims ?? 256,  // Schema 3.0: EmbeddingGemma 256-dim
       schemaVersion,
       chunkTitleMap: new Map(hivFile.chunks.map(c => [c.id, c.display_title || ''])),
       chunkContentMap: new Map(hivFile.chunks.map(c => {
@@ -946,5 +1052,70 @@ export class ConversationEngine {
     }
 
     return ['Tell me more', 'What\'s the dose?', 'When should I refer?'];
+  }
+
+  /* ─── Analytics Helpers ─── */
+
+  private detectLanguageMode(text: string): import('@/types/analytics').LanguageMode {
+    const lowerText = text.toLowerCase();
+
+    // Pidgin indicators
+    const pidginMarkers = [
+      /\bna\b/, /\bwetin\b/, /\bdey\b/, /\bdon\b/, /\bwaka\b/,
+      /\bpikin\b/, /\bsmall\b/, /\bfit\b/, /\bhow\s+far\b/,
+    ];
+
+    // English indicators
+    const englishMarkers = [
+      /\bwhat\b/, /\bhow\b/, /\bwhen\b/, /\bwhere\b/,
+      /\bshould\b/, /\bcan\b/, /\bwould\b/, /\bcould\b/,
+    ];
+
+    const hasPidgin = pidginMarkers.some((p) => p.test(lowerText));
+    const hasEnglish = englishMarkers.some((p) => p.test(lowerText));
+
+    if (hasPidgin && hasEnglish) return 'mixed';
+    if (hasPidgin) return 'pidgin';
+    if (hasEnglish) return 'english';
+    return 'other';
+  }
+
+  private extractCategory(chunk: HIVChunk, topic: string | null): import('@/types/analytics').QueryCategory {
+    // Map from chunk or topic to analytics category
+    const topicLower = (topic || chunk.display_title || '').toLowerCase();
+
+    if (/malaria/i.test(topicLower)) return 'malaria';
+    if (/diarr?h?oea|diarrhea/i.test(topicLower)) return 'diarrhea';
+    if (/pneumonia|chest|cough/i.test(topicLower)) return 'pneumonia';
+    if (/fever|temperature/i.test(topicLower)) return 'fever';
+    if (/nutrition|malnutrition|feeding/i.test(topicLower)) return 'nutrition';
+    if (/immunization|vaccine|vaccination/i.test(topicLower)) return 'immunization';
+    if (/newborn|neonate|baby/i.test(topicLower)) return 'newborn_care';
+    if (/maternal|pregnancy|antenatal|postnatal/i.test(topicLower)) return 'maternal_health';
+    if (/tuberculosis|tb\b/i.test(topicLower)) return 'tb';
+    if (/hiv|aids|art\b/i.test(topicLower)) return 'hiv';
+    if (/covid|corona|sars/i.test(topicLower)) return 'covid';
+
+    return 'general';
+  }
+
+  private mapToAnalyticsIntent(intent: IntentType): import('@/types/analytics').QueryIntent {
+    // Map engine intent to analytics intent
+    const intentUpper = intent.toUpperCase();
+
+    if (intentUpper === 'OVERVIEW' || intentUpper === 'DIAGNOSIS') {
+      return 'diagnosis_support';
+    }
+    if (intentUpper === 'PROCEDURE' || intentUpper === 'DETAIL') {
+      return 'treatment_dosage';
+    }
+    if (intentUpper === 'CLINICAL' || intent === 'clinical') {
+      return 'symptom_check';
+    }
+    if (intent === 'urgent') {
+      return 'referral_criteria';
+    }
+
+    return 'general_inquiry';
   }
 }
