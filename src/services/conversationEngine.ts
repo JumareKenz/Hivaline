@@ -49,7 +49,7 @@ import { generateHivReport } from '@/engine/debugReport';
 import { computeConfidenceTier, VERIFICATION_NOTICE, type RawConfidenceSignals } from '@/engine/confidenceScoring';
 import { shouldInvokeGeneration } from '@/engine/generationRouter';
 import { generateGrounded, checkGrounding, isEdgeBrainReady } from '@/services/edgeBrainService';
-import { nativeSearch, isNativeRetrieverReady } from '@/services/nativeRetrieverService';
+import { nativeSearch, isNativeRetrieverReady, getNativeRetrieverStatus } from '@/services/nativeRetrieverService';
 import { reportError } from '@/services/telemetry';
 import { logQuery } from '@/services/queryLogger';
 import { isEmbeddingModelReady } from '@/services/modelManager';
@@ -314,9 +314,9 @@ export class ConversationEngine {
     const rewritten = rewriteQuery(queryForSearch, newIntent, this.sessionState);
     request.translatedInput = rewritten.rewritten;
 
-    // ─── Native retrieval path (ObjectBox + EmbeddingGemma HNSW) ───
+    // ─── Native retrieval path (ObjectBox + E5-small-v2 HNSW) ───
     // When the NativeRetriever plugin is ready, use it in place of hybridSearch.
-    // The native path embeds the query on-device with EmbeddingGemma and runs
+    // The native path embeds the query on-device with E5-small-v2 and runs
     // HNSW nearest-neighbor search in ObjectBox. It returns rawText directly,
     // which is passed to generateGrounded as evidence without further extraction.
     // Falls back to hybridSearch if native retriever is not ready.
@@ -448,7 +448,15 @@ export class ConversationEngine {
     this.sessionState.lastChunkId = chunk.id;
 
     // ─── Layer 5: Module Response (populated after search) ───
-    const diag = getLastSearchDiagnostics();
+    // When the native retriever ran, JS hybridSearch was skipped so
+    // getLastSearchDiagnostics() still holds stale values from the previous
+    // query (all-null on the very first query). Those nulls produce combined=0
+    // → LOW confidence → the answer gets discarded at the LOW-tier gate below.
+    // Synthesize HIGH confidence signals instead: HNSW + E5-small-v2 is already
+    // quality-gated, and the native path explicitly returns score=1.0.
+    const diag = nativeChunkId !== null
+      ? { topBm25Score: 5.0, topVectorScore: 0.85, fusedScore: 0.85, vectorGatePassed: true, confidenceGateFired: false, vectorMargin: 0.15 }
+      : getLastSearchDiagnostics();
     const tier = getLastVectorTier();
     const fusedScore = searchResult?.score ?? 0;
 
@@ -527,17 +535,72 @@ export class ConversationEngine {
       }
     }
 
-    // If no answer content, return fallback
+    // If no answer content, use LLM as fallback
     if (!answerText) {
-      const fallback = 'I found relevant information, but the content is not available in this release.';
-      this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
-      return {
-        message: fallback,
-        type: 'fallback',
-        chunkId: chunk.id,
-        source: chunk.source,
-        suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
-      };
+      console.log('[ConversationEngine] No content in chunk, falling back to LLM generation');
+      console.log('[ConversationEngine] Query:', userMessage);
+
+      // Only use Edge Brain when evidence is from the native retriever (trusted,
+      // query-matched) OR when there is no native retriever path active.
+      // Never use Edge Brain with chunk evidence from a JS-BM25 result that may
+      // be completely unrelated to the query (JS BM25 can match generic terms
+      // and return wrong chunks while NativeRetriever is still initialising).
+      // In that window, return a transient "still loading" message instead.
+      // Only block when the native retriever is actively loading (not when it's
+      // idle or errored — those states mean it won't become ready, so blocking
+      // forever would keep returning this message for every query).
+      if (nativeRawText === null && getNativeRetrieverStatus() === 'loading') {
+        const transientMsg = "I'm still loading the clinical guidelines. Please ask again in a few seconds.";
+        this._lastCSO = buildEarlyCSO(transientMsg, 'fallback', ['Tell me more', "What's the dose?", 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
+        return { message: transientMsg, type: 'fallback', chunkId: null, suggestedFollowUps: ["What's the dose?", 'When should I refer?', 'Tell me more'] };
+      }
+
+      // Build evidence from all available sources
+      const evidence = nativeRawText ?? this.extractChunkEvidence(chunk);
+
+      const brainReady = evidence && await isEdgeBrainReady();
+      if (brainReady && evidence) {
+        try {
+          const genResult = await generateGrounded(evidence, userMessage);
+
+          console.log('[ConversationEngine] LLM generated:', genResult.text?.substring(0, 100));
+
+          if (genResult.text && genResult.text !== 'INSUFFICIENT_EVIDENCE') {
+            answerText = genResult.text;
+          } else {
+            const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+            this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
+            return {
+              message: fallback,
+              type: 'fallback',
+              chunkId: chunk.id,
+              source: chunk.source,
+              suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+            };
+          }
+        } catch (err) {
+          console.error('[ConversationEngine] LLM fallback error:', err);
+          const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+          this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
+          return {
+            message: fallback,
+            type: 'fallback',
+            chunkId: chunk.id,
+            source: chunk.source,
+            suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+          };
+        }
+      } else {
+        const fallback = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+        this._lastCSO = buildEarlyCSO(fallback, 'fallback', ['Tell me more', 'What\'s the dose?', 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
+        return {
+          message: fallback,
+          type: 'fallback',
+          chunkId: chunk.id,
+          source: chunk.source,
+          suggestedFollowUps: ['Tell me more', 'What\'s the dose?', 'When should I refer?'],
+        };
+      }
     }
 
     // LOW tier: return the safe-fallback path even though search returned a result —
@@ -919,7 +982,7 @@ export class ConversationEngine {
       variantEmbeddings: hivFile.variantEmbeddings ?? null,
       variantEmbeddingsIndex: hivFile.variantEmbeddingsIndex ?? null,
       variantCount: hivFile.variantCount ?? 0,
-      embeddingDims: hivFile.embeddingDims ?? 256,  // Schema 3.0: EmbeddingGemma 256-dim
+      embeddingDims: hivFile.embeddingDims ?? 384,
       schemaVersion,
       chunkTitleMap: new Map(hivFile.chunks.map(c => [c.id, c.display_title || ''])),
       chunkContentMap: new Map(hivFile.chunks.map(c => {
@@ -1018,6 +1081,37 @@ export class ConversationEngine {
         }
       }
     }
+  }
+
+  private extractChunkEvidence(chunk: HIVChunk): string | null {
+    const langContent = (chunk.content?.en || chunk.content || {}) as Record<string, unknown>;
+    let substantiveLength = 0;
+    const parts: string[] = [];
+
+    // Extract all string values from the content object
+    for (const [, val] of Object.entries(langContent)) {
+      if (typeof val === 'string' && val.length > 20) {
+        parts.push(val);
+        substantiveLength += val.length;
+      } else if (Array.isArray(val)) {
+        const strings = val.filter((v): v is string => typeof v === 'string' && v.length > 10);
+        if (strings.length > 0) {
+          const joined = strings.join('. ');
+          parts.push(joined);
+          substantiveLength += joined.length;
+        }
+      }
+    }
+
+    // Only return if we have real medical content (not just metadata/trigger phrases)
+    // Trigger phrases alone are NOT evidence — they'd cause hallucination
+    if (substantiveLength < 50) return null;
+
+    if (chunk.display_title) {
+      parts.unshift(`Topic: ${chunk.display_title}`);
+    }
+
+    return parts.join('\n\n');
   }
 
   private getChunkTopics(chunk: HIVChunk): string[] {

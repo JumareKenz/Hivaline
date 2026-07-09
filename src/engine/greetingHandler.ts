@@ -33,7 +33,7 @@ const ALWAYS_SOCIAL = [
 
 const DANGER_KEYWORDS = [
   'convulsing', 'convulsion', 'fitting', 'seizure',
-  'not breathing', 'cant breathe', 'difficulty breathing',
+  'not breathing', 'stopped breathing', 'stop breathing', 'cant breathe', 'difficulty breathing', 'not breathe',
   'unconscious', 'unresponsive', 'collapsed',
   'bleeding heavily', 'severe bleeding', 'hemorrhage',
   'cyanosis', 'blue lips', 'blue skin',

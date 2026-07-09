@@ -1,6 +1,6 @@
 /**
  * nativeRetrieverService.ts — Thin TypeScript wrapper around the NativeRetriever
- * Capacitor plugin (ObjectBox + EmbeddingGemma-300M HNSW retrieval on Android).
+ * Capacitor plugin (ObjectBox + E5-small-v2 HNSW retrieval on Android).
  *
  * Feature-flagged via BUILD_USE_NATIVE_RETRIEVER (set in android/app/build.gradle).
  * When false (default), the existing JS hybridSearch path runs unchanged.
@@ -50,7 +50,7 @@ interface NativeRetrieverPlugin {
   isReady(): Promise<{ ready: boolean }>;
   unload(): Promise<{ success: boolean }>;
   isEmbeddingModelDownloaded(): Promise<EmbeddingModelInfo>;
-  downloadEmbeddingModel(options?: { url?: string }): Promise<EmbeddingDownloadResult>;
+  downloadEmbeddingModel(options?: Record<string, never>): Promise<EmbeddingDownloadResult>;
 }
 
 const NativeRetriever = registerPlugin<NativeRetrieverPlugin>('NativeRetriever');
@@ -65,11 +65,11 @@ export function getNativeRetrieverStatus(): RetrieverStatus {
 }
 
 /**
- * Load the .hiv bundle into ObjectBox + HNSW index.
- * Parses pre-computed EmbeddingGemma-300M vectors from index/embeddings.bin.
+ * Load the .hiva bundle into ObjectBox + HNSW index.
+ * Parses pre-computed E5-small-v2 384-dim vectors from index/embeddings.bin.
  * Idempotent — safe to call repeatedly.
  *
- * @param bundlePath — absolute path to the .hiv file in the app's files directory
+ * @param bundlePath — absolute path to the .hiva file in the app's files directory
  */
 export async function loadNativeBundle(bundlePath: string): Promise<void> {
   if (status === 'ready') return;
@@ -93,8 +93,8 @@ export async function loadNativeBundle(bundlePath: string): Promise<void> {
 }
 
 /**
- * Run a semantic search query via ObjectBox HNSW + EmbeddingGemma-300M.
- * Query is prefixed with the asymmetric retrieval prefix on the native side.
+ * Run a semantic search query via ObjectBox HNSW + E5-small-v2.
+ * Query is prefixed with "query: " on the native side.
  * Returns an empty array if the retriever is not ready.
  */
 export async function nativeSearch(
@@ -129,7 +129,7 @@ export async function unloadNativeRetriever(): Promise<void> {
 }
 
 /**
- * Check if the EmbeddingGemma-300M ONNX (q8) model is downloaded on-device.
+ * Check if the E5-small-v2 fused ONNX model is downloaded on-device.
  */
 export async function isEmbeddingModelDownloaded(): Promise<EmbeddingModelInfo> {
   try {
@@ -140,11 +140,9 @@ export async function isEmbeddingModelDownloaded(): Promise<EmbeddingModelInfo> 
 }
 
 /**
- * Download the EmbeddingGemma-300M ONNX (q8) model to device internal storage.
- * Only needed once; survives app updates.
- *
- * @param url — optional override URL. Defaults to HuggingFace EmbeddingGemma q8 ONNX.
+ * Copy the E5-small-v2 fused ONNX model from APK assets to device storage.
+ * Only needed once on first launch; persists across app updates.
  */
-export async function downloadEmbeddingModel(url?: string): Promise<EmbeddingDownloadResult> {
-  return NativeRetriever.downloadEmbeddingModel(url ? { url } : {});
+export async function downloadEmbeddingModel(): Promise<EmbeddingDownloadResult> {
+  return NativeRetriever.downloadEmbeddingModel({});
 }
