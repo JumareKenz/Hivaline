@@ -66,14 +66,11 @@ class EdgeBrainLeapDelegate(
 
         private const val CPU_THREADS = 4
 
-        // Default chunk ceiling enforced via transformWhile.
-        // LEAP's llama.cpp backend emits one MessageResponse.Chunk per decoded token
-        // (one subword piece, ~3-6 chars for English medical text). 256 chunks ≈ 256
-        // tokens, matching the original Qwen path's maxTokens=256 ceiling.
-        // In normal operation, jsonSchemaConstraint causes CONSTRAINT/STOP finish
-        // reason before this ceiling fires. If D.1 shows INTERRUPTED > 3/30 queries,
-        // raise to 384 or 512.
-        private const val DEFAULT_MAX_CHUNKS = 256
+        // Chunk ceiling enforced via transformWhile.
+        // LEAP emits one Chunk per decoded token. jsonSchemaConstraint normally causes
+        // CONSTRAINT/STOP before this ceiling fires. 1024 is a generous safety net —
+        // the JS layer sends maxTokens=512 which overrides this default.
+        private const val DEFAULT_MAX_CHUNKS = 1024
 
         private const val TRANSLATION_SYSTEM_PROMPT =
             "You are a medical translation assistant. Translate the user's query to English. " +
@@ -99,10 +96,27 @@ class EdgeBrainLeapDelegate(
         scope.launch {
             try {
                 val path = modelPath()
-                if (!File(path).exists()) {
-                    call.reject("LEAP model file not found at: $path")
-                    return@launch
+                val destFile = File(path)
+
+                // Copy bundled model from assets on first launch
+                if (!destFile.exists()) {
+                    Log.i(TAG, "Model not found in files, checking assets...")
+                    val assetPath = "$LEAP_MODEL_DIR/$LEAP_MODEL_FILE"
+                    try {
+                        destFile.parentFile?.mkdirs()
+                        context.assets.open(assetPath).use { input ->
+                            destFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        Log.i(TAG, "Copied bundled model from assets (${destFile.length() / (1024 * 1024)}MB)")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to copy from assets: ${e.message}, will try download...")
+                        call.reject("LEAP model file not found at: $path")
+                        return@launch
+                    }
                 }
+
                 val startTime = System.currentTimeMillis()
 
                 // LeapClient is a Kotlin singleton object — use LeapClient, not LeapClient().
@@ -223,44 +237,52 @@ class EdgeBrainLeapDelegate(
                         "completionTokens=$completionTokens | tok/s=$tokensPerSecond | " +
                         "finishReason=$finishReason")
 
-                val rawJson = outputBuilder.toString()
+                // Strip markdown code fences that LFM2.5 sometimes wraps around JSON output.
+                // Pattern: ```json\n{...}\n``` or ```\n{...}\n```
+                val rawOutput = outputBuilder.toString()
+                val rawJson = rawOutput
+                    .replace(Regex("^```(?:json)?\\s*", RegexOption.MULTILINE), "")
+                    .replace(Regex("```\\s*$", RegexOption.MULTILINE), "")
+                    .trim()
 
                 val parsed = runCatching {
                     Json.decodeFromString(MediChatResponse.serializer(), rawJson)
-                }.getOrElse { e ->
-                    Log.e(TAG, "LEAP schema parse failed [integration bug] " +
-                            "finishReason=$finishReason chunks=$chunkCount raw=$rawJson", e)
-                    call.reject("LEAP schema parse failed: ${e.message}")
-                    return@launch
-                }
+                }.getOrNull()
 
-                // Map model's INSUFFICIENT signal → canonical sentinel string that
-                // conversationEngine.ts:534 checks via exact string equality.
-                val answerText = if (parsed.groundednessSignal == GroundednessSignal.INSUFFICIENT) {
-                    "INSUFFICIENT_EVIDENCE"
+                val answerText: String
+                val groundednessSignal: String
+                val sourceChunkIds: List<String>
+
+                if (parsed != null) {
+                    answerText = if (parsed.groundednessSignal == GroundednessSignal.INSUFFICIENT) {
+                        "INSUFFICIENT_EVIDENCE"
+                    } else {
+                        parsed.answerText
+                    }
+                    groundednessSignal = parsed.groundednessSignal.name
+                    sourceChunkIds = parsed.sourceChunkIds
+
+                    if (parsed.groundednessSignal == GroundednessSignal.PARTIAL) {
+                        Log.w(TAG, "GROUNDING_PARTIAL: model self-reports partial")
+                    }
                 } else {
-                    parsed.answerText
-                }
-
-                val schemaSignalsInsufficient = parsed.groundednessSignal == GroundednessSignal.INSUFFICIENT
-                val textSignalsInsufficient = answerText == "INSUFFICIENT_EVIDENCE"
-                if (schemaSignalsInsufficient != textSignalsInsufficient) {
-                    Log.w(TAG, "GROUNDING_DISAGREE: groundednessSignal=${parsed.groundednessSignal} " +
-                            "but answerText sentinel=$textSignalsInsufficient")
-                }
-                if (parsed.groundednessSignal == GroundednessSignal.PARTIAL) {
-                    Log.w(TAG, "GROUNDING_PARTIAL: model self-reports partial — primary term-match gate will adjudicate")
+                    // Schema parse failed — model returned plain text instead of JSON.
+                    // Treat as ungrounded raw answer; let the JS grounding check decide.
+                    Log.w(TAG, "Schema parse failed, using raw text. finishReason=$finishReason raw=${rawJson.take(100)}")
+                    answerText = rawJson.trim()
+                    groundednessSignal = "INSUFFICIENT"
+                    sourceChunkIds = emptyList()
                 }
 
                 val sourceArray = JSArray()
-                parsed.sourceChunkIds.forEach { sourceArray.put(it) }
+                sourceChunkIds.forEach { sourceArray.put(it) }
 
                 val result = JSObject()
                 result.put("text", answerText)
                 result.put("tokenCount", if (completionTokens > 0) completionTokens.toInt() else chunkCount)
                 result.put("durationMs", elapsed)
                 result.put("tokensPerSecond", tokensPerSecond.toDouble())
-                result.put("groundednessSignal", parsed.groundednessSignal.name)
+                result.put("groundednessSignal", groundednessSignal)
                 result.put("sourceChunkIds", sourceArray)
                 result.put("finishReason", finishReason?.name ?: "UNKNOWN")
                 call.resolve(result)
@@ -387,7 +409,10 @@ class EdgeBrainLeapDelegate(
         buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {
-                putJsonObject("answer_text") { put("type", "string") }
+                putJsonObject("answer_text") {
+                    put("type", "string")
+                    put("maxLength", 600)  // constrained decoding closes string before token budget runs out
+                }
                 putJsonObject("source_chunk_ids") {
                     put("type", "array")
                     putJsonObject("items") { put("type", "string") }
