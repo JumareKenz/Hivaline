@@ -11,11 +11,11 @@ const HivaLogo: React.FC<HivaLogoProps> = ({ size = 64, className, animate = fal
   return (
     <div
       className={clsx(
-        'flex items-center justify-center rounded-2xl shadow-lg overflow-hidden flex-shrink-0',
+        'flex items-center justify-center rounded-2xl shadow-lg overflow-hidden flex-shrink-0 bg-white',
         animate && 'animate-hiva-float',
         className
       )}
-      style={{ width: size, height: size, background: '#ffffff', border: '1.5px solid #e2e8f0' }}
+      style={{ width: size, height: size }}
     >
       <img
         src="/icon-192.png"
