@@ -30,83 +30,66 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
           exit={{ opacity: 0 }}
           transition={{ duration: 0.45 }}
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #0D1B2A 0%, #1B2D44 50%, #0D1B2A 100%)',
-          }}
+          style={{ background: '#ffffff' }}
         >
-          {/* Subtle grid pattern overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-[0.04]"
-            style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0)`,
-              backgroundSize: '32px 32px',
-            }}
-          />
-
           {/* Logo container */}
-          <div className="relative mb-8" style={{ width: 200, height: 200 }}>
+          <div className="relative mb-8" style={{ width: 160, height: 160 }}>
 
-            {/* Glow pulse behind logo */}
+            {/* Glow pulse behind logo — forest green */}
             <motion.div
               className="absolute inset-0 rounded-full"
               style={{
-                background: 'radial-gradient(circle, rgba(0,102,255,0.15) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(22,58,40,0.08) 0%, transparent 70%)',
               }}
               animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.2, 0.5] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             />
 
-            {/* Secondary glow — teal */}
+            {/* Secondary glow — gold */}
             <motion.div
               className="absolute inset-0 rounded-full"
               style={{
-                background: 'radial-gradient(circle, rgba(0,201,167,0.1) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(201,147,56,0.1) 0%, transparent 70%)',
               }}
               animate={{ scale: [1.2, 1, 1.2], opacity: [0.3, 0.5, 0.3] }}
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
             />
 
-            {/* Rotating ring — blue */}
+            {/* Rotating ring — forest green */}
             <motion.svg
-              viewBox="0 0 200 200"
+              viewBox="0 0 160 160"
               className="absolute inset-0 w-full h-full"
               animate={{ rotate: 360 }}
               transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
             >
               <circle
-                cx="100"
-                cy="100"
-                r="85"
-                stroke="url(#splash-ring-grad)"
+                cx="80"
+                cy="80"
+                r="68"
+                stroke="#163A28"
                 strokeWidth="1"
                 strokeDasharray="8 12"
                 fill="none"
-                opacity="0.4"
+                opacity="0.25"
               />
-              <defs>
-                <linearGradient id="splash-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0066FF"/>
-                  <stop offset="100%" stopColor="#00C9A7"/>
-                </linearGradient>
-              </defs>
             </motion.svg>
 
-            {/* Counter-rotating ring — teal */}
+            {/* Counter-rotating ring — gold */}
             <motion.svg
-              viewBox="0 0 200 200"
+              viewBox="0 0 160 160"
               className="absolute inset-0 w-full h-full"
               animate={{ rotate: -360 }}
               transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             >
               <circle
-                cx="100"
-                cy="100"
-                r="72"
-                stroke="#00C9A7"
+                cx="80"
+                cy="80"
+                r="56"
+                stroke="#C99338"
                 strokeWidth="0.8"
                 strokeDasharray="4 8"
                 fill="none"
-                opacity="0.3"
+                opacity="0.4"
               />
             </motion.svg>
 
@@ -114,7 +97,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
             <motion.img
               src="/icon-192.png"
               alt="HIVA"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.9, ease: 'easeOut', delay: 0.3 }}
@@ -123,7 +106,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
 
           {/* Brand name */}
           <div className="text-center mb-1">
-            <h1 className="text-4xl font-display font-bold tracking-tight text-white">
+            <h1 className="text-4xl font-display font-bold tracking-tight" style={{ color: '#163A28' }}>
               {letters.map((ch, i) => (
                 <motion.span
                   key={i}
@@ -146,17 +129,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2, duration: 0.6 }}
               className="text-sm font-body font-medium mt-2 tracking-[0.06em]"
-              style={{ color: '#00C9A7' }}
+              style={{ color: '#C99338' }}
             >
               Medichat
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.55 }}
+              animate={{ opacity: 0.65 }}
               transition={{ delay: 1.5, duration: 0.6 }}
-              className="text-[10px] font-body mt-2 tracking-[0.15em] uppercase text-n-400"
+              className="text-[10px] font-body mt-2 tracking-[0.15em] uppercase"
+              style={{ color: '#163A28' }}
             >
-              Trusted Intelligence. Institutional Impact.
+              Intelligence. Connected. Trusted.
             </motion.p>
           </div>
 
@@ -173,7 +157,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
                 animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.4, 1, 0.4] }}
                 transition={{ duration: 1, repeat: Infinity, delay }}
                 className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: i === 1 ? '#00C9A7' : '#0066FF' }}
+                style={{ backgroundColor: i === 1 ? '#C99338' : '#163A28' }}
               />
             ))}
           </motion.div>

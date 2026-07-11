@@ -5,27 +5,29 @@
 /* ─── CSS VARIABLES ─── */
 
 :root {
-  /* Accent — HIVA Blue */
-  --accent-50: #e6f0ff;
-  --accent-100: #cce0ff;
-  --accent-200: #99c2ff;
-  --accent-300: #66a3ff;
-  --accent-400: #3385ff;
-  --accent-500: #0066FF;
-  --accent-600: #0052cc;
-  --accent-700: #003d99;
-  --accent-800: #002966;
-  --accent-900: #001433;
+  /* Accent — HIVA Forest Green */
+  --accent-50: #E8F5EE;
+  --accent-100: #C5E4D2;
+  --accent-200: #8DCBAD;
+  --accent-300: #52AE83;
+  --accent-400: #2A9060;
+  --accent-500: #163A28;
+  --accent-600: #122F21;
+  --accent-700: #0E2519;
+  --accent-800: #091810;
+  --accent-900: #040C08;
 
-  /* Brand Teal */
-  --brand-teal: #00C9A7;
-  --brand-teal-light: #33D4B9;
-  --brand-teal-muted: rgba(0, 201, 167, 0.15);
-  --brand-teal-subtle: rgba(0, 201, 167, 0.08);
+  /* Brand Gold */
+  --brand-gold: #C99338;
+  --brand-gold-light: #DFBA72;
+  --brand-gold-muted: rgba(201, 147, 56, 0.15);
+  --brand-gold-subtle: rgba(201, 147, 56, 0.08);
 
-  /* Brand Navy */
-  --brand-navy: #0D1B2A;
-  --brand-navy-light: #1B2D44;
+  /* Brand Forest */
+  --brand-forest: #163A28;
+  --brand-forest-light: #1E5A3C;
+  --brand-forest-muted: rgba(22, 58, 40, 0.15);
+  --brand-forest-subtle: rgba(22, 58, 40, 0.08);
 
   /* Cool Slate Neutrals */
   --n-0: #ffffff;
@@ -107,7 +109,7 @@
 
 @layer base {
   html {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Poppins', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color var(--transition-base), color var(--transition-base);
@@ -169,11 +171,11 @@
   }
 
   .gradient-brand {
-    background: linear-gradient(135deg, #0066FF 0%, #00C9A7 100%);
+    background: linear-gradient(135deg, #163A28 0%, #C99338 100%);
   }
 
   .gradient-brand-text {
-    background: linear-gradient(135deg, #0066FF 0%, #00C9A7 100%);
+    background: linear-gradient(135deg, #163A28 0%, #C99338 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

@@ -15,14 +15,14 @@ const HivaLogo: React.FC<HivaLogoProps> = ({ size = 64, className, animate = fal
         animate && 'animate-hiva-float',
         className
       )}
-      style={{ width: size, height: size, background: '#0D1B2A' }}
+      style={{ width: size, height: size, background: '#ffffff', border: '1.5px solid #e2e8f0' }}
     >
       <img
         src="/icon-192.png"
         alt="HIVA"
         width={size}
         height={size}
-        style={{ objectFit: 'cover', width: size, height: size }}
+        style={{ objectFit: 'contain', width: size, height: size }}
         draggable={false}
       />
     </div>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  HIVA Medichat launcher icon foreground — infinity/butterfly mark
+  HIVA launcher icon foreground — H lettermark in circle
   Viewport 108×108, safe zone is the inner 72×72 (18dp inset each side).
   All artwork kept inside the safe zone for adaptive icon cropping.
 -->
@@ -10,22 +10,32 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- HIVA infinity symbol — left lobe (blue) -->
+    <!-- Outer circle ring — forest green -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M27,54 C27,43 34,35 43,35 C52,35 56,42 54,49 C52,56 56,63 65,63 C74,63 81,55 81,44"
-        android:strokeColor="#0066FF"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M54,20 A34,34 0 1,1 53.99,20"
+        android:strokeColor="#163A28"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
 
-    <!-- HIVA infinity symbol — right lobe (teal) -->
+    <!-- H left vertical bar — forest green -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M81,44 C81,55 74,63 65,63 C56,63 52,56 54,49 C56,42 52,35 43,35 C34,35 27,43 27,54"
-        android:strokeColor="#00C9A7"
-        android:strokeWidth="5.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:fillColor="#163A28"
+        android:pathData="M36,32 L36,76 L42,76 L42,32 Z" />
+
+    <!-- H right vertical bar — forest green -->
+    <path
+        android:fillColor="#163A28"
+        android:pathData="M66,32 L66,76 L72,76 L72,32 Z" />
+
+    <!-- H crossbar — forest green -->
+    <path
+        android:fillColor="#163A28"
+        android:pathData="M36,51 L72,51 L72,57 L36,57 Z" />
+
+    <!-- Center dot — gold -->
+    <path
+        android:fillColor="#C99338"
+        android:pathData="M54,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
 
 </vector>

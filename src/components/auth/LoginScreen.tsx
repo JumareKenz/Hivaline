@@ -75,22 +75,31 @@ const LoginScreen: React.FC = () => {
   return (
     <div
       className="relative flex flex-col items-center justify-center h-full px-4 noise-overlay"
-      style={{ background: 'linear-gradient(160deg, #0D1B2A 0%, #1B2D44 40%, #0D1B2A 100%)' }}
+      style={{ background: '#ffffff' }}
     >
+      {/* Subtle green tint at top */}
+      <div
+        className="absolute top-0 inset-x-0 h-48 pointer-events-none"
+        style={{ background: 'linear-gradient(180deg, rgba(22,58,40,0.05) 0%, transparent 100%)' }}
+      />
+
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
-        <HivaLogo size={72} className="mb-4" />
-        <h1 className="font-display font-bold text-4xl text-white tracking-tight">
+        <HivaLogo size={80} className="mb-4" />
+        <h1 className="font-display font-bold text-4xl tracking-tight" style={{ color: '#163A28' }}>
           HIVA
         </h1>
-        <p className="font-body text-sm text-brand-teal tracking-wide mt-1">
+        <p className="font-body text-sm tracking-wide mt-1 font-medium" style={{ color: '#C99338' }}>
           Medichat
+        </p>
+        <p className="font-body text-[10px] mt-1 tracking-[0.12em] uppercase" style={{ color: '#163A28', opacity: 0.5 }}>
+          Intelligence. Connected. Trusted.
         </p>
       </div>
 
       {/* Form */}
       <div className="w-full max-w-sm space-y-4">
-        <p className="text-center text-[11px] font-body text-white/60 uppercase tracking-widest">
+        <p className="text-center text-[11px] font-body uppercase tracking-widest" style={{ color: '#163A28', opacity: 0.5 }}>
           Enter code from your supervisor
         </p>
 
@@ -129,9 +138,10 @@ const LoginScreen: React.FC = () => {
             'transition-all duration-300',
             isSuccess
               ? 'bg-success text-white'
-              : 'gradient-brand text-white hover:opacity-90 active:scale-[0.97]',
+              : 'text-white hover:opacity-90 active:scale-[0.97]',
             (isLoading || isSuccess) && 'opacity-90 cursor-not-allowed'
           )}
+          style={!isSuccess ? { background: 'linear-gradient(135deg, #163A28 0%, #C99338 100%)' } : undefined}
         >
           {isSuccess ? (
             <>
@@ -154,7 +164,7 @@ const LoginScreen: React.FC = () => {
 
       {/* Footer */}
       <div className="absolute bottom-8 text-center">
-        <p className="text-[10px] font-body text-white/40">
+        <p className="text-[10px] font-body" style={{ color: '#163A28', opacity: 0.35 }}>
           v{APP_VERSION} · HIVA Medichat · Offline Ready
         </p>
       </div>

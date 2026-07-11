@@ -76,7 +76,7 @@ const WeightSlider: React.FC<WeightSliderProps> = ({ value, onChange }) => {
               '[&::-moz-range-thumb]:border-none'
             )}
             style={{
-              background: `linear-gradient(to right, #0066FF 0%, #0066FF ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 100%)`
+              background: `linear-gradient(to right, #163A28 0%, #163A28 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 ${((value - MIN_WEIGHT_KG) / (MAX_WEIGHT_KG - MIN_WEIGHT_KG)) * 100}%, #e2e8f0 100%)`
             }}
           />
         </div>

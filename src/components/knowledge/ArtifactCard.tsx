@@ -51,7 +51,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({ artifact, onClick }) => {
             {artifact.topics.slice(0, 3).map((topic) => (
               <span
                 key={topic}
-                className="px-2 py-0.5 rounded-full bg-brand-teal-subtle text-accent-500 text-[11px] font-body font-medium"
+                className="px-2 py-0.5 rounded-full bg-brand-forest-subtle text-accent-500 text-[11px] font-body font-medium"
               >
                 {topic}
               </span>

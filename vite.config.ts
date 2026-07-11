@@ -12,9 +12,9 @@ export default defineConfig({
       manifest: {
         name: 'HIVA Medichat',
         short_name: 'HIVA',
-        description: 'Offline Clinical AI for frontline health workers',
-        theme_color: '#0D1B2A',
-        background_color: '#0D1B2A',
+        description: 'Intelligence. Connected. Trusted.',
+        theme_color: '#163A28',
+        background_color: '#ffffff',
         display: 'standalone',
         start_url: './index.html',
         scope: '.',

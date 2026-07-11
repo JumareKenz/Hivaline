@@ -39,7 +39,7 @@ const KnowledgeDetailScreen: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {/* Gradient header */}
-        <div className="relative px-4 pt-6 pb-8" style={{ background: 'linear-gradient(135deg, #0D1B2A 0%, #1B2D44 60%, #0052cc 100%)' }}>
+        <div className="relative px-4 pt-6 pb-8" style={{ background: 'linear-gradient(135deg, #163A28 0%, #1E5A3C 60%, #C99338 100%)' }}>
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

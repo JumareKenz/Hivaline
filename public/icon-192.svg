@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <defs>
-    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0D1B2A"/>
-      <stop offset="100%" stop-color="#1B2D44"/>
-    </linearGradient>
-    <linearGradient id="icon-grad" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#0066FF"/>
-      <stop offset="100%" stop-color="#00C9A7"/>
-    </linearGradient>
-  </defs>
-  <rect width="192" height="192" rx="40" fill="url(#bg-grad)"/>
-  <!-- HIVA infinity symbol -->
-  <path d="M48 96c0-20 13-36 30-36s23 13 20 26c-3 13 3 26 20 26s30-16 30-36c0 20-13 36-30 36s-23-13-20-26c3-13-3-26-20-26S48 76 48 96z" stroke="url(#icon-grad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- White background with rounded corners -->
+  <rect width="192" height="192" rx="40" fill="#ffffff"/>
+  <!-- Outer circle ring — forest green -->
+  <circle cx="96" cy="96" r="76" stroke="#163A28" stroke-width="5" fill="none"/>
+  <!-- H lettermark — forest green -->
+  <rect x="50" y="54" width="18" height="84" rx="3" fill="#163A28"/>
+  <rect x="124" y="54" width="18" height="84" rx="3" fill="#163A28"/>
+  <rect x="50" y="87" width="92" height="18" rx="3" fill="#163A28"/>
+  <!-- Center connection dot — gold -->
+  <circle cx="96" cy="96" r="9" fill="#C99338"/>
+  <!-- Arc decorations — gold -->
+  <path d="M56 140 Q96 154 136 140" stroke="#C99338" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.7"/>
+  <path d="M56 52 Q96 38 136 52" stroke="#C99338" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.7"/>
 </svg>

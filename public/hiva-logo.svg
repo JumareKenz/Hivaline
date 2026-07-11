@@ -1,11 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- White background -->
   <circle cx="60" cy="60" r="60" fill="#ffffff"/>
-  <defs>
-    <linearGradient id="hiva-grad" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#0066FF"/>
-      <stop offset="100%" stop-color="#00C9A7"/>
-    </linearGradient>
-  </defs>
-  <!-- HIVA infinity/butterfly symbol -->
-  <path d="M30 60c0-12 8-22 18-22s14 8 12 16c-2 8 2 16 12 16s18-10 18-22c0 12-8 22-18 22s-14-8-12-16c2-8-2-16-12-16S30 48 30 60z" stroke="url(#hiva-grad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Outer circle ring — forest green -->
+  <circle cx="60" cy="60" r="52" stroke="#163A28" stroke-width="3.5" fill="none"/>
+  <!-- H lettermark — forest green -->
+  <rect x="34" y="36" width="10" height="48" rx="2" fill="#163A28"/>
+  <rect x="76" y="36" width="10" height="48" rx="2" fill="#163A28"/>
+  <rect x="34" y="54" width="52" height="10" rx="2" fill="#163A28"/>
+  <!-- Center connection dot — gold -->
+  <circle cx="60" cy="59" r="5" fill="#C99338"/>
+  <!-- Arc decorations — gold -->
+  <path d="M38 84 Q60 92 82 84" stroke="#C99338" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M38 36 Q60 28 82 36" stroke="#C99338" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
 </svg>
