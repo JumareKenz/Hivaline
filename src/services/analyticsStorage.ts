@@ -33,6 +33,17 @@ class AnalyticsStorage {
 
     this.initPromise = (async () => {
       try {
+        // Check if we're on native platform - use simple localStorage fallback for now
+        // TODO: Migrate to Capacitor SQLite plugin for production
+        const isNative = typeof (window as any).Capacitor !== 'undefined';
+
+        if (isNative) {
+          console.log('[AnalyticsStorage] Running on native - using localStorage fallback');
+          // Just mark as initialized, use localStorage directly for preferences
+          this.db = null;
+          return;
+        }
+
         const SQL = await initSqlJs({
           locateFile: (file) => `https://sql.js.org/dist/${file}`,
         });
@@ -191,7 +202,7 @@ class AnalyticsStorage {
    */
   async insertEvent(event: QueryAnalyticsEvent): Promise<number> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return 0; // Native: no SQL.js, events not persisted locally
 
     this.db.run(
       `INSERT INTO analytics_events (
@@ -229,7 +240,7 @@ class AnalyticsStorage {
    */
   async getUnsyncedEvents(limit: number = 500): Promise<LocalAnalyticsEvent[]> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) return [];
 
     const result = this.db.exec(
       `SELECT * FROM analytics_events WHERE synced = 0 ORDER BY created_at ASC LIMIT ?`,
@@ -359,7 +370,26 @@ class AnalyticsStorage {
    */
   async getPreferences(): Promise<UserAnalyticsPreferences> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+
+    // Native fallback: use localStorage
+    if (!this.db) {
+      const stored = localStorage.getItem('analytics_preferences');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          console.error('[AnalyticsStorage] Failed to parse preferences:', e);
+        }
+      }
+      // Return defaults
+      return {
+        chat_collection_enabled: false,
+        analytics_enabled: true,
+        consent_version: 'v1.0',
+        consent_timestamp: new Date().toISOString(),
+        last_updated: new Date().toISOString(),
+      };
+    }
 
     const result = this.db.exec(`SELECT * FROM user_preferences WHERE id = 1`);
 
@@ -389,7 +419,19 @@ class AnalyticsStorage {
    */
   async updatePreferences(prefs: Partial<UserAnalyticsPreferences>): Promise<void> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+
+    // Native fallback: use localStorage
+    if (!this.db) {
+      const current = await this.getPreferences();
+      const updated = {
+        ...current,
+        ...prefs,
+        last_updated: new Date().toISOString(),
+      };
+      localStorage.setItem('analytics_preferences', JSON.stringify(updated));
+      console.log('[AnalyticsStorage] Updated preferences (localStorage):', updated);
+      return;
+    }
 
     const updates: string[] = [];
     const values: unknown[] = [];
@@ -435,7 +477,17 @@ class AnalyticsStorage {
    */
   async getSummary() {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+
+    // Native fallback: return zeros (localStorage doesn't track events/sessions)
+    if (!this.db) {
+      return {
+        total_events: 0,
+        total_sessions: 0,
+        pending_sync_events: 0,
+        pending_sync_sessions: 0,
+        sync_success_rate: 1.0,
+      };
+    }
 
     const totalEvents = this.db.exec(
       'SELECT COUNT(*) FROM analytics_events'

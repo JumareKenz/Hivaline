@@ -138,6 +138,10 @@ export class ConversationEngine {
     // Increment turn count immediately for greeting/intent logic
     this.sessionState.turnCount += 1;
 
+    // Expire chiefComplaint if it was set more than 2 turns ago — prevents
+    // cross-scenario slot bleed (e.g. "fever" from malaria query bleeding into PPH query)
+    this.sessionState.expireStaleSlots();
+
     // Extract slots
     this.extractSlots(userMessage);
 
@@ -146,6 +150,7 @@ export class ConversationEngine {
     if (correction && this.sessionState.currentTopic) {
       this.sessionState.onTopicShift(correction);
       this.sessionState.slotMemory.chiefComplaint = null;
+      this.sessionState.slotMemory.chiefComplaintTurn = null;
     }
 
     // ─── Layer 3: Intent ───
@@ -535,33 +540,41 @@ export class ConversationEngine {
       }
     }
 
-    // If no answer content, use LLM as fallback
+    // If no answer content, attempt LLM generation — but ONLY with native-retriever evidence.
+    // JS-BM25 chunks are not query-matched well enough to be trusted as grounding for open
+    // clinical generation; using them risks fabrication. Generation is blocked unless the
+    // native retriever supplied rawText for this query (chunk count from HNSW > 0).
     if (!answerText) {
-      console.log('[ConversationEngine] No content in chunk, falling back to LLM generation');
-      console.log('[ConversationEngine] Query:', userMessage);
+      const retrieverStatus = getNativeRetrieverStatus();
+      console.log('[ConversationEngine] No content in chunk — retriever status:', retrieverStatus, '| nativeRawText:', nativeRawText !== null ? `${nativeRawText.length} chars` : 'null');
 
-      // Only use Edge Brain when evidence is from the native retriever (trusted,
-      // query-matched) OR when there is no native retriever path active.
-      // Never use Edge Brain with chunk evidence from a JS-BM25 result that may
-      // be completely unrelated to the query (JS BM25 can match generic terms
-      // and return wrong chunks while NativeRetriever is still initialising).
-      // In that window, return a transient "still loading" message instead.
-      // Only block when the native retriever is actively loading (not when it's
-      // idle or errored — those states mean it won't become ready, so blocking
-      // forever would keep returning this message for every query).
-      if (nativeRawText === null && getNativeRetrieverStatus() === 'loading') {
+      if (retrieverStatus === 'loading') {
         const transientMsg = "I'm still loading the clinical guidelines. Please ask again in a few seconds.";
         this._lastCSO = buildEarlyCSO(transientMsg, 'fallback', ['Tell me more', "What's the dose?", 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
         return { message: transientMsg, type: 'fallback', chunkId: null, suggestedFollowUps: ["What's the dose?", 'When should I refer?', 'Tell me more'] };
       }
 
-      // Build evidence from all available sources
-      const evidence = nativeRawText ?? this.extractChunkEvidence(chunk);
+      // Hard gate: generation requires native-retriever evidence (HNSW-matched, trusted).
+      // If native retriever returned 0 chunks (nativeRawText is null), do NOT call
+      // generateGrounded — it would generate open-ended clinical content with no verified
+      // source, which is unacceptable for this app.
+      if (nativeRawText === null) {
+        console.warn('[ConversationEngine] Blocking generation — 0 chunks from native retriever (status:', retrieverStatus, '). Returning no-evidence response.');
+        const noEvidenceMsg = buildFallback(rewritten.rewritten, this.sessionState, { topics: this.coverageManifest });
+        this._lastCSO = buildEarlyCSO(noEvidenceMsg, 'fallback', ['Tell me more', "What's the dose?", 'When should I refer?'], moduleResponse, { confidenceTier: 'LOW' });
+        return {
+          message: noEvidenceMsg,
+          type: 'fallback',
+          chunkId: chunk.id,
+          source: chunk.source,
+          suggestedFollowUps: ['Tell me more', "What's the dose?", 'When should I refer?'],
+        };
+      }
 
-      const brainReady = evidence && await isEdgeBrainReady();
-      if (brainReady && evidence) {
+      const brainReady = await isEdgeBrainReady();
+      if (brainReady) {
         try {
-          const genResult = await generateGrounded(evidence, userMessage);
+          const genResult = await generateGrounded(nativeRawText, userMessage);
 
           console.log('[ConversationEngine] LLM generated:', genResult.text?.substring(0, 100));
 
@@ -1064,6 +1077,22 @@ export class ConversationEngine {
       const ageStr = `${ageMatch[1]} ${ageMatch[2]}`;
       this.sessionState.slotMemory.patientAge = ageStr;
       this.sessionState.slotMemory.patientAgeMonths = this.sessionState.normalizeAge(ageStr);
+    } else if (this.sessionState.slotMemory.patientAgeMonths === null) {
+      // Infer pediatric age from non-numeric terms when no explicit age given.
+      // Sets a sentinel patientAgeMonths so dose assembly picks the correct pediatric bracket.
+      if (/\b(neonate|newborn|born\s*baby|just\s*born)\b/i.test(lower)) {
+        this.sessionState.slotMemory.patientAge = 'newborn';
+        this.sessionState.slotMemory.patientAgeMonths = 0;
+      } else if (/\b(infant|baby)\b/i.test(lower)) {
+        this.sessionState.slotMemory.patientAge = 'infant';
+        this.sessionState.slotMemory.patientAgeMonths = 6;
+      } else if (/\b(pikin|pekin|pickin|toddler|young child)\b/i.test(lower)) {
+        this.sessionState.slotMemory.patientAge = 'child';
+        this.sessionState.slotMemory.patientAgeMonths = 36;
+      } else if (/\b(child|kid)\b/i.test(lower) && !/\b(adult|woman|man|mother|father)\b/i.test(lower)) {
+        this.sessionState.slotMemory.patientAge = 'child';
+        this.sessionState.slotMemory.patientAgeMonths = 48;
+      }
     }
 
     const weightMatch = lower.match(/(\d+(?:\.\d+)?)\s*(kg|kilos?|kgs)/);
@@ -1077,41 +1106,11 @@ export class ConversationEngine {
       for (const keyword of CLINICAL_KEYWORDS) {
         if (lower.includes(keyword)) {
           this.sessionState.slotMemory.chiefComplaint = keyword;
+          this.sessionState.slotMemory.chiefComplaintTurn = this.sessionState.turnCount;
           break;
         }
       }
     }
-  }
-
-  private extractChunkEvidence(chunk: HIVChunk): string | null {
-    const langContent = (chunk.content?.en || chunk.content || {}) as Record<string, unknown>;
-    let substantiveLength = 0;
-    const parts: string[] = [];
-
-    // Extract all string values from the content object
-    for (const [, val] of Object.entries(langContent)) {
-      if (typeof val === 'string' && val.length > 20) {
-        parts.push(val);
-        substantiveLength += val.length;
-      } else if (Array.isArray(val)) {
-        const strings = val.filter((v): v is string => typeof v === 'string' && v.length > 10);
-        if (strings.length > 0) {
-          const joined = strings.join('. ');
-          parts.push(joined);
-          substantiveLength += joined.length;
-        }
-      }
-    }
-
-    // Only return if we have real medical content (not just metadata/trigger phrases)
-    // Trigger phrases alone are NOT evidence — they'd cause hallucination
-    if (substantiveLength < 50) return null;
-
-    if (chunk.display_title) {
-      parts.unshift(`Topic: ${chunk.display_title}`);
-    }
-
-    return parts.join('\n\n');
   }
 
   private getChunkTopics(chunk: HIVChunk): string[] {

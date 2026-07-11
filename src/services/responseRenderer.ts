@@ -302,5 +302,5 @@ export function buildGreeting(userName: string): string {
  * Fallback when no results found.
  */
 export function buildNoResultMessage(): string {
-  return `I don't have information on that in the current .hiv file. The loaded artifacts cover: Malaria, ANC, Child Health, Essential Medicines, and Emergency Referral. Try rephrasing or check the Knowledge Base.`;
+  return `I don't have information on that in the current clinical guidelines. The loaded topics cover: Malaria, ANC, Child Health, Essential Medicines, and Emergency Referral. Try rephrasing or check the Knowledge Base.`;
 }

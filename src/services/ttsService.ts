@@ -6,8 +6,6 @@
  * Gracefully degrades when neither is available.
  */
 
-import { nativeTTSService } from './nativeTTSService';
-
 export interface TTSVoice {
   uri: string;
   name: string;
@@ -216,40 +214,6 @@ class TTSService {
       this.error = e instanceof Error ? e.message : 'Speech synthesis failed';
       this.notify();
     }
-  }
-
-  private speakNative(text: string): void {
-    this.isSpeaking = true;
-    this.error = null;
-    this.notify();
-
-    nativeTTSService
-      .synthesize(text)
-      .then((audioBuffer) => {
-        if (!audioBuffer) {
-          throw new Error('No audio returned from native TTS');
-        }
-
-        // Play via Web Audio API
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-
-        source.onended = () => {
-          this.isSpeaking = false;
-          this.notify();
-          audioContext.close();
-        };
-
-        source.start(0);
-      })
-      .catch((err) => {
-        console.error('[TTSService] Native TTS failed, no fallback:', err);
-        this.isSpeaking = false;
-        this.error = err instanceof Error ? err.message : 'Speech synthesis failed';
-        this.notify();
-      });
   }
 
   cancel(): void {

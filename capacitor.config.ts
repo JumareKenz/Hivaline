@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.hiva.runtime',
-  appName: 'Hiva Medichat',
+  appName: 'HIVA Medichat',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

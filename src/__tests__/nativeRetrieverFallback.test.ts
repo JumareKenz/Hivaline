@@ -4,13 +4,18 @@
  * Background:
  *   download from compiler.hiva.chat fails → NativeRetriever status stays 'idle'
  *   → isNativeRetrieverReady() returns false forever
- *   → old guard `if (nativeRawText === null && await isNativeRetrieverReady() === false)`
- *     fired on EVERY query that had no template-assembled answer
+ *   → old guard fired on EVERY query that had no template-assembled answer
  *   → every such query returned "I'm still loading the clinical guidelines"
  *
- * Fix (conversationEngine.ts ~line 549):
- *   guard changed to `getNativeRetrieverStatus() === 'loading'`
- *   so idle/error states fall through to EdgeBrain with JS chunk evidence.
+ * Current behaviour (conversationEngine.ts):
+ *   - status='loading': returns transient "still loading" message
+ *   - status='idle'/'error': template-assembled answers from structured chunk fields
+ *     are served normally; if no structured answer exists AND nativeRawText is null,
+ *     generation is BLOCKED (returns fallback) — open clinical generation without
+ *     native-retriever-verified evidence is not acceptable.
+ *
+ * All test chunks in this suite have structured answer/dosage fields, so
+ * template assembly succeeds and the no-evidence gate is not hit.
  *
  * This suite simulates a real CHEW session: greetings, clinical queries,
  * follow-ups, dangerous presentations, and out-of-scope queries.

@@ -21,6 +21,7 @@ const CLINICAL_CORRECTIONS: Record<string, string> = {
   'pnemonia': 'pneumonia',
   'pneumona': 'pneumonia',
   'pnuemonia': 'pneumonia',
+  'pnumonia': 'pneumonia',
   'numonia': 'pneumonia',
   'newmonia': 'pneumonia',
   'diaroea': 'diarrhea',
@@ -86,6 +87,11 @@ const CLINICAL_CORRECTIONS: Record<string, string> = {
   'episiotmy': 'episiotomy',
   'resusitation': 'resuscitation',
   'resucitation': 'resuscitation',
+  'blured': 'blurred',
+  'tempurature': 'temperature',
+  'temprature': 'temperature',
+  'pregnency': 'pregnancy',
+  'headche': 'headache',
   'asphyxea': 'asphyxia',
   'aspyxia': 'asphyxia',
   'treetment': 'treatment',
@@ -158,6 +164,32 @@ const LOCAL_SYNONYMS: Record<string, string> = {
   'afterbirth': 'placenta',
   'waterbag': 'membranes',
   'navel': 'umbilicus',
+  // Multi-word Pidgin verb phrases — checked before tokenization
+  'dey vomit': 'vomiting',
+  'dey hot': 'fever',
+  'dey breathe fast': 'fast breathing',
+  'dey shake': 'convulsion',
+  'belly dey pain': 'abdominal pain',
+  'head dey pain': 'headache',
+  'eye dey yellow': 'jaundice',
+  'no dey breathe': 'not breathing',
+  // Medical abbreviations common in Nigerian clinical settings
+  'mrdt': 'malaria rapid test',
+  // Clinical phrase synonyms — map CHEW-common phrasing to indexed terminology
+  'complicated malaria': 'severe malaria',
+  'simple malaria': 'uncomplicated malaria',
+  // TB preventive therapy plain-English forms → abbreviations the index uses
+  'tb preventive therapy': 'isoniazid tpt tuberculosis preventive',
+  'tuberculosis preventive therapy': 'isoniazid tpt tuberculosis preventive',
+  'preventive therapy for tb': 'isoniazid tpt tuberculosis preventive',
+  'isoniazid preventive therapy': 'isoniazid tpt tuberculosis preventive',
+  // HIV in pregnancy plain forms
+  'hiv positive pregnant': 'pmtct art antenatal hiv pregnancy',
+  'pregnant woman hiv': 'pmtct art antenatal hiv pregnancy',
+  // PPH / heavy bleeding after delivery
+  'heavy bleeding after delivery': 'postpartum hemorrhage pph oxytocin',
+  'heavy bleeding after birth': 'postpartum hemorrhage pph oxytocin',
+  'bleeding after delivery': 'postpartum hemorrhage pph',
 };
 
 /**
@@ -185,6 +217,8 @@ const CLINICAL_PRESENCE_TERMS = new Set([
   // Common pidgin that maps to clinical
   'pikin', 'feva', 'cof', 'stooling', 'belle', 'fittin',
   'hotbody', 'purging', 'pressure', 'sugar',
+  // Medical abbreviations
+  'mrdt',
 ]);
 
 /**
@@ -220,7 +254,8 @@ export function normalizeQuery(query: string): string {
   let normalized = query;
   for (const [phrase, replacement] of Object.entries(LOCAL_SYNONYMS)) {
     if (phrase.includes(' ') && normalized.toLowerCase().includes(phrase)) {
-      normalized = normalized.replace(new RegExp(phrase, 'gi'), replacement);
+      // Use word-boundary anchor so "complicated malaria" does not fire inside "uncomplicated malaria"
+      normalized = normalized.replace(new RegExp('(?<![\\w])' + phrase + '(?![\\w])', 'gi'), replacement);
     }
   }
 

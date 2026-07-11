@@ -33,7 +33,7 @@ export const useSearch = () => {
       return {
         response: {
           type: 'text',
-          content: 'No clinical data loaded. Please log in to download the latest .hiv file from the server.',
+          content: 'No clinical data loaded. Please log in to download the latest clinical guidelines from the server.',
           sender: 'hiva' as const,
         },
       };
@@ -168,7 +168,7 @@ function searchWithVariants(query: string, file: NonNullable<ReturnType<typeof u
     return {
       response: {
         type: 'text',
-        content: "I don't have information on that in the current .hiv file. Try rephrasing or check the Knowledge Base for available topics.",
+        content: "I don't have information on that in the current clinical guidelines. Try rephrasing or check the Knowledge Base for available topics.",
         sender: 'hiva',
       },
     };

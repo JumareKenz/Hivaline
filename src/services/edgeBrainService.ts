@@ -183,7 +183,10 @@ export async function generateGrounded(
   const result = await EdgeBrain.generate({
     // Full ChatML prompt — used by the Qwen/JNI path (ignored by LEAP path)
     prompt,
-    maxTokens: options?.maxTokens ?? 512,
+    // 800 tokens: schema overhead ~30 + groundedness_signal ~5 + source_chunk_ids ~20
+    // + answer_text up to 600 chars ≈ ~150 tokens + closing brace. 512 was firing
+    // before answer_text could complete, causing the truncation/INSUFFICIENT_EVIDENCE bug.
+    maxTokens: options?.maxTokens ?? 800,
     temperature: options?.temperature ?? 0.1,
     topP: options?.topP ?? 0.9,
     repeatPenalty: options?.repeatPenalty ?? 1.1,
@@ -198,7 +201,12 @@ export async function generateGrounded(
   // This prevents ungrounded hallucinations from ever reaching the user.
   if (result.groundednessSignal === 'INSUFFICIENT') {
     if (result.text.trim() !== 'INSUFFICIENT_EVIDENCE') {
-      console.warn('[EdgeBrain] GROUNDING_OVERRIDE: forcing INSUFFICIENT_EVIDENCE (model output was:', result.text.substring(0, 50), ')');
+      console.warn(
+        '[EdgeBrain] GROUNDING_OVERRIDE: forcing INSUFFICIENT_EVIDENCE',
+        '| finishReason:', result.finishReason,
+        '| tokens:', result.tokenCount,
+        '| model output was:', JSON.stringify(result.text.substring(0, 100)),
+      );
     }
     result.text = 'INSUFFICIENT_EVIDENCE';
   }
@@ -262,7 +270,7 @@ CRITICAL RULES:
 6. List the source chunk IDs from the Evidence that support your answer.
 
 Respond ONLY with a raw JSON object. Do NOT wrap in markdown or code fences. Do NOT start with backticks. Start your response directly with { and end with }.
-{"answer_text": string, "source_chunk_ids": [string], "groundedness_signal": "GROUNDED"|"PARTIAL"|"INSUFFICIENT"}`;
+{"groundedness_signal": "GROUNDED"|"PARTIAL"|"INSUFFICIENT", "source_chunk_ids": [string], "answer_text": string}`;
 
   const userContent = `Evidence:\n${evidence}\n\nQuery: ${query}`;
 

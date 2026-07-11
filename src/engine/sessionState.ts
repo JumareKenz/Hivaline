@@ -20,6 +20,7 @@ export interface SlotMemory {
   patientWeight: string | null;
   patientWeightKg: number | null;
   chiefComplaint: string | null;
+  chiefComplaintTurn: number | null;  // turn number when chiefComplaint was set
   currentDrug: string | null;
   gender: 'male' | 'female' | null;
 }
@@ -48,6 +49,7 @@ export class SessionState {
       patientWeight: null,
       patientWeightKg: null,
       chiefComplaint: null,
+      chiefComplaintTurn: null,
       currentDrug: null,
       gender: null,
     };
@@ -101,6 +103,24 @@ export class SessionState {
   }
 
   /**
+   * Expire chiefComplaint after 2 turns of non-use.
+   * chiefComplaint enriches the immediately following follow-up turn but must
+   * not persist across unrelated clinical scenarios (malaria → PPH → hypertension).
+   * Call once at the start of each respond() cycle, before slot injection.
+   */
+  expireStaleSlots(): void {
+    const TTL = 2;
+    if (
+      this.slotMemory.chiefComplaint !== null &&
+      this.slotMemory.chiefComplaintTurn !== null &&
+      this.turnCount - this.slotMemory.chiefComplaintTurn > TTL
+    ) {
+      this.slotMemory.chiefComplaint = null;
+      this.slotMemory.chiefComplaintTurn = null;
+    }
+  }
+
+  /**
    * Detect if a new query represents a topic shift.
    */
   detectTopicShift(newTopic: string | null): boolean {
@@ -123,6 +143,15 @@ export class SessionState {
     this.pendingGaps = [];
     // Clear chiefComplaint on topic shift — new topic = likely different clinical situation
     this.slotMemory.chiefComplaint = null;
+    this.slotMemory.chiefComplaintTurn = null;
+    // Clear age slot if it was inferred from a non-numeric term ('newborn', 'infant', 'child').
+    // Numeric ages ('5 year', '3 month') describe a specific patient and persist across turns.
+    // Inferred sentinels are per-query context only — they must not bleed into unrelated topics.
+    const inferredAgeLabels = ['newborn', 'infant', 'child'];
+    if (this.slotMemory.patientAge !== null && inferredAgeLabels.includes(this.slotMemory.patientAge)) {
+      this.slotMemory.patientAge = null;
+      this.slotMemory.patientAgeMonths = null;
+    }
   }
 
   /**

@@ -31,8 +31,6 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import kotlin.math.sqrt
 
-// ObjectBox entity: 256-dim EmbeddingGemma vectors, HNSW-indexed
-// M=16, efConstruction=200 per compiler handoff recommendations.
 @Entity
 data class ClinicalChunk(
     @Id var dbId: Long = 0,
@@ -41,7 +39,7 @@ data class ClinicalChunk(
     var displayTitle: String = "",
     var chunkType: String = "",
     @HnswIndex(
-        dimensions = 256,
+        dimensions = 384,
         neighborsPerNode = 16,
         indexingSearchCount = 200,
     )
@@ -49,14 +47,14 @@ data class ClinicalChunk(
 )
 
 /**
- * NativeRetriever — ObjectBox + EmbeddingGemma-300M HNSW retrieval plugin.
+ * NativeRetriever — ObjectBox + E5-small-v2 HNSW retrieval plugin.
  *
  * Architecture:
- *   - Document vectors: pre-computed by compiler (EmbeddingGemma-300M, 256-dim,
- *     Matryoshka-truncated, L2-normalized), loaded from index/embeddings.bin.
- *   - Query vectors: computed on-device at search time using EmbeddingGemma-300M
- *     ONNX (q8) with SentencePiece tokenizer and asymmetric query prefix.
- *   - Search: ObjectBox HNSW nearest-neighbor on L2-normalized 256-dim vectors.
+ *   - Document vectors: pre-computed by compiler (E5-small-v2, 384-dim,
+ *     L2-normalized), loaded from index/embeddings.bin.
+ *   - Query vectors: computed on-device at search time using E5-small-v2
+ *     ONNX with BERT WordPiece tokenizer and "query: " prefix.
+ *   - Search: ObjectBox HNSW nearest-neighbor on L2-normalized 384-dim vectors.
  *
  * Capacitor methods:
  *   loadBundle(path)     -> { success, chunkCount, embeddingDims }
@@ -69,13 +67,13 @@ class NativeRetrieverPlugin : Plugin() {
 
     companion object {
         private const val TAG = "NativeRetriever"
-        private const val EMBEDDING_MODEL_DIR = "models/embedding-gemma"
-        private const val FUSED_MODEL_FILE = "embeddinggemma_fused_q8.onnx"
+        private const val EMBEDDING_MODEL_DIR = "models/e5-small-v2"
+        private const val FUSED_MODEL_FILE = "e5_small_v2_fused.onnx"
         private const val OBJECTBOX_DIR = "objectbox-native-retriever"
-        private const val EXPECTED_EMBEDDING_DIMS = 256
+        private const val EXPECTED_EMBEDDING_DIMS = 384
         private const val TOP_K_DEFAULT = 5
-        private const val EXPECTED_EMBEDDING_MODEL = "google/embeddinggemma-300m"
-        private const val HNSW_EF_SEARCH = 64  // HNSW search-time ef parameter
+        private const val EXPECTED_EMBEDDING_MODEL = "intfloat/e5-small-v2"
+        private const val HNSW_EF_SEARCH = 64
     }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -84,7 +82,7 @@ class NativeRetrieverPlugin : Plugin() {
     private var ortSession: OrtSession? = null
     private var ortEnv: OrtEnvironment? = null
     private var isReady = false
-    private var queryPrefix: String = "task: search result | query: "  // B.6: read from manifest
+    private var queryPrefix: String = "query: "
 
     private fun modelDir(): File = File(context.filesDir, EMBEDDING_MODEL_DIR)
 
@@ -123,15 +121,22 @@ class NativeRetrieverPlugin : Plugin() {
             try {
                 val startMs = System.currentTimeMillis()
 
-                // 1. Validate manifest embedding model compatibility
+                // 1. Validate manifest embedding compatibility
                 val retrievalCaps = parseRetrievalCapabilities(path)
-                val bundleModel = retrievalCaps.optString("embeddingModel", "")
-                if (bundleModel.isEmpty()) {
-                    call.reject("Bundle manifest missing retrievalCapabilities.embeddingModel")
+
+                // Validate dimensions from manifest match runtime expectation
+                val bundleDims = retrievalCaps.optInt("embeddingDims", 0)
+                if (bundleDims > 0 && bundleDims != EXPECTED_EMBEDDING_DIMS) {
+                    call.reject(
+                        "Embedding dimension mismatch: bundle=$bundleDims, " +
+                        "runtime=$EXPECTED_EMBEDDING_DIMS. Incompatible embedding space."
+                    )
                     return@launch
                 }
-                if (!bundleModel.contains("embeddinggemma", ignoreCase = true) &&
-                    bundleModel != EXPECTED_EMBEDDING_MODEL) {
+
+                // Validate model identifier if present (future compiler versions)
+                val bundleModel = retrievalCaps.optString("embeddingModel", "")
+                if (bundleModel.isNotEmpty() && bundleModel != EXPECTED_EMBEDDING_MODEL) {
                     call.reject(
                         "Embedding model mismatch: bundle='$bundleModel', " +
                         "runtime='$EXPECTED_EMBEDDING_MODEL'. Mismatched embedding space."
@@ -143,12 +148,12 @@ class NativeRetrieverPlugin : Plugin() {
                 val manifestPrefix = retrievalCaps.optString("queryPrefix", "")
                 if (manifestPrefix.isNotEmpty()) {
                     queryPrefix = manifestPrefix
-                    Log.i(TAG, "Query prefix: '$queryPrefix'")
+                    Log.i(TAG, "Query prefix from manifest: '$queryPrefix'")
                 } else {
-                    Log.w(TAG, "No queryPrefix in manifest, using default: '$queryPrefix'")
+                    Log.i(TAG, "No queryPrefix in manifest, using default: '$queryPrefix'")
                 }
 
-                // 2. Initialize fused ONNX model (tokenizer + EmbeddingGemma)
+                // 2. Initialize fused ONNX model (tokenizer + E5-small-v2)
                 val dir = modelDir()
                 val fusedModelFile = File(dir, FUSED_MODEL_FILE)
                 if (!fusedModelFile.exists()) {
@@ -204,10 +209,13 @@ class NativeRetrieverPlugin : Plugin() {
                 val session = ortSession ?: throw IllegalStateException("ONNX not ready")
                 val box = chunkBox ?: throw IllegalStateException("ObjectBox not ready")
 
-                val prefixedQuery = "$queryPrefix$query"  // B.6: asymmetric prefix from manifest
+                // E5-small-v2 is English-only — reject non-Latin-script queries
+                // at the embedder boundary (mirrors compiler-side assertion)
+                assertEnglishText(query)
+
+                val prefixedQuery = "$queryPrefix$query"
                 val queryVec = embedQuery(session, prefixedQuery)
 
-                // B.8: HNSW search with efSearch=64 (if API supports override)
                 val results = box.query(ClinicalChunk_.embedding.nearestNeighbors(queryVec, topK))
                     .build()
                     .findWithScores()
@@ -247,7 +255,8 @@ class NativeRetrieverPlugin : Plugin() {
     fun isEmbeddingModelDownloaded(call: PluginCall) {
         val dir = modelDir()
         val fusedModel = File(dir, FUSED_MODEL_FILE)
-        val ready = fusedModel.exists() && fusedModel.length() > 100_000_000
+        // E5-small-v2 fused model is ~67MB (vs 300MB for EmbeddingGemma)
+        val ready = fusedModel.exists() && fusedModel.length() > 30_000_000
 
         call.resolve(JSObject().apply {
             put("downloaded", ready)
@@ -260,19 +269,14 @@ class NativeRetrieverPlugin : Plugin() {
 
     @PluginMethod
     fun downloadEmbeddingModel(call: PluginCall) {
-        // Download the fused ONNX model (tokenizer + EmbeddingGemma baked in)
-        // This should be hosted on the user's CDN or HuggingFace
-        val baseUrl = call.getString("url")
-            ?: "https://huggingface.co/Kenzlejaze/hiva-models/resolve/main"  // EmbeddingGemma-300M ONNX
-
         scope.launch {
             try {
                 val dir = modelDir()
                 dir.mkdirs()
 
                 val dest = File(dir, FUSED_MODEL_FILE)
-                if (dest.exists() && dest.length() > 100_000_000) {
-                    Log.i(TAG, "Fused model already present (${dest.length() / (1024 * 1024)}MB)")
+                if (dest.exists() && dest.length() > 30_000_000) {
+                    Log.i(TAG, "E5 model already present (${dest.length() / (1024 * 1024)}MB)")
                     call.resolve(JSObject().apply {
                         put("success", true)
                         put("path", dir.absolutePath)
@@ -281,10 +285,15 @@ class NativeRetrieverPlugin : Plugin() {
                     return@launch
                 }
 
-                val url = "$baseUrl/$FUSED_MODEL_FILE"
-                Log.i(TAG, "Downloading fused model from $url...")
-                downloadFile(url, dest)
-                Log.i(TAG, "Downloaded ${dest.length() / (1024 * 1024)}MB")
+                // Copy bundled model from APK assets (no network download needed)
+                val assetPath = "$EMBEDDING_MODEL_DIR/$FUSED_MODEL_FILE"
+                Log.i(TAG, "Copying E5 model from assets: $assetPath")
+                context.assets.open(assetPath).use { input ->
+                    dest.outputStream().use { output ->
+                        input.copyTo(output, bufferSize = 65536)
+                    }
+                }
+                Log.i(TAG, "E5 model copied from assets (${dest.length() / (1024 * 1024)}MB)")
 
                 call.resolve(JSObject().apply {
                     put("success", true)
@@ -293,7 +302,7 @@ class NativeRetrieverPlugin : Plugin() {
                 })
             } catch (e: Exception) {
                 Log.e(TAG, "downloadEmbeddingModel failed", e)
-                call.reject("Download failed: ${e.message}")
+                call.reject("Model copy failed: ${e.message}")
             }
         }
     }
@@ -321,7 +330,7 @@ class NativeRetrieverPlugin : Plugin() {
         ortEnv = env
         val opts = OrtSession.SessionOptions().apply {
             setIntraOpNumThreads(2)
-            // Register onnxruntime-extensions for SentencePiece custom ops
+            // onnxruntime-extensions provides BertTokenizer op for fused E5 model
             registerCustomOpLibrary(getExtensionsLibPath())
         }
         ortSession = env.createSession(fusedModelFile.absolutePath, opts)
@@ -329,27 +338,39 @@ class NativeRetrieverPlugin : Plugin() {
     }
 
     private fun getExtensionsLibPath(): String {
-        // onnxruntime-extensions-android AAR extracts libortextensions.so to:
-        // context.applicationInfo.nativeLibraryDir/libortextensions.so
         val libDir = context.applicationInfo.nativeLibraryDir
         val libPath = File(libDir, "libortextensions.so").absolutePath
-        if (!File(libPath).exists()) {
-            throw IllegalStateException("libortextensions.so not found at $libPath")
+        if (File(libPath).exists()) return libPath
+
+        // Fallback: on newer Android with extractNativeLibs=false, try alternate paths
+        val altPaths = listOf(
+            "$libDir!/lib/arm64-v8a/libortextensions.so",
+            "/data/app/${context.packageName}/lib/arm64/libortextensions.so",
+        )
+        for (alt in altPaths) {
+            if (File(alt).exists()) return alt
         }
+
+        // Last resort: load via System to ensure it's mapped, then use nativeLibraryDir
+        try {
+            System.loadLibrary("ortextensions")
+            Log.i(TAG, "Loaded libortextensions via System.loadLibrary")
+        } catch (e: UnsatisfiedLinkError) {
+            Log.w(TAG, "System.loadLibrary(ortextensions) failed: ${e.message}")
+        }
+
+        // Return the canonical path even if exists() fails — ORT may resolve it internally
         return libPath
     }
 
     /**
-     * Embed a query string using fused EmbeddingGemma-300M ONNX model.
+     * Embed a query string using fused E5-small-v2 ONNX model.
      *
      * Pipeline (fully fused in ONNX):
-     *   Raw text -> SentencePiece tokenization -> Gemma3TextModel -> mean pooling ->
-     *   Dense(768->3072) -> Dense(3072->768) -> L2 Normalize -> sentence_embedding [1, 768]
+     *   Raw text -> WordPiece tokenization -> BERT encoder -> mean pooling ->
+     *   L2 Normalize -> sentence_embedding [1, 384]
      *
-     * Post-processing (on-device):
-     *   Truncate 768 -> 256 (Matryoshka) -> re-normalize L2 (MANDATORY)
-     *
-     * B.7: Spot-check normalization after truncation.
+     * No post-processing needed — 384 is the native output dimension.
      */
     private suspend fun embedQuery(
         session: OrtSession,
@@ -357,33 +378,27 @@ class NativeRetrieverPlugin : Plugin() {
     ): FloatArray = withContext(Dispatchers.IO) {
         val env = ortEnv ?: throw IllegalStateException("ORT env not available")
 
-        // Fused model takes raw text as input
         val textInput = OnnxTensor.createTensor(env, arrayOf(text))
 
         val results = session.run(mapOf("text" to textInput))
         textInput.close()
 
-        // Extract sentence_embedding output [1, 768]
-        // Output order: [last_hidden_state, sentence_embedding]
         val sentenceEmbOutput = results.get("sentence_embedding")
             .orElseGet { results.get(1) } as OnnxTensor
-        val fullVec = (sentenceEmbOutput.value as Array<FloatArray>)[0]
+        val vec = (sentenceEmbOutput.value as Array<FloatArray>)[0]
         results.close()
 
-        if (fullVec.size < EXPECTED_EMBEDDING_DIMS) {
-            throw IllegalStateException("Model output ${fullVec.size}D, need >=$EXPECTED_EMBEDDING_DIMS")
+        if (vec.size != EXPECTED_EMBEDDING_DIMS) {
+            throw IllegalStateException(
+                "Model output ${vec.size}D, expected ${EXPECTED_EMBEDDING_DIMS}D"
+            )
         }
 
-        // B.3: Matryoshka truncation (768 -> 256) + re-normalization
-        // CRITICAL: Slicing a normalized 768-dim vector to 256 dims drops norm to ~0.605
-        // Re-normalization is MANDATORY or ObjectBox HNSW search returns wrong neighbors
-        val vec = fullVec.copyOf(EXPECTED_EMBEDDING_DIMS)
-        normalizeInPlace(vec)
-
-        // B.7: Verify normalization (spot-check)
+        // E5 output should already be L2-normalized; verify and correct if needed
         val norm = l2Norm(vec)
         if (norm < 0.99f || norm > 1.01f) {
-            Log.w(TAG, "Query vec norm=$norm after re-norm (expected ~1.0)")
+            Log.w(TAG, "E5 output norm=$norm, re-normalizing")
+            normalizeInPlace(vec)
         }
 
         vec
@@ -395,22 +410,19 @@ class NativeRetrieverPlugin : Plugin() {
         withContext(Dispatchers.IO) {
             ZipFile(hivPath).use { zip ->
                 val entry = zip.getEntry("manifest.json")
-                    ?: throw IllegalArgumentException(".hiv missing manifest.json")
+                    ?: throw IllegalArgumentException(".hiva missing manifest.json")
                 val json = JSONObject(zip.getInputStream(entry).bufferedReader().readText())
-                json.optJSONObject("retrievalCapabilities")
-                    ?: throw IllegalArgumentException("manifest missing retrievalCapabilities")
+                // retrievalCapabilities is optional — older bundles omit it.
+                // Return empty object so dimension/model checks are skipped.
+                json.optJSONObject("retrievalCapabilities") ?: JSONObject()
             }
         }
 
     /**
-     * Import pre-computed 256-dim EmbeddingGemma vectors from index/embeddings.bin.
+     * Import pre-computed vectors from index/embeddings.bin.
      *
-     * Binary format:
-     *   [int32 N] [int32 D] [N * D * float32 vectors]
-     *   Vectors are L2-normalized by the compiler.
-     *
-     * Chunk IDs from index/embeddings_index.json (JSON array, same order).
-     * Metadata from content/chunks.jsonl.
+     * Binary format: [int32 N] [int32 D] [N * D * float32 vectors]
+     * Vectors are L2-normalized by the compiler.
      */
     private suspend fun importPrecomputedVectors(
         hivPath: String,
@@ -419,7 +431,7 @@ class NativeRetrieverPlugin : Plugin() {
         ZipFile(hivPath).use { zip ->
             // Read embeddings.bin
             val embEntry = zip.getEntry("index/embeddings.bin")
-                ?: throw IllegalArgumentException(".hiv missing index/embeddings.bin")
+                ?: throw IllegalArgumentException(".hiva missing index/embeddings.bin")
             val embBytes = zip.getInputStream(embEntry).readBytes()
             val buf = ByteBuffer.wrap(embBytes).order(ByteOrder.LITTLE_ENDIAN)
 
@@ -444,14 +456,28 @@ class NativeRetrieverPlugin : Plugin() {
                 Log.i(TAG, "L2 normalization OK: norm=$norm")
             }
 
-            // Read chunk ID index
+            // Read chunk ID index — supports both formats:
+            //   Format A (legacy): JSONArray ["id0", "id1", ...]
+            //   Format B (compiler v3.0): JSONObject {"index": {"0": "id0", "1": "id1", ...}}
             val idxEntry = zip.getEntry("index/embeddings_index.json")
-                ?: throw IllegalArgumentException(".hiv missing index/embeddings_index.json")
-            val idxArr = org.json.JSONArray(
-                zip.getInputStream(idxEntry).bufferedReader().readText()
-            )
-            if (idxArr.length() != n) {
-                throw IllegalArgumentException("Count mismatch: bin=$n, index=${idxArr.length()}")
+                ?: throw IllegalArgumentException(".hiva missing index/embeddings_index.json")
+            val idxRaw = zip.getInputStream(idxEntry).bufferedReader().readText()
+            val idxArr: Array<String>
+
+            val trimmed = idxRaw.trimStart()
+            if (trimmed.startsWith("[")) {
+                // Format A: plain JSON array
+                val arr = org.json.JSONArray(trimmed)
+                idxArr = Array(arr.length()) { i -> arr.getString(i) }
+            } else {
+                // Format B: {"index": {"0": "id", "1": "id", ...}}
+                val obj = JSONObject(trimmed)
+                val indexObj = obj.getJSONObject("index")
+                idxArr = Array(indexObj.length()) { i -> indexObj.getString(i.toString()) }
+            }
+
+            if (idxArr.size != n) {
+                throw IllegalArgumentException("Count mismatch: bin=$n, index=${idxArr.size}")
             }
 
             // Read chunk metadata
@@ -480,7 +506,7 @@ class NativeRetrieverPlugin : Plugin() {
             buf.position(8)
             val entities = ArrayList<ClinicalChunk>(n)
             for (i in 0 until n) {
-                val id = idxArr.getString(i)
+                val id = idxArr[i]
                 val vec = FloatArray(d) { buf.getFloat() }
                 val m = meta[id]
                 entities.add(ClinicalChunk(
@@ -504,10 +530,40 @@ class NativeRetrieverPlugin : Plugin() {
     private fun openBoxStore(ctx: Context): BoxStore {
         val dir = File(ctx.filesDir, OBJECTBOX_DIR)
         dir.mkdirs()
-        return MyObjectBox.builder()
-            .androidContext(ctx)
-            .directory(dir)
-            .build()
+        return try {
+            MyObjectBox.builder()
+                .androidContext(ctx)
+                .directory(dir)
+                .build()
+        } catch (e: Exception) {
+            // Schema mismatch (e.g. HNSW dimension change) — delete and recreate
+            Log.w(TAG, "ObjectBox open failed (${e.message}), resetting database")
+            dir.deleteRecursively()
+            dir.mkdirs()
+            MyObjectBox.builder()
+                .androidContext(ctx)
+                .directory(dir)
+                .build()
+        }
+    }
+
+    /**
+     * Reject queries with significant non-Latin script content.
+     * E5-small-v2 has no meaningful multilingual training — embedding non-English
+     * text silently degrades retrieval quality without any visible error.
+     */
+    private fun assertEnglishText(text: String) {
+        val nonLatinCount = text.count { ch ->
+            ch.code > 0x024F && !ch.isWhitespace() && !ch.isDigit() &&
+            ch !in '!'..'/' && ch !in ':'..'@' && ch !in '['..'`' && ch !in '{'..'~'
+        }
+        val totalNonSpace = text.count { !it.isWhitespace() }
+        if (totalNonSpace > 0 && nonLatinCount.toFloat() / totalNonSpace > 0.3f) {
+            throw IllegalArgumentException(
+                "E5-small-v2 requires English text. Query contains ${nonLatinCount}/" +
+                "${totalNonSpace} non-Latin characters. Translate before embedding."
+            )
+        }
     }
 
     private fun l2Norm(v: FloatArray): Float {
@@ -536,25 +592,4 @@ class NativeRetrieverPlugin : Plugin() {
         return parts.joinToString("\n\n")
     }
 
-    private suspend fun downloadFile(url: String, dest: File) = withContext(Dispatchers.IO) {
-        val tmp = File(dest.parent, "${dest.name}.tmp")
-        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        conn.connectTimeout = 30_000
-        conn.readTimeout = 180_000
-        conn.instanceFollowRedirects = true
-        conn.connect()
-        if (conn.responseCode != 200) {
-            conn.disconnect()
-            throw RuntimeException("HTTP ${conn.responseCode} for ${dest.name}")
-        }
-        conn.inputStream.use { input ->
-            tmp.outputStream().use { output ->
-                input.copyTo(output, bufferSize = 65536)
-            }
-        }
-        conn.disconnect()
-        if (!tmp.renameTo(dest)) {
-            throw RuntimeException("Failed to rename ${tmp.name} to ${dest.name}")
-        }
-    }
 }

@@ -5,7 +5,7 @@
  * Fallback to Web Speech API if native TTS unavailable.
  */
 
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 
 interface NativeTTSSynthesizeResult {
   samples: number[];
@@ -29,7 +29,7 @@ class NativeTTSService {
     }
 
     try {
-      const { NativeTTS } = await import('@capacitor/core').then((m) => m.Plugins);
+      const NativeTTS = registerPlugin<any>('NativeTTS');
       const result = (await NativeTTS.isAvailable()) as NativeTTSAvailability;
 
       this.isNativeAvailable = result.available;
@@ -52,7 +52,7 @@ class NativeTTSService {
     }
 
     try {
-      const { NativeTTS } = await import('@capacitor/core').then((m) => m.Plugins);
+      const NativeTTS = registerPlugin<any>('NativeTTS');
       const result = (await NativeTTS.synthesize({ text })) as NativeTTSSynthesizeResult;
 
       // Convert samples to AudioBuffer for Web Audio API playback

@@ -110,27 +110,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
               />
             </motion.svg>
 
-            {/* Main HIVA infinity symbol — animated draw */}
-            <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full">
-              <defs>
-                <linearGradient id="splash-logo-grad" x1="0%" y1="50%" x2="100%" y2="50%">
-                  <stop offset="0%" stopColor="#0066FF"/>
-                  <stop offset="50%" stopColor="#0099DD"/>
-                  <stop offset="100%" stopColor="#00C9A7"/>
-                </linearGradient>
-              </defs>
-              <motion.path
-                d="M50 100c0-22 14-40 32-40s25 14 22 30c-4 14 4 30 22 30s32-18 32-40c0 22-14 40-32 40s-25-14-22-30c4-14-4-30-22-30S50 78 50 100z"
-                stroke="url(#splash-logo-grad)"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1.8, ease: 'easeInOut', delay: 0.3 }}
-              />
-            </svg>
+            {/* HIVA logo mark */}
+            <motion.img
+              src="/icon-192.png"
+              alt="HIVA"
+              className="absolute inset-0 w-full h-full object-cover"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.9, ease: 'easeOut', delay: 0.3 }}
+            />
           </div>
 
           {/* Brand name */}
@@ -157,18 +145,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 2500
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2, duration: 0.6 }}
-              className="text-sm font-body font-medium mt-2 tracking-[0.08em]"
+              className="text-sm font-body font-medium mt-2 tracking-[0.06em]"
               style={{ color: '#00C9A7' }}
             >
               Medichat
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
+              animate={{ opacity: 0.55 }}
               transition={{ delay: 1.5, duration: 0.6 }}
-              className="text-xs font-body mt-1 tracking-[0.12em] uppercase text-n-400"
+              className="text-[10px] font-body mt-2 tracking-[0.15em] uppercase text-n-400"
             >
-              Trusted Intelligence
+              Trusted Intelligence. Institutional Impact.
             </motion.p>
           </div>
 

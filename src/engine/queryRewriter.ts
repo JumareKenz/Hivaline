@@ -41,6 +41,13 @@ const CLINICAL_SYNONYMS: Record<string, string[]> = {
   pregnant: ['pregnancy', 'maternal', 'pmtct'],
   failure: ['virologic', 'viral', 'load', 'resistance'],
   coinfection: ['co-infection'],
+  // "complicated malaria" is CHEW-standard phrasing; indexed content uses "severe malaria"
+  complicated: ['severe'],
+  mrdt: ['malaria', 'rapid', 'test', 'rdt'],
+  // "when to start preventive therapy" → anchor to TPT/isoniazid vocabulary in index
+  // NOTE: "prophylaxis" deliberately excluded — it matches wound/surgical prophylaxis chunks
+  preventive: ['isoniazid', 'tpt'],
+  therapy: ['treatment', 'regimen'],
 };
 
 /**
@@ -137,7 +144,15 @@ export function rewriteQuery(query: string, intent: string, sessionState: Sessio
   if (slots.chiefComplaint) {
     rewritten += ' ' + slots.chiefComplaint;
   }
-  if (slots.patientAgeMonths !== null) {
+  // Age slot: only inject when the current query references a pediatric patient.
+  // Guard 1 — query must mention a patient at all.
+  // Guard 2 — query must NOT contain clearly adult-only terms (woman, man, mother,
+  //            pregnant, labour, delivery, postnatal) without also mentioning a child.
+  //            This prevents a newborn slot from the previous turn bleeding into
+  //            "HIV positive pregnant woman ART" or "woman delivered heavy bleeding".
+  const queryHasPediatricRef = /\b(baby|infant|child|pikin|toddler|neonate|newborn|boy|\d+\s*(year|month|week|day)s?\s*old)\b/i.test(query);
+  const queryHasAdultOnlyRef = /\b(woman|man|mother|father|pregnant|labour|labor|delivery|postpartum|postnatal|antenatal)\b/i.test(query) && !queryHasPediatricRef;
+  if (slots.patientAgeMonths !== null && queryHasPediatricRef && !queryHasAdultOnlyRef) {
     rewritten += slots.patientAgeMonths < 24 ? ' infant neonate' : ' child';
   }
 

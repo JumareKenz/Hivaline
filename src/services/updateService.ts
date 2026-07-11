@@ -15,6 +15,9 @@ import { parseHIVFile } from './hivLoader';
 import { getToken, clearAuth } from './authStorage';
 import type { UpdateMetadata, HIVFile } from '@/types/hiv';
 import { HIVA_KNOWN_VERSION_KEY } from '@/utils/constants';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+
+const HIV_NATIVE_PATH = 'hiva-bundle/current.hiva';
 
 interface HIVDB extends DBSchema {
   files: {
@@ -179,6 +182,12 @@ export async function downloadHIV(
     await db.delete(STORE_NAME, 'partial');
     localStorage.setItem(HIVA_KNOWN_VERSION_KEY, meta.version);
 
+    // Also save to native filesystem for NativeRetriever access
+    await saveHIVToNativeFS(full);
+
+    // Notify HIVFileContext so it reloads the JS file and initialises NativeRetriever
+    window.dispatchEvent(new CustomEvent('hiva:file-downloaded'));
+
     return full;
   } catch (err) {
     // Auth errors in manual mode must surface to the caller, not be swallowed.
@@ -201,6 +210,62 @@ export async function hasStoredHIV(): Promise<boolean> {
     return key != null;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Get raw .hiv file bytes from IndexedDB (for writing to native filesystem).
+ */
+export async function getStoredHIVBytes(): Promise<Uint8Array | null> {
+  try {
+    const db = await getDB();
+    const record = await db.get(STORE_NAME, 'current');
+    if (!record) return null;
+    return record.blob instanceof Uint8Array ? record.blob : new Uint8Array(record.blob);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save .hiv bytes to native filesystem for NativeRetriever access.
+ * Writes in 512KB base64 chunks to avoid memory pressure.
+ */
+async function saveHIVToNativeFS(data: Uint8Array): Promise<void> {
+  const isNative = typeof (window as any).Capacitor !== 'undefined';
+  if (!isNative) return;
+
+  try {
+    try { await Filesystem.mkdir({ path: 'hiva-bundle', directory: Directory.Data, recursive: true }); } catch { /* exists */ }
+    try { await Filesystem.deleteFile({ path: HIV_NATIVE_PATH, directory: Directory.Data }); } catch { /* doesn't exist */ }
+
+    const chunkSize = 512 * 1024;
+    for (let offset = 0; offset < data.length; offset += chunkSize) {
+      const slice = data.slice(offset, Math.min(offset + chunkSize, data.length));
+      let binary = '';
+      for (let i = 0; i < slice.length; i++) binary += String.fromCharCode(slice[i]);
+      await Filesystem.appendFile({ path: HIV_NATIVE_PATH, data: btoa(binary), directory: Directory.Data });
+    }
+    console.log('[updateService] .hiva saved to native FS');
+  } catch (err) {
+    console.warn('[updateService] Failed to save .hiva to native FS:', err);
+  }
+}
+
+/**
+ * Get the absolute native path of the .hiv file (for NativeRetriever).
+ * Returns null if not yet persisted to native filesystem.
+ */
+export async function getHIVNativePath(): Promise<string | null> {
+  const isNative = typeof (window as any).Capacitor !== 'undefined';
+  if (!isNative) return null;
+
+  try {
+    const stat = await Filesystem.stat({ path: HIV_NATIVE_PATH, directory: Directory.Data });
+    // Strip file: URI prefix — Kotlin ZipFile needs a plain filesystem path
+    return stat.uri.replace(/^file:\/\//, '').replace(/^file:/, '');
+  } catch {
+    return null;
   }
 }
 

@@ -10,17 +10,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Hiva Medichat',
-        short_name: 'Hiva Medichat',
-        description: 'Offline Clinical AI for Nigeria CHEWs',
-        theme_color: '#155D46',
-        background_color: '#ffffff',
+        name: 'HIVA Medichat',
+        short_name: 'HIVA',
+        description: 'Offline Clinical AI for frontline health workers',
+        theme_color: '#0D1B2A',
+        background_color: '#0D1B2A',
         display: 'standalone',
         start_url: './index.html',
         scope: '.',
         icons: [
-          { src: './icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: './icon-512.svg', sizes: '512x512', type: 'image/svg+xml' }
+          { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: './icon-512.png', sizes: '512x512', type: 'image/png' }
         ]
       },
       workbox: {

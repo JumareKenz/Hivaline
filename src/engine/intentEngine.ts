@@ -16,7 +16,7 @@ export const INTENT_PATTERNS: Record<string, RegExp | null> = {
   DETAIL: /specific|exact|how much|dosage|dose|how many|quantity|amount|tablet|mg\b|ml\b|administration/i,
   PROCEDURE: /how to|how do i|steps|protocol|process|procedure|method/i,
   REFERRAL: /when to refer|when should|when is it serious|when to send|refer/i,
-  AFFIRM: /^yes[.!?]?$|^yeah$|^ok$|^okay$|correct|right|exactly|sure/i,
+  AFFIRM: /^yes[.!?]?$|^yes[,.]?\s*please[.!?]?$|^yeah$|^ok$|^okay$|correct|right|exactly|sure/i,
   NEGATE: /^no[.!?]?$|not that|wrong|different|other|else/i,
   GREETING: /^(hi|hello|good morning|good afternoon|salam|ẹ káàbọ̀|ndewo)[\s!.?]*$/i,
   HEADING_LOOKUP: null, // handled by isAmbiguousInput pre-check

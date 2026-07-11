@@ -48,6 +48,14 @@ import java.io.File
  * SAFETY: Primary clinical safety gate (checkGrounding ≥70% term-match) lives in
  *   TypeScript (conversationEngine.ts:513) and is independent of this class.
  *   groundednessSignal is secondary — logged for monitoring only.
+ *
+ * JSON schema / maxLength note:
+ *   LEAP SDK enforces structural JSON constraints (field presence, enum values, types)
+ *   but maxLength on string fields may be silently ignored depending on SDK version.
+ *   The transformWhile ceiling (maxChunks) is therefore the primary token gate.
+ *   Schema field order: groundedness_signal → source_chunk_ids → answer_text
+ *   ensures the cheap fields are committed first; if the ceiling fires during
+ *   answer_text generation the salvage path can still recover both.
  */
 class EdgeBrainLeapDelegate(
     private val context: Context,
@@ -68,9 +76,11 @@ class EdgeBrainLeapDelegate(
 
         // Chunk ceiling enforced via transformWhile.
         // LEAP emits one Chunk per decoded token. jsonSchemaConstraint normally causes
-        // CONSTRAINT/STOP before this ceiling fires. 1024 is a generous safety net —
-        // the JS layer sends maxTokens=512 which overrides this default.
-        private const val DEFAULT_MAX_CHUNKS = 1024
+        // CONSTRAINT/STOP before this ceiling fires.
+        // Default raised to 2048 — the JS layer sends maxTokens=512, which was
+        // firing before answer_text could finish. 2048 gives the full JSON room
+        // to close even for a 600-char answer_text.
+        private const val DEFAULT_MAX_CHUNKS = 2048
 
         private const val TRANSLATION_SYSTEM_PROMPT =
             "You are a medical translation assistant. Translate the user's query to English. " +
@@ -169,6 +179,10 @@ class EdgeBrainLeapDelegate(
                 // would accumulate incorrect history across unrelated clinical queries.
                 val conversation = runner.createConversation(systemPrompt)
 
+                // ISSUE-4 DEBUG: log exact schema sent to LEAP so we can confirm
+                // maxLength and field order in logcat.
+                Log.d(TAG, "SCHEMA_DEBUG: jsonSchemaConstraint=$mediChatJsonSchema")
+
                 val genOptions = GenerationOptions(
                     temperature = temperature,
                     topP = topP,
@@ -245,6 +259,10 @@ class EdgeBrainLeapDelegate(
                     .replace(Regex("```\\s*$", RegexOption.MULTILINE), "")
                     .trim()
 
+                // ISSUE-4 DEBUG: log the full raw output so we can inspect JSON
+                // completeness in logcat whenever parsing is attempted.
+                Log.d(TAG, "RAW_OUTPUT: finishReason=$finishReason chunks=$chunkCount raw=$rawJson")
+
                 val parsed = runCatching {
                     Json.decodeFromString(MediChatResponse.serializer(), rawJson)
                 }.getOrNull()
@@ -266,12 +284,44 @@ class EdgeBrainLeapDelegate(
                         Log.w(TAG, "GROUNDING_PARTIAL: model self-reports partial")
                     }
                 } else {
-                    // Schema parse failed — model returned plain text instead of JSON.
-                    // Treat as ungrounded raw answer; let the JS grounding check decide.
-                    Log.w(TAG, "Schema parse failed, using raw text. finishReason=$finishReason raw=${rawJson.take(100)}")
-                    answerText = rawJson.trim()
-                    groundednessSignal = "INSUFFICIENT"
-                    sourceChunkIds = emptyList()
+                    // JSON parse failed — likely truncated mid-string by token ceiling.
+                    // Log the full raw output first so we can diagnose recurrences.
+                    Log.w(TAG, "PARSE_FAIL: JSON parse failed. finishReason=$finishReason chunks=$chunkCount")
+                    Log.w(TAG, "PARSE_FAIL raw output: $rawJson")
+
+                    // Salvage attempt 1: try to extract answer_text from partial JSON
+                    // before falling back to INSUFFICIENT. Regex tolerates a missing
+                    // closing quote/brace — captures everything after "answer_text":".
+                    val salvaged = runCatching {
+                        val m = Regex(""""answer_text"\s*:\s*"((?:[^"\\]|\\.)*)""").find(rawJson)
+                        m?.groupValues?.get(1)?.takeIf { it.isNotBlank() }
+                    }.getOrNull()
+
+                    if (salvaged != null) {
+                        // We have partial answer text; pass it up and let the JS
+                        // checkGrounding() term-match decide if it's usable.
+                        Log.w(TAG, "PARSE_FAIL salvaged answer_text (${salvaged.length} chars): ${salvaged.take(80)}")
+                        answerText = salvaged
+                        // Can't trust groundedness_signal if JSON was truncated;
+                        // leave it to the JS checkGrounding() gate.
+                        groundednessSignal = "PARTIAL"
+                        sourceChunkIds = emptyList()
+                    } else {
+                        // Salvage attempt 2: check if rawJson is plain "INSUFFICIENT_EVIDENCE"
+                        // (model ignored schema and returned raw text).
+                        if (rawJson.trim().startsWith("INSUFFICIENT_EVIDENCE")) {
+                            Log.w(TAG, "PARSE_FAIL: model returned plain INSUFFICIENT_EVIDENCE text (no JSON)")
+                            answerText = "INSUFFICIENT_EVIDENCE"
+                            groundednessSignal = "INSUFFICIENT"
+                            sourceChunkIds = emptyList()
+                        } else {
+                            // Nothing salvageable — pass raw text up; JS grounding check runs.
+                            Log.w(TAG, "PARSE_FAIL: no salvageable content, passing raw text to JS grounding check")
+                            answerText = rawJson.trim()
+                            groundednessSignal = "PARTIAL"
+                            sourceChunkIds = emptyList()
+                        }
+                    }
                 }
 
                 val sourceArray = JSArray()
@@ -404,19 +454,19 @@ class EdgeBrainLeapDelegate(
     /**
      * JSON Schema for LEAP's jsonSchemaConstraint (decode-time enforcement).
      * Must stay in sync with MediChatResponse.kt.
+     *
+     * Field order: groundedness_signal → source_chunk_ids → answer_text.
+     * The two cheap fields are committed before the long answer_text string
+     * starts, so if the token ceiling fires during answer_text generation the
+     * salvage regex in the else-branch can still recover the partial answer.
+     *
+     * maxLength: 600 is included but LEAP SDK may silently ignore it depending
+     * on version. The token ceiling (maxChunks) is the authoritative gate.
      */
     private fun buildMediChatJsonSchema(): String =
         buildJsonObject {
             put("type", "object")
             putJsonObject("properties") {
-                putJsonObject("answer_text") {
-                    put("type", "string")
-                    put("maxLength", 600)  // constrained decoding closes string before token budget runs out
-                }
-                putJsonObject("source_chunk_ids") {
-                    put("type", "array")
-                    putJsonObject("items") { put("type", "string") }
-                }
                 putJsonObject("groundedness_signal") {
                     put("type", "string")
                     putJsonArray("enum") {
@@ -425,11 +475,19 @@ class EdgeBrainLeapDelegate(
                         add(JsonPrimitive("INSUFFICIENT"))
                     }
                 }
+                putJsonObject("source_chunk_ids") {
+                    put("type", "array")
+                    putJsonObject("items") { put("type", "string") }
+                }
+                putJsonObject("answer_text") {
+                    put("type", "string")
+                    put("maxLength", 600)
+                }
             }
             putJsonArray("required") {
-                add(JsonPrimitive("answer_text"))
-                add(JsonPrimitive("source_chunk_ids"))
                 add(JsonPrimitive("groundedness_signal"))
+                add(JsonPrimitive("source_chunk_ids"))
+                add(JsonPrimitive("answer_text"))
             }
             put("additionalProperties", false)
         }.toString()

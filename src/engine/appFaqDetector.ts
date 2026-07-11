@@ -16,7 +16,7 @@ const APP_FAQ: Array<{ patterns: string[]; response: string; followUps: string[]
   },
   {
     patterns: ['offline', 'no internet', 'without network', 'work offline', 'how do you work offline', 'offline mode'],
-    response: "HIVA is built to work entirely offline. Here's how:\n\n• After your first login, the app downloads all clinical guidelines as a single .hiv file\n• This file is stored securely on your device — no internet needed to use it\n• Everything runs locally: search, drug tables, decision trees, and responses\n• You only need internet briefly to check for guideline updates (we'll prompt you)\n• Perfect for rural health facilities with unreliable connectivity.",
+    response: "HIVA is built to work entirely offline. Here's how:\n\n• After your first login, the app downloads all clinical guidelines securely to your device\n• No internet needed to use them — everything is stored locally\n• Everything runs locally: search, drug tables, decision trees, and responses\n• You only need internet briefly to check for guideline updates (we'll prompt you)\n• Perfect for rural health facilities with unreliable connectivity.",
     followUps: ['How do I get updates?', 'What can you do?', 'What is my access code?'],
   },
   {

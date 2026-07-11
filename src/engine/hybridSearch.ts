@@ -134,7 +134,7 @@ function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array
 
 /**
  * REMOVED: Legacy JS embedding functions deleted.
- * All embedding now via NativeRetriever (ObjectBox + EmbeddingGemma 256-dim).
+ * All embedding now via NativeRetriever (ObjectBox + E5-small-v2 384-dim).
  * These stubs remain for 1-release compatibility only.
  */
 let embedQueryFnV22: ((text: string) => Promise<Float32Array>) | null = null;
@@ -163,7 +163,7 @@ async function denseVectorSearch(queryEmbedding: Float32Array, topK = 10): Promi
 
   // Detect expected dimensions from schema version or fall back to stored dimension
   const schemaVersion = assets.schemaVersion ?? '2.2';
-  const expectedDims = schemaVersion === '2.3' ? 1024 : 384;
+  const expectedDims = (schemaVersion as string) === '2.3' ? 1024 : 384;
   const dims = assets.embeddingsIndex.dimensions ?? expectedDims;
 
   // Validate query embedding matches expected dimensions
@@ -240,6 +240,12 @@ const PROXY_JACCARD_FLOOR = 0.18;
 function proxyVectorSearch(rewrittenQuery: string, topK = 10): SearchResult[] {
   const assets = globalAssets;
   if (!assets?.queryProxies || !assets.embeddingsBuffer || !assets.embeddingsIndex) {
+    const missing = [
+      !assets?.queryProxies ? 'queryProxies' : null,
+      !assets?.embeddingsBuffer ? 'embeddingsBuffer' : null,
+      !assets?.embeddingsIndex ? 'embeddingsIndex' : null,
+    ].filter(Boolean).join(', ');
+    console.warn('[HIVA] proxyVectorSearch skipped — missing assets:', missing, '— returning 0 chunks');
     return [];
   }
 
@@ -290,7 +296,7 @@ async function vectorSearch(rewrittenQuery: string, _language: string, topK = 10
   const schemaVersion = assets?.schemaVersion ?? '2.2';
 
   // Tier 1: real embedding model (route based on schema version)
-  const embedFn = schemaVersion === '2.3' ? embedQueryFnV23 : embedQueryFnV22;
+  const embedFn = (schemaVersion as string) === '2.3' ? embedQueryFnV23 : embedQueryFnV22;
 
   if (embedFn) {
     try {
@@ -521,10 +527,21 @@ function bm25Search(query: string, language: string, bm25Index: HIVAssets['bm25I
   // Chunks matching an anchor get boosted; chunks NOT matching any anchor get demoted.
   // This prevents generic weight-band or parameter-matching chunks from outranking
   // drug-specific chunks when both score similarly on common terms.
+  //
+  // EXCLUDED: meta/framing words that describe document structure, not clinical content.
+  // These are rare in the index (few chunks are titled "guidelines") but carry no
+  // discriminative signal — "newborn care guidelines" should anchor on "newborn", not
+  // "guidelines", or the hypertension guidelines chunk gets boosted spuriously.
+  const ANCHOR_EXCLUSIONS = new Set([
+    'guidelines', 'guideline', 'protocol', 'protocols', 'overview', 'management',
+    'care', 'assessment', 'approach', 'policy', 'policies', 'standard', 'standards',
+    'procedure', 'procedures', 'introduction', 'objectives', 'scope',
+  ]);
   const anchorTerms: string[] = [];
   const anchorChunks = new Set<string>();
   for (const term of terms) {
     if (term.length < 4 || !/^[a-z]+$/i.test(term)) continue;
+    if (ANCHOR_EXCLUSIONS.has(term)) continue;
     const postings = idx[term] || [];
     if (postings.length > 0 && postings.length <= 5) {
       anchorTerms.push(term);
@@ -614,7 +631,7 @@ export async function search(rewrittenQuery: string, sessionState: SessionState,
   let bm25 = bm25Search(bm25Query || rewrittenQuery, language, assets.bm25Index);
 
   // Detect if this is a v2.3 bundle in transitional dense-only mode (missing lexical.json)
-  const isDenseOnlyMode = schemaVersion === '2.3' && bm25.length === 0;
+  const isDenseOnlyMode = (schemaVersion as string) === '2.3' && bm25.length === 0;
   if (isDenseOnlyMode) {
     console.log('[hybridSearch] v2.3 bundle in dense-only mode (lexical.json missing) — stricter confidence gating applied');
   }

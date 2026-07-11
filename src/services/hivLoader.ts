@@ -43,14 +43,12 @@ export interface HivCapabilities {
 /**
  * Supported schema versions for embedding model and retrieval strategy selection.
  */
-export type SchemaVersion = '3.0';
+export type SchemaVersion = '3.0' | '4.0';
 
 /**
  * Parse and validate schema_version from manifest.
  * Falls back to manifest.version if schema_version is not explicitly set.
  * Throws if version is unrecognized or missing.
- *
- * REMOVED: v2.2/v2.3 support deleted. Only schema 3.0 bundles supported.
  */
 export function parseSchemaVersion(manifest: HIVManifest): SchemaVersion {
   const rawVersion = manifest.schema_version ?? manifest.version;
@@ -65,14 +63,13 @@ export function parseSchemaVersion(manifest: HIVManifest): SchemaVersion {
   // Normalize version string (strip 'v' prefix, take major.minor only)
   const normalized = rawVersion.toLowerCase().replace(/^v/, '').split('.').slice(0, 2).join('.');
 
-  // Only schema 3.0 supported
   if (normalized === '3.0') return '3.0';
+  if (normalized === '4.0') return '4.0';
 
-  // v2.2/v2.3 removed - fail loudly
   throw new Error(
     `HIVLoader: Schema version "${rawVersion}" (normalized: ${normalized}) is not supported. ` +
-    `This runtime requires schema version 3.0+ bundles (EmbeddingGemma-300M + ObjectBox). ` +
-    `Legacy v2.2/v2.3 bundles are no longer compatible. Update your bundle to schema 3.0.`
+    `This runtime requires schema version 3.0+ bundles (E5-small-v2 + ObjectBox). ` +
+    `Legacy bundles are no longer compatible.`
   );
 }
 
@@ -175,8 +172,13 @@ export async function parseHIVFile(arrayBuffer: ArrayBuffer): Promise<HIVFile> {
   const variantEmbeddingsIndex = parseVariantEmbeddingsIndex(files);
 
   if (!variantEmbeddings) {
+    const indexEntries = Object.keys(files).filter((k) => k.startsWith('index/')).sort();
     // eslint-disable-next-line no-console
-    console.warn('[HIVA] variant_embeddings.bin not found — falling back to query proxy search. Recompile for best results.');
+    console.warn(
+      '[HIVA] variant_embeddings.bin not found — falling back to query proxy search.',
+      'Bundle index/ entries present:', indexEntries.length > 0 ? indexEntries.join(', ') : '(none)',
+      '— recompile bundle to include index/variant_embeddings.bin for best results.',
+    );
   }
 
   // Try to load SQLite database if present
@@ -250,7 +252,7 @@ function getFile(files: Record<string, Uint8Array>, path: string): Uint8Array | 
 
 function parseManifest(files: Record<string, Uint8Array>): HIVManifest {
   const raw = getFile(files, 'manifest.json');
-  if (!raw) throw new Error('.hiv missing manifest.json');
+  if (!raw) throw new Error('.hiva missing manifest.json');
   const manifest = JSON.parse(strFromU8(raw)) as HIVManifest;
 
   // Backward compatible: normalize document_sources from legacy document_source
@@ -370,7 +372,7 @@ function parseLexicalIndex(
   if (!raw) {
     // For v2.3 bundles, missing lexical.json is an expected transitional state
     // (compiler stopped producing it for v2.3, pending revert). Log warning but don't fail.
-    if (schemaVersion === '2.3') {
+    if ((schemaVersion as string) === '2.3') {
       // eslint-disable-next-line no-console
       console.warn(
         `[HIVLoader] Module ${moduleId}: lexical.json missing in v2.3 bundle. ` +

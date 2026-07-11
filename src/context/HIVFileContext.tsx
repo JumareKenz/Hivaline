@@ -4,12 +4,12 @@
 
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import type { HIVFile, HIVChunk } from '@/types/hiv';
-import { loadStoredHIV, checkForUpdate, downloadHIV } from '@/services/updateService';
+import { loadStoredHIV, checkForUpdate, downloadHIV, getStoredHIVBytes, getHIVNativePath } from '@/services/updateService';
 import { getToken } from '@/services/authStorage';
 import { warmupEmbeddingModel } from '@/services/modelManager';
-import { loadEdgeBrain, isEdgeBrainReady } from '@/services/edgeBrainService';
-import { isLeapModelDownloaded, downloadLeapModel } from '@/services/modelDownloader';
-import { isEmbeddingModelDownloaded, downloadEmbeddingModel } from '@/services/nativeRetrieverService';
+import { loadEdgeBrain } from '@/services/edgeBrainService';
+import { isEmbeddingModelDownloaded, downloadEmbeddingModel, loadNativeBundle, isNativeRetrieverReady } from '@/services/nativeRetrieverService';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 interface HIVFileState {
   file: HIVFile | null;
@@ -92,34 +92,85 @@ export const HIVFileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // automatically without requiring the user to visit Settings.
     (async () => {
       try {
-        const leapReady = await isLeapModelDownloaded();
-        if (!leapReady) {
-          // Download silently in background — WiFi only
-          await downloadLeapModel(undefined, true);
-        }
-        const brainReady = await isEdgeBrainReady();
-        if (!brainReady) {
-          await loadEdgeBrain().catch(() => { /* still missing after download — silent */ });
-        }
+        // Model is bundled in APK assets — native loadModel() copies it to
+        // filesDir on first launch. No JS-side download needed.
+        await loadEdgeBrain();
       } catch {
-        /* offline or download failed — will retry next launch */
+        /* model load failed — will retry on next query */
       }
     })();
 
-    // Auto-download EmbeddingGemma-300M ONNX (q8) model if missing.
+    // Auto-download E5-small-v2 ONNX model, then initialize NativeRetriever.
     (async () => {
       try {
         const info = await isEmbeddingModelDownloaded();
         if (!info.downloaded) {
+          console.log('[HIVA] E5 model not found, downloading...');
           await downloadEmbeddingModel();
+          console.log('[HIVA] E5 model downloaded');
         }
-      } catch {
-        /* offline — will retry next launch */
+
+        // Initialize NativeRetriever with the .hiva bundle
+        const ready = await isNativeRetrieverReady();
+        console.log('[HIVA] NativeRetriever ready check:', ready);
+        if (!ready) {
+          // Check if .hiv is already on native filesystem
+          let nativePath = await getHIVNativePath();
+          console.log('[HIVA] Native path check:', nativePath);
+
+          if (!nativePath) {
+            // First time: write .hiv from IndexedDB to native FS
+            const hivBytes = await getStoredHIVBytes();
+            console.log('[HIVA] IndexedDB bytes:', hivBytes ? `${hivBytes.length} bytes` : 'null');
+            if (hivBytes) {
+              try { await Filesystem.mkdir({ path: 'hiva-bundle', directory: Directory.Data, recursive: true }); } catch { /* exists */ }
+              try { await Filesystem.deleteFile({ path: 'hiva-bundle/current.hiva', directory: Directory.Data }); } catch { /* doesn't exist */ }
+              const chunkSize = 512 * 1024;
+              for (let offset = 0; offset < hivBytes.length; offset += chunkSize) {
+                const slice = hivBytes.slice(offset, Math.min(offset + chunkSize, hivBytes.length));
+                let binary = '';
+                for (let i = 0; i < slice.length; i++) binary += String.fromCharCode(slice[i]);
+                await Filesystem.appendFile({ path: 'hiva-bundle/current.hiva', data: btoa(binary), directory: Directory.Data });
+              }
+              const stat = await Filesystem.stat({ path: 'hiva-bundle/current.hiva', directory: Directory.Data });
+              nativePath = stat.uri;
+              console.log('[HIVA] .hiv written to native FS:', nativePath);
+            }
+          }
+
+          if (nativePath) {
+            // Capacitor returns file: URI, Kotlin ZipFile needs plain path
+            const plainPath = nativePath.replace(/^file:\/\//, '').replace(/^file:/, '');
+            await loadNativeBundle(plainPath);
+            console.log('[HIVA] NativeRetriever loaded successfully');
+          }
+        }
+      } catch (err) {
+        console.warn('[HIVA] NativeRetriever init failed:', err);
       }
     })();
 
     const handleDownloaded = () => {
       reload();
+      // Re-run NativeRetriever init — on first install the bundle didn't exist
+      // when the mount-time init ran, so we must load it now that it's on disk.
+      (async () => {
+        try {
+          const alreadyReady = await isNativeRetrieverReady();
+          if (!alreadyReady) {
+            const nativePath = await getHIVNativePath();
+            if (nativePath) {
+              const plainPath = nativePath.replace(/^file:\/\//, '').replace(/^file:/, '');
+              await loadNativeBundle(plainPath);
+              console.log('[HIVA] NativeRetriever loaded after bundle download');
+            } else {
+              console.warn('[HIVA] post-download: nativePath null — bundle not on disk yet?');
+            }
+          }
+        } catch (err) {
+          console.warn('[HIVA] NativeRetriever post-download init failed:', err);
+        }
+      })();
     };
     window.addEventListener('hiva:file-downloaded', handleDownloaded);
     return () => {
