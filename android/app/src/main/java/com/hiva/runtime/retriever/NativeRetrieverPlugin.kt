@@ -72,7 +72,7 @@ class NativeRetrieverPlugin : Plugin() {
         private const val OBJECTBOX_DIR = "objectbox-native-retriever"
         private const val EXPECTED_EMBEDDING_DIMS = 384
         private const val TOP_K_DEFAULT = 5
-        private const val EXPECTED_EMBEDDING_MODEL = "intfloat/e5-small-v2"
+        private const val EXPECTED_EMBEDDING_MODEL = "Kenzlejaze/e5-small-v2-medichat-finetuned"
         private const val HNSW_EF_SEARCH = 64
     }
 
