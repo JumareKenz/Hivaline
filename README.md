@@ -12,9 +12,8 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white&style=flat-square" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white&style=flat-square" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white&style=flat-square" alt="Vite 6" />
+  <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white&style=flat-square" alt="Capacitor 8" />
   <img src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square" alt="Tailwind" />
-  <img src="https://img.shields.io/badge/tests-90%20passing-22c55e?style=flat-square" alt="90 tests" />
-  <img src="https://img.shields.io/badge/bundle-%3C200KB-155D46?style=flat-square" alt="bundle size" />
 </p>
 
 ---
@@ -23,9 +22,9 @@
 
 Nigeria has roughly **42,000 Community Health Extension Workers (CHEWs)** — the backbone of primary care in rural communities. They work in remote clinics, often without internet, without reference books, and without a colleague to consult. A missed malaria severity sign or an incorrect ARV dose can cost a life.
 
-HIVA is a clinical decision-support assistant built specifically for this context. A worker asks a question in plain language — *"ACT dose for a 12 kg child"* or *"signs of severe malaria"* — and gets an instant, FMOH-approved answer formatted for action, not for reading. All of it runs on the device, with zero network dependency after first sync.
+HIVA is a clinical decision-support assistant built specifically for this context. A worker asks a question in plain language — *"ACT dose for a 12 kg child"* or *"signs of severe malaria"* — and gets an instant, FMOH-approved answer formatted for action, not for reading. Everything runs on-device, with zero network dependency after first sync.
 
-The runtime loads a single `.hiv` file — a signed, versioned knowledge container that ships FMOH guidelines, drug tables, decision trees, and multilingual content — and answers queries using a hybrid BM25 + vector search engine, entirely on-device.
+The runtime loads a single `.hiv` file — a signed, versioned knowledge container that ships FMOH guidelines, drug tables, decision trees, and multilingual content — and answers queries using a hybrid BM25 + vector retrieval engine, entirely on-device. On Android, retrieval and generation are additionally backed by native plugins so the app works fully packaged as a standalone APK, not just a web shell.
 
 ---
 
@@ -34,11 +33,13 @@ The runtime loads a single `.hiv` file — a signed, versioned knowledge contain
 | Capability | Detail |
 |---|---|
 | **Offline-first** | Full functionality after first `.hiv` download. Works on `file://` protocol for Android distribution. |
-| **Clinical knowledge search** | Hybrid BM25 + semantic vector search over FMOH-approved content. |
+| **Clinical knowledge search** | Hybrid BM25 + semantic vector search over FMOH-approved content, with a fine-tuned e5-small-v2 embedding model. |
+| **On-device generation** | Native Android LLM plugin (LEAP/EdgeBrain) for grounded, retrieval-augmented answers with no cloud call. |
 | **Drug dosing calculator** | Weight-adjusted dose tables with live slider, bounds warnings, and referral guidance. |
 | **Decision trees** | Step-by-step assessment protocols (e.g. malaria severity) with animated navigation. |
-| **Voice I/O** | On-device STT via Whisper-tiny (Sherpa-ONNX), TTS via Piper — no cloud API. |
-| **Multilingual** | Content and speech models for English, Hausa, Yorùbá, Igbo, and Nigerian Pidgin. |
+| **Voice I/O** | On-device STT/TTS via Sherpa-ONNX, plus a native Android TTS plugin. |
+| **Multilingual** | Content and query normalization for English, Hausa, Yorùbá, Igbo, and Nigerian Pidgin. |
+| **Privacy-first analytics** | Offline-first, on-device analytics with background sync — no PII leaves the device without consent. |
 | **Auto-update** | Resumable background `.hiv` downloads with SHA-256 + Ed25519 integrity verification. |
 | **PWA** | Installable, service-worker cached, works offline after first load. |
 
@@ -47,26 +48,26 @@ The runtime loads a single `.hiv` file — a signed, versioned knowledge contain
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        HIVA Runtime                         │
-│                                                             │
-│  ┌──────────┐   ┌──────────────┐   ┌───────────────────┐   │
-│  │  Auth    │   │  .hiv File   │   │  Search Engine    │   │
-│  │  Context │   │  Context     │   │  BM25 + Vector    │   │
-│  │  (LS)    │   │  (IndexedDB) │   │  (ONNX in-tab)    │   │
-│  └────┬─────┘   └──────┬───────┘   └────────┬──────────┘   │
-│       │                │                    │               │
-│  ┌────▼────────────────▼────────────────────▼──────────┐   │
-│  │              React Router (hash-based)               │   │
-│  │  /         /chat      /knowledge  /settings          │   │
-│  │  LoginScreen ChatScreen  KB Screen  Settings         │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │         Voice Layer (Sherpa-ONNX)                    │   │
-│  │  VAD (Silero) → STT (Whisper-tiny) → TTS (Piper)    │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                          HIVA Runtime                             │
+│                                                                    │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────────────────────┐  │
+│  │  Auth    │  │  .hiv File   │  │      Conversation Engine    │  │
+│  │  Context │  │  Context     │  │  intentEngine → hybridSearch│  │
+│  │  (LS)    │  │  (IndexedDB) │  │  → answerAssembler/generation│  │
+│  └────┬─────┘  └──────┬───────┘  └───────────────┬──────────────┘  │
+│       │               │                          │                │
+│  ┌────▼───────────────▼──────────────────────────▼──────────┐  │
+│  │              React Router (hash-based)                     │  │
+│  │  /   /chat   /knowledge   /settings   /decision-tree/:id    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  ┌───────────────────────┐   ┌────────────────────────────────┐  │
+│  │  Voice Layer (Sherpa)  │   │  Android Native Plugins         │  │
+│  │  VAD → STT → TTS       │   │  NativeRetriever · EdgeBrain    │  │
+│  │                        │   │  (LEAP LLM) · NativeTTS         │  │
+│  └───────────────────────┘   └────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
               │ network (internet required only for:)
               ├── POST /api/hiv/auth      (first login)
               ├── GET  /api/hiv/version   (launch check)
@@ -94,7 +95,7 @@ hiv-2026.05.08.zip
     └── sig.bin            ← signature over all other content
 ```
 
-The search engine fuses BM25 and vector similarity via Reciprocal Rank Fusion (RRF), weighted by chunk type (drug tables and danger signs score higher). All inference runs in a Web Worker using ONNX Runtime Web — the main thread is never blocked.
+Retrieval fuses BM25 and vector similarity via Reciprocal Rank Fusion (RRF), weighted by chunk type (drug tables and danger signs score higher), then routes through confidence gating and a generation layer before rendering an answer. On web, embedding inference runs in a Web Worker via ONNX Runtime Web; on Android, `NativeRetrieverPlugin` and `EdgeBrainPlugin` handle retrieval and generation natively.
 
 ---
 
@@ -102,17 +103,20 @@ The search engine fuses BM25 and vector similarity via Reciprocal Rank Fusion (R
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | React 19 + Vite 6 | Sub-200 KB bundle, instant HMR, works as `file://` for offline Android |
+| Framework | React 19 + Vite 6 | Fast HMR, works as `file://` for offline Android |
+| Mobile shell | Capacitor 8 | Wraps the web build as a native Android app with native plugin bridges |
 | Language | TypeScript 5.7 strict | Clinical data requires zero silent failures |
-| Styling | Tailwind CSS 3.4 | Purgeable utilities, CSS variable tokens for runtime dark mode |
+| Styling | Tailwind CSS 3.4 | Purgeable utilities, HIVA brand tokens (green/gold), CSS variables for dark mode |
 | Animation | Framer Motion 11 | `AnimatePresence` page transitions, respects `prefers-reduced-motion` |
-| Routing | Custom hash router | Hash routing works on `file://` protocol — no React Router overhead |
+| Routing | Custom hash router | Works on `file://` protocol — no React Router overhead |
 | Storage | IndexedDB (idb) | `.hiv` blob persistence with resumable partial downloads |
-| Integrity | SHA-256 + Ed25519 | Every `.hiv` file verified before use |
-| Compression | fflate | Pure-JS ZIP, tree-shakeable, ~15 KB |
-| Voice | Sherpa-ONNX | On-device Whisper-tiny STT + Piper TTS, no cloud dependency |
-| Icons | Lucide React | Tree-shakeable, consistent 1.5px stroke, medically appropriate |
-| Testing | Vitest + RTL | Vite-native, fast, 90 tests |
+| Integrity | SHA-256 + Ed25519 (`@noble/curves`) | Every `.hiv` file verified before use |
+| Compression | fflate | Pure-JS ZIP, tree-shakeable |
+| Retrieval | ONNX Runtime Web + native Kotlin plugin | Hybrid BM25 + vector search, fine-tuned e5-small-v2-medichat embeddings |
+| On-device LLM | Native LEAP/EdgeBrain plugin (Android) | Grounded generation with no cloud dependency |
+| Voice | Sherpa-ONNX + native TTS plugin | On-device STT/TTS |
+| Icons | Lucide React | Tree-shakeable, consistent stroke weight |
+| Testing | Vitest + RTL | Vite-native, 60+ test suites across engine, services, components |
 
 ---
 
@@ -122,6 +126,7 @@ The search engine fuses BM25 and vector similarity via Reciprocal Rank Fusion (R
 
 - Node.js ≥ 18
 - npm ≥ 9
+- Android Studio + JDK 17 (only if building the Android app)
 
 ### Installation
 
@@ -131,35 +136,35 @@ cd Hivaline
 npm install
 ```
 
-### Voice Models (optional)
+### Voice & Embedding Models (optional)
 
-The STT/TTS models are excluded from the repo due to size (160 MB). To enable voice:
+Large model binaries are excluded from the repo — see `.gitignore`. To enable voice and on-device retrieval locally:
 
 ```bash
-# Create model directories
-mkdir -p public/models/stt public/models/tts public/models/vad
+mkdir -p public/models/stt public/models/tts public/models/vad public/models/embed
 
 # STT — Whisper-tiny INT8 (Sherpa-ONNX format)
-# Download encoder.onnx, decoder.onnx, tokens.txt from:
 # https://github.com/k2-fsa/sherpa-onnx/releases → whisper-tiny models
-# Place in public/models/stt/
+# Place encoder.onnx, decoder.onnx, tokens.txt in public/models/stt/
 
 # TTS — Piper (Sherpa-ONNX format)
-# Download voice.onnx + voice.onnx.json from:
 # https://github.com/k2-fsa/sherpa-onnx/releases → piper-en-us-amy
-# Place in public/models/tts/
+# Place voice.onnx + voice.onnx.json in public/models/tts/
 
 # VAD — Silero
-# Download silero_vad.onnx from:
-# https://github.com/snakers4/silero-vad/tree/master/src/silero_vad/data
-# Place in public/models/vad/
+# https://github.com/snakers4/silero-vad
+# Place silero_vad.onnx in public/models/vad/
+
+# Embedding — fine-tuned e5-small-v2-medichat (fused ONNX)
+# Place the fused model in android/app/src/main/assets/models/e5-small-v2/
+# for native Android retrieval.
 ```
 
 ### Development
 
 ```bash
 npm run dev        # start dev server at http://localhost:5173
-npm run test       # run all 90 tests (vitest)
+npm run test       # run all tests (vitest)
 npm run build      # production build → dist/
 npm run preview    # preview production build
 ```
@@ -185,48 +190,52 @@ src/
 │   ├── auth/           LoginScreen
 │   ├── chat/           ChatScreen, MessageBubble, ResponseCard, DangerSignCard…
 │   ├── decision/       DecisionTreeScreen, TreeNode, TreeNavigator
-│   ├── drug/           DrugTableScreen, WeightSlider, DoseResultCard
-│   ├── knowledge/      KnowledgeBaseScreen, ArtifactCard, KnowledgeDetailScreen
-│   ├── settings/       SettingsScreen, LanguageSelector, ServerCodeDisplay…
-│   ├── shell/          MobileShell, BottomTabBar, SafeArea, ErrorBoundary
-│   └── ui/             Button, Card, Input, Toggle, TopBar, HivaLogo, SplashScreen…
+│   ├── drug/            DrugTableScreen, WeightSlider, DoseResultCard
+│   ├── knowledge/       KnowledgeBaseScreen, ArtifactCard, KnowledgeDetailScreen
+│   ├── settings/        SettingsScreen, LanguageSelector, TTSSettings, AnalyticsSettings…
+│   ├── shell/            MobileShell, BottomTabBar, SafeArea, ErrorBoundary
+│   └── ui/               Button, Card, Input, Toggle, TopBar, HivaLogo, SplashScreen…
 ├── context/
 │   ├── AuthContext.tsx        token lifecycle, API auth, localStorage persistence
 │   ├── HIVFileContext.tsx     .hiv file state + background auto-update
 │   ├── ThemeContext.tsx       light/dark with system preference detection
 │   └── TTSContext.tsx         TTS engine lifecycle
-├── hooks/
-│   ├── useAuth.ts
-│   ├── useHIVFile.ts
-│   ├── useSearch.ts           BM25 keyword search (mock layer)
-│   ├── useTTS.ts
-│   ├── useTheme.ts
-│   └── useVoiceService.ts
+├── engine/
+│   ├── intentEngine.ts         query intent classification
+│   ├── hybridSearch.ts         BM25 + vector fusion (RRF)
+│   ├── confidenceScoring.ts    confidence gate before answering
+│   ├── generationRouter.ts     routes to native LLM or template answer
+│   ├── answerAssembler.ts      chunk → structured answer
+│   ├── clinicalFaqDetector.ts / appFaqDetector.ts
+│   ├── queryRewriter.ts / fuzzyNormalizer.ts / narrativeNormalizer.ts
+│   ├── driftDetector.ts / fallbackHandler.ts
+│   └── processMessage.ts       top-level message pipeline
 ├── services/
-│   ├── hivLoader.ts           parse .hiv ZIP → typed HIVFile object
-│   ├── onnxEmbedder.ts        ONNX Runtime Web embedding inference
-│   ├── responseRenderer.ts   chunk → chat message formatting
-│   ├── searchEngine.ts        BM25 + vector fusion (RRF)
-│   ├── sttService.ts          Sherpa-ONNX STT wrapper
-│   ├── ttsService.ts          Sherpa-ONNX TTS wrapper
-│   ├── updateService.ts       version check + resumable download + integrity verify
-│   └── voiceEngine.ts         VAD → STT pipeline
+│   ├── hivLoader.ts             parse .hiv ZIP → typed HIVFile object
+│   ├── onnxEmbedder.ts          ONNX Runtime Web embedding inference
+│   ├── nativeRetrieverService.ts  bridge to Android NativeRetrieverPlugin
+│   ├── edgeBrainService.ts      bridge to Android EdgeBrain/LEAP LLM plugin
+│   ├── nativeTTSService.ts / ttsService.ts / sttService.ts
+│   ├── responseRenderer.ts      chunk → chat message formatting
+│   ├── updateService.ts         version check + resumable download + integrity verify
+│   ├── analyticsService.ts / analyticsSyncService.ts / analyticsStorage.ts
+│   ├── queryTranslator.ts / queryLogger.ts / telemetry.ts
+│   └── modelManager.ts / modelDownloader.ts / moduleLoader.ts / moduleRegistry.ts
 ├── router/
-│   ├── Router.tsx             AnimatePresence page transitions + auth guard
+│   ├── Router.tsx               AnimatePresence page transitions + auth guard
 │   ├── routes.ts
-│   └── useRouter.ts           hash router hook
+│   └── useRouter.ts             hash router hook
 ├── types/
-│   └── hiv.ts                 full type system (User, HIVFile, ChatMessage…)
-├── utils/
-│   ├── constants.ts
-│   ├── formatters.ts
-│   └── validation.ts
-└── data/                      mock clinical data (used until .hiv is loaded)
-    ├── artifacts.ts
-    ├── decisionTrees.ts
-    ├── drugTables.ts
-    ├── mockResponses.ts
-    └── users.ts
+│   └── hiv.ts                   full type system (User, HIVFile, ChatMessage…)
+└── utils/
+    ├── constants.ts / formatters.ts / validation.ts / security.ts
+
+android/
+├── app/src/main/java/com/hiva/runtime/
+│   ├── llm/              EdgeBrainPlugin.kt, EdgeBrainLeapDelegate.kt — on-device LLM
+│   ├── retriever/        NativeRetrieverPlugin.kt — native hybrid retrieval
+│   └── speech/           NativeTTSPlugin.kt — native TTS
+└── app/src/main/cpp/     llama.cpp + edgebrain_jni.cpp — native inference bridge
 ```
 
 ---
@@ -312,22 +321,7 @@ npm run test             # watch mode
 npm run test -- --run    # single pass, CI mode
 ```
 
-**90 tests across 12 suites:**
-
-| Suite | Tests | What's covered |
-|---|---|---|
-| `validation.test.ts` | 16 | Server code regex, access key format, weight bounds |
-| `useSearch.test.ts` | 9 | BM25 tokenizer, scoring, fallback response |
-| `useRouter.test.ts` | 8 | Hash parsing, navigation, params, dynamic routes |
-| `Button.test.tsx` | 7 | Variants, disabled state, click handler |
-| `Input.test.tsx` | 7 | Label, error, password type, auto-capitalize |
-| `Toggle.test.tsx` | 5 | Checked state, onChange, label render |
-| `ResponseCard.test.tsx` | 4 | Content render, metadata, source citation |
-| `searchEngine.test.ts` | – | BM25 index, fusion scoring |
-| `responseRenderer.test.ts` | – | Chunk → chat message mapping |
-| `hivLoader.test.ts` | – | ZIP parse, manifest validation |
-| `ttsService.test.ts` | – | TTS init, speak/stop lifecycle |
-| `sttService.test.ts` | – | STT session, transcript callback |
+Test suites cover the engine pipeline (intent, hybrid search, confidence scoring, generation routing, drift detection), services (hiv loader, embedder, TTS/STT, analytics, model management), UI components, hooks, router, and security (auth, signature verification, hiv loader hardening).
 
 ---
 
@@ -335,34 +329,24 @@ npm run test -- --run    # single pass, CI mode
 
 ### Color Tokens
 
+HIVA's official brand identity — green & gold, white backgrounds.
+
 | Token | Hex | Usage |
 |---|---|---|
-| `accent-600` | `#155D46` | Primary CTA, active state, ring rotation |
-| `brand-tan` | `#C9A96E` | Decorative accents, orbital particles, subtitle |
-| `n-900` | `#1c1917` | Body text (light mode) |
-| `n-100` | `#f5f5f4` | Body text (dark mode) |
-| `error` | `#dc2626` | Danger signs, form errors |
-| `success` | `#16a34a` | Verification badges, connected state |
-| `warning` | `#d97706` | Drug dosing warnings |
+| `accent-500` / `brand-forest` | `#163A28` | Primary brand green — CTAs, active state |
+| `brand-gold` | `#C99338` | Accent, highlights, verification badges |
+| `n-0` | `#ffffff` | Base background |
+| `n-900` | `#0f172a` | Body text (light mode) |
+| `success` | `#10b981` | Verification badges, connected state |
+| `warning` | `#f59e0b` | Drug dosing warnings |
+| `error` | `#ef4444` | Danger signs, form errors |
 
 ### Typography
 
-| Role | Font | Weight |
-|---|---|---|
-| `font-display` | Space Grotesk | 400–700 |
-| `font-body` | DM Sans | 300–700 |
-| `font-mono` | JetBrains Mono | 400–600 |
-
-### Splash Screen
-
-The animated splash features a layered SVG logo with:
-- Outer ring + tick marks rotating clockwise (8 s)
-- Inner dotted ring + orbital particles rotating counter-clockwise (5.5 s)
-- 45° radar sweep sector rotating clockwise (4 s)
-- Dual ping ripples expanding and fading (staggered)
-- H letterform bouncing with spring easing
-- Center dot bouncing with scale pulse
-- Brand name animating letter-by-letter with spring stagger
+| Role | Font |
+|---|---|
+| `font-display` / `font-body` | Poppins |
+| `font-mono` | JetBrains Mono |
 
 ---
 
@@ -376,18 +360,23 @@ npm run build
 # Serve from any static host (Netlify, Vercel, Nginx, or open dist/index.html directly)
 ```
 
-The build uses `base: './'` so `dist/index.html` can be opened directly as a `file://` URL on Android devices — the primary delivery mechanism for offline deployment.
+The build uses `base: './'` so `dist/index.html` can be opened directly as a `file://` URL — used for offline web deployment.
 
 ### PWA
 
 The service worker (generated by `vite-plugin-pwa`) pre-caches all JS/CSS/HTML/SVG assets. After the first load, the app runs fully offline.
 
-### Android Packaging
+### Android
 
-For distribution as an APK:
-1. `npm run build`
-2. Wrap `dist/` with Capacitor or WebView wrapper
-3. Distribute via APK sideload — no Play Store required
+HIVA ships as a native Android app via Capacitor, with native Kotlin plugins for retrieval, on-device LLM generation, and TTS.
+
+```bash
+npm run build
+npx cap sync android
+cd android && ./gradlew assembleRelease
+```
+
+APKs are distributed via direct sideload — no Play Store dependency required.
 
 ---
 
@@ -397,40 +386,10 @@ For distribution as an APK:
 |---|---|
 | XSS | React text nodes only; `dangerouslySetInnerHTML` never used |
 | Auth token | Stored in `localStorage` (permanent, no expiry); only admin revocation cuts access |
-| .hiv integrity | SHA-256 hash + Ed25519 signature checked before any file is used |
+| `.hiv` integrity | SHA-256 hash + Ed25519 signature checked before any file is used |
 | Route access | Auth guard in `Router.tsx`; unauthenticated users redirect to `/` |
-| Clinical data | All content is read-only `as const` TypeScript; no runtime mutation |
+| Clinical data | All content is read-only TypeScript; no runtime mutation |
 | Revocation | 401/403 on download clears session and redirects to login immediately |
-
----
-
-## Contributing
-
-This project follows a strict architectural rulebook in `AGENTS.md` and `BLUEPRINT.md`. Before contributing:
-
-1. **Read `AGENTS.md`** — non-negotiable code standards
-2. **Read `BLUEPRINT.md`** — every data model and component spec
-3. Run `npm run test` — all 90 tests must pass
-4. Run `npx tsc --noEmit` — zero type errors permitted
-
-```bash
-git checkout -b feat/your-feature
-# make changes
-npm run test -- --run
-npx tsc --noEmit
-git push origin feat/your-feature
-# open PR
-```
-
----
-
-## Roadmap
-
-- [ ] Live `.hiv` search engine (replace mock layer with full ONNX inference)
-- [ ] Hausa UI strings (i18n layer wired to content translations)
-- [ ] Offline map integration for nearest referral facility
-- [ ] Supervisor dashboard (admin panel for code management)
-- [ ] Android APK release pipeline (Capacitor)
 
 ---
 
