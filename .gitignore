@@ -21,7 +21,9 @@ Thumbs.db
 public/models/**/*.onnx
 public/sherpa-onnx/*.wasm
 android/app/src/main/assets/models/**/*.onnx
+android/app/src/main/assets/models/lfm25/
 models/e5-small-v2-medichat/
+models/embedding-gemma/
 *.hiva
 
 # Capture artefacts
