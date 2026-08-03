@@ -20,6 +20,9 @@ Thumbs.db
 # Large binary model files — download separately (see README)
 public/models/**/*.onnx
 public/sherpa-onnx/*.wasm
+android/app/src/main/assets/models/**/*.onnx
+models/e5-small-v2-medichat/
+*.hiva
 
 # Capture artefacts
 hiva-splash*.mp4
@@ -36,3 +39,76 @@ models/*.gguf
 *.keystore
 *.sig
 *.idsig
+
+# AI-generated report docs — keep only README
+*.md
+!README.md
+
+# Report/status text dumps
+ANDROID_BUILD_STATUS.txt
+FINAL_BUILD_SUMMARY.txt
+PHASE26b_EXECUTIVE_SUMMARY.txt
+RELEASE_NOTES.txt
+
+# Agent config / prompt scaffolding
+PROMPTS/
+TEMPLATES/
+
+# One-off eval / debug scripts and their outputs
+/analyze-*.mjs
+/auth-download.mjs
+/build-comprehensive-*.mjs
+/check-*.mjs
+/check-*.html
+/compare-*.mjs
+/debug-*.mjs
+/download-*.mjs
+/fetch-*.mjs
+/find-*.mjs
+/force-update.html
+/inspect-*.mjs
+/investigate-*.mjs
+/live-ui-test.mjs
+/login-and-download.html
+/measure-*.mjs
+/phase2*.mjs
+/poll-test-*.mjs
+/quick-*.mjs
+/quick_*.py
+/reconcile-*.mjs
+/stress-test-*.mjs
+/test-*.mjs
+/trace-*.mjs
+/verify-*.mjs
+public/test-*.html
+align.cjs
+final_score.cjs
+parse_results.js
+score*.cjs
+stream.txt
+v8*_stream.txt
+v8*_final.txt
+results_*.txt
+queries_*.txt
+q4.txt
+r4.txt
+download-chunked.sh
+download-labse.sh
+
+# Fine-tuning / dataset-assembly pipeline scratch (scripts/)
+scripts/assemble_dataset.cjs
+scripts/build_ir_evaluator.cjs
+scripts/cleanup_dataset.cjs
+scripts/convert_chew_data.cjs
+scripts/export-e5-fused-onnx.py
+scripts/export-finetuned-onnx.py
+scripts/final_queries.cjs
+scripts/generate_queries.cjs
+scripts/hard_negatives.cjs
+scripts/merge_final_dataset.cjs
+scripts/refine_queries.cjs
+scripts/upload_kaggle.py
+scripts/upload_model_kaggle.py
+scripts/*.jsonl
+scripts/ir_eval/
+scripts/kaggle_dataset/
